@@ -6,21 +6,34 @@ A unified omnichannel customer service platform with backend (FastAPI + PostgreS
 
 ### Core Features
 ✅ **Message Ingestion**: Webhook endpoints for receiving messages from multiple channels (Zalo OA, Meta, etc.)
+
 ✅ **Keyword Extraction**: Automatic extraction and matching of keywords from customer messages
+
 ✅ **Intelligent Assignment**: Auto-assign messages to staff based on keywords, KPI scores, and availability
+
 ✅ **Request Management**: Handle leave requests, raise requests with approval workflow
+
 ✅ **Time Tracking**: Check-in/check-out system with timesheet management
+
 ✅ **Shift Management**: Schedule shifts and assign to staff members
+
 ✅ **KPI Tracking**: Monitor employee performance metrics
+
 ✅ **Reports**: Comprehensive reporting by department, user, and request type
 
 ### Security Features
 ✅ JWT Authentication & Authorization
+
 ✅ Role-based access control (Admin, Manager, Staff)
+
 ✅ HTTPS/TLS ready
+
 ✅ SQL Injection prevention (SQLAlchemy ORM)
+
 ✅ XSS protection headers
+
 ✅ CSRF protection headers
+
 ✅ Input validation
 
 ### User Roles
@@ -308,12 +321,19 @@ The system is designed to handle:
 ## Security Features Implemented
 
 ✅ Password hashing with bcrypt
+
 ✅ JWT token-based authentication
+
 ✅ Role-based authorization on all protected endpoints
+
 ✅ SQL injection prevention (SQLAlchemy ORM)
+
 ✅ CORS configuration for frontend origin
+
 ✅ Security headers (X-Frame-Options, X-Content-Type-Options, X-XSS-Protection)
+
 ✅ Input validation via Pydantic schemas
+
 ✅ Exception handling and error logging
 
 ### Recommendations for Production
@@ -345,17 +365,3 @@ To test the API, use the provided curl examples or import the API into Postman.
 - [ ] AI-powered response suggestions
 - [ ] Queue management system
 - [ ] SLA monitoring
-
-## Support
-
-For issues or questions, please refer to the inline code documentation.
-
-## License
-
-MIT License - See LICENSE file for details
-
----
-
-**Version**: 1.0.0  
-**Last Updated**: December 12, 2025
-
