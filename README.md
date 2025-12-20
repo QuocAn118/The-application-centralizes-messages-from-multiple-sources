@@ -77,7 +77,7 @@ Database (PostgreSQL)
 
 ```bash
 # Clone the repo (or navigate to demo directory)
-cd demo
+cd Project
 
 # Build and start all services
 docker compose up --build
