@@ -1,3 +1,4 @@
+-- Active: 1767346754964@@127.0.0.1@5432@omnichat
 -- Initialize database schema for OmniChat (Postgres)
 
 CREATE TABLE IF NOT EXISTS departments (
