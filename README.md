@@ -1,367 +1,181 @@
-# OmniChat - Complete Implementation
+# OmniChat - Hệ thống Quản lý Đa kênh
 
-A unified omnichannel customer service platform with backend (FastAPI + PostgreSQL) and frontend (React + TypeScript).
+Hệ thống quản lý tin nhắn đa kênh cho doanh nghiệp, tích hợp Zalo OA, Facebook Messenger và các nền tảng khác.
 
-## Features
-
-### Core Features
-✅ **Message Ingestion**: Webhook endpoints for receiving messages from multiple channels (Zalo OA, Meta, etc.)
-
-✅ **Keyword Extraction**: Automatic extraction and matching of keywords from customer messages
-
-✅ **Intelligent Assignment**: Auto-assign messages to staff based on keywords, KPI scores, and availability
-
-✅ **Request Management**: Handle leave requests, raise requests with approval workflow
-
-✅ **Time Tracking**: Check-in/check-out system with timesheet management
-
-✅ **Shift Management**: Schedule shifts and assign to staff members
-
-✅ **KPI Tracking**: Monitor employee performance metrics
-
-✅ **Reports**: Comprehensive reporting by department, user, and request type
-
-### Security Features
-✅ JWT Authentication & Authorization
-
-✅ Role-based access control (Admin, Manager, Staff)
-
-✅ HTTPS/TLS ready
-
-✅ SQL Injection prevention (SQLAlchemy ORM)
-
-✅ XSS protection headers
-
-✅ CSRF protection headers
-
-✅ Input validation
-
-### User Roles
-- **Admin**: Full system access, manage users, view all reports
-- **Manager**: Manage department staff, approve requests, create keywords
-- **Staff**: Submit requests, manage own timesheet, view messages assigned to them
-
-## Architecture
-
-```
-Frontend (React + TypeScript)
-    ↓
-Backend API (FastAPI + Python)
-    ↓
-Database (PostgreSQL)
-```
-
-## Tech Stack
+## Công nghệ sử dụng
 
 ### Backend
-- **Framework**: FastAPI (async, high performance)
-- **Database**: PostgreSQL with SQLAlchemy ORM
-- **Authentication**: JWT + bcrypt password hashing
-- **Deployment**: Docker + Docker Compose
+- **Framework**: FastAPI (Python)
+- **Database**: PostgreSQL
+- **Authentication**: JWT
+- **ORM**: SQLAlchemy
 
 ### Frontend
-- **Framework**: React 18 with TypeScript
-- **State Management**: React Hooks
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **UI Library**: Ant Design
+- **State Management**: Zustand
 - **HTTP Client**: Axios
-- **Routing**: React Router v6
-- **Styling**: CSS3 with responsive design
+- **Data Fetching**: TanStack Query
 
-## Installation & Setup
+## Cài đặt và Chạy
 
-### Prerequisites
-- Docker & Docker Compose
-- Node.js 18+ (for local development)
-- Python 3.11+ (for local development)
+### 1. Cài đặt PostgreSQL
 
-### Quick Start with Docker
+Đảm bảo PostgreSQL đã được cài đặt và đang chạy. Tạo database:
+
+```sql
+CREATE DATABASE omnichat_db;
+```
+
+### 2. Khởi tạo Database
 
 ```bash
-# Clone the repo (or navigate to demo directory)
-cd Project
-
-# Build and start all services
-docker compose up --build
+cd backend
+psql -U postgres -d omnichat_db -f init_db.sql
 ```
 
-Services will be available at:
-- **Backend API**: http://localhost:8000
-- **Frontend**: http://localhost:3000
-- **PostgreSQL**: localhost:5432
+### 3. Cài đặt Backend
 
-### Initialize Database
-
-Option 1 - Using seed script (recommended):
 ```bash
-docker exec -it $(docker ps -qf "name=demo_backend") python /app/seed.py
+cd backend
+python -m venv venv
+venv\Scripts\activate  # Windows
+pip install -r requirements.txt
 ```
 
-Option 2 - Using SQL script:
+Cấu hình file `.env`:
+```
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/omnichat_db
+SECRET_KEY=your-secret-key
+```
+
+Chạy backend:
 ```bash
-docker exec -it $(docker ps -qf "name=demo_db") psql -U postgres -d omnichat -f /app/initialize_db.sql
+python main.py
+# hoặc
+uvicorn main:app --reload --port 8000
 ```
 
-## Demo Credentials
+Backend sẽ chạy tại: http://localhost:8000
+API Documentation: http://localhost:8000/docs
 
-```
-Admin User:
-  Username: admin
-  Password: adminpass
+### 4. Cài đặt Frontend
 
-Manager User:
-  Username: manager
-  Password: managerpass
-
-Staff User:
-  Username: staff1
-  Password: staff1pass
-
-Staff User 2:
-  Username: staff2
-  Password: staff2pass
-```
-
-## API Endpoints
-
-### Authentication
-- `POST /auth/token` - Login (form-urlencoded)
-- `POST /auth/register` - Register new user
-
-### Messages
-- `GET /messages` - List messages for current user
-- `POST /messages/{id}/complete` - Mark message as completed
-
-### Keywords
-- `GET /keywords` - List all keywords
-- `POST /keywords` - Create keyword (Manager/Admin)
-- `PUT /keywords/{id}` - Update keyword (Manager/Admin)
-- `DELETE /keywords/{id}` - Delete keyword (Manager/Admin)
-
-### Departments
-- `GET /departments` - List all departments
-- `POST /departments` - Create department (Admin)
-
-### Users
-- `GET /users` - List all users (Admin)
-- `POST /users` - Create user (Admin)
-- `PUT /users/{id}/status` - Update user status (Manager)
-
-### Requests
-- `GET /requests` - List requests (own for staff, all for managers/admins)
-- `POST /requests` - Submit new request (Staff)
-- `GET /requests/pending` - List pending requests (Manager/Admin)
-- `POST /requests/{id}/review` - Approve/reject request (Manager/Admin)
-
-### Shifts & Time Tracking
-- `GET /shifts` - List all shifts
-- `POST /shifts` - Create shift (Manager/Admin)
-- `POST /shifts/assign` - Assign shift to staff (Manager/Admin)
-- `POST /shifts/checkin` - Check in for today
-- `POST /shifts/checkout` - Check out for today
-- `GET /shifts/timesheet` - Get personal timesheet
-
-### KPI Metrics
-- `GET /kpi/user` - Get personal KPI metrics
-- `GET /kpi/department` - Get department KPI metrics (Manager/Admin)
-- `POST /kpi/record` - Record new KPI metric (Admin)
-
-### Reports
-- `GET /reports/summary` - Get summary report (filters: start, end, group_by)
-
-### Webhook & Integrations
-- `POST /webhook` - Main webhook for message ingestion
-- `POST /integrations/zalo/webhook` - Zalo OA webhook (mock)
-- `POST /integrations/meta/webhook` - Meta/WhatsApp webhook (mock)
-
-## Example API Calls
-
-### Login
 ```bash
-curl -X POST http://localhost:8000/auth/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=staff1&password=staff1pass"
+cd frontend
+npm install
 ```
 
-### Create Message via Webhook
+Chạy frontend:
 ```bash
-curl -X POST http://localhost:8000/webhook \
-  -H "Content-Type: application/json" \
-  -d '{
-    "platform": "zalo",
-    "sender": "+84901234567",
-    "content": "Tôi cần hỗ trợ mua hàng"
-  }'
+npm run dev
 ```
 
-### Create Keyword
-```bash
-curl -X POST http://localhost:8000/keywords \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "word": "mua",
-    "department_id": 1
-  }'
+Frontend sẽ chạy tại: http://localhost:5173
+
+## Tài khoản Demo
+
+### Admin
+- Email: `admin@omnichat.com`
+- Password: `admin123`
+
+### Manager
+- Email: `manager.sales@omnichat.com`
+- Password: `manager123`
+
+### Staff
+- Email: `staff1@omnichat.com`
+- Password: `staff123`
+
+## Tính năng chính
+
+### Admin
+- Xem thống kê tổng quan hệ thống
+- Quản lý người dùng (CRUD)
+- Thay đổi vai trò người dùng
+- Xem tất cả từ khóa trong hệ thống
+- Thống kê theo phòng ban, nhân viên, loại yêu cầu
+
+### Manager
+- Quản lý nhân viên trong phòng ban
+- Quản lý KPI
+- Quản lý từ khóa
+- Quản lý ca làm việc
+- Phân công ca cho nhân viên
+- Phê duyệt/từ chối yêu cầu của nhân viên
+
+### Staff
+- Xem tin nhắn được giao
+- Đánh dấu tin nhắn hoàn thành
+- Tạo yêu cầu nội bộ (nghỉ phép, tăng lương, v.v.)
+- Xem thông tin khách hàng
+- Xem thông tin cá nhân và hiệu suất
+
+## Tính năng đặc biệt
+
+### Tự động giao việc
+Hệ thống sử dụng thuật toán phân tích từ khóa để tự động giao tin nhắn cho nhân viên phù hợp dựa trên:
+- Từ khóa trong tin nhắn
+- KPI hiện tại của nhân viên
+- Trạng thái làm việc (đang trong ca hay không)
+
+### Webhook Integration
+- Endpoint nhận tin nhắn từ Zalo OA: `/api/webhook/zalo`
+- Endpoint nhận tin nhắn từ Meta: `/api/webhook/meta`
+- Endpoint test: `/api/webhook/test/create-message`
+
+## Cấu trúc thư mục
+
 ```
-
-### Submit Leave Request
-```bash
-curl -X POST http://localhost:8000/requests \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "request_type": "leave",
-    "description": "Xin nghỉ ngày 15/12/2025"
-  }'
-```
-
-### Check In
-```bash
-curl -X POST http://localhost:8000/shifts/checkin \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
-### Get Report Summary
-```bash
-curl -X GET "http://localhost:8000/reports/summary?group_by=department" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
-## Frontend Routes
-
-- `/` - Dashboard (requires login)
-- `/dashboard` - Statistics overview
-- `/messages` - View and manage customer messages
-- `/keywords` - Manage keywords for routing
-- `/users` - View user list and details
-- `/reports` - View system reports
-- `/requests` - Submit and manage requests
-- `/shifts` - Manage shifts and time tracking
-- `/kpi` - View KPI metrics
-
-## Directory Structure
-
-```
-demo/
+omnichat/
 ├── backend/
-│   ├── app/
-│   │   ├── models.py                 # SQLAlchemy models
-│   │   ├── schemas.py                # Pydantic schemas
-│   │   ├── database.py               # DB connection
-│   │   ├── auth.py                   # JWT & password handling
-│   │   ├── logging_config.py         # Logging setup
-│   │   ├── middleware.py             # Security middleware
-│   │   ├── routers/
-│   │   │   ├── auth.py              # Auth endpoints
-│   │   │   ├── webhook.py           # Message ingestion
-│   │   │   ├── messages.py          # Message management
-│   │   │   ├── users.py             # User management
-│   │   │   ├── keywords.py          # Keyword CRUD
-│   │   │   ├── departments.py       # Department CRUD
-│   │   │   ├── requests.py          # Request workflow
-│   │   │   ├── shifts.py            # Shift & time tracking
-│   │   │   ├── kpi.py               # KPI tracking
-│   │   │   ├── reports.py           # Reporting
-│   │   │   └── integrations.py      # Third-party integrations
-│   │   └── services/
-│   │       └── assignment.py         # Message assignment logic
-│   ├── main.py                       # App entry point
-│   ├── seed.py                       # DB seeding
-│   ├── initialize_db.sql             # Schema init
-│   ├── Dockerfile
+│   ├── main.py              # FastAPI app
+│   ├── database.py          # Database connection
+│   ├── models.py            # SQLAlchemy models
+│   ├── schemas.py           # Pydantic schemas
+│   ├── auth.py              # Authentication
+│   ├── keyword_analyzer.py  # Auto-assignment algorithm
+│   ├── routers/             # API endpoints
+│   │   ├── auth.py
+│   │   ├── admin.py
+│   │   ├── manager.py
+│   │   ├── staff.py
+│   │   └── webhook.py
+│   ├── init_db.sql          # Database schema
 │   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── Login.tsx            # Login page
-│   │   │   ├── Dashboard.tsx        # Dashboard
-│   │   │   ├── Messages.tsx         # Messages list
-│   │   │   ├── Keywords.tsx         # Keyword management
-│   │   │   ├── Users.tsx            # User list
-│   │   │   ├── Reports.tsx          # Reports
-│   │   │   ├── Requests.tsx         # Request management
-│   │   │   ├── Shifts.tsx           # Shift & time tracking
-│   │   │   └── KPI.tsx              # KPI metrics
-│   │   ├── App.tsx                  # Main app component
-│   │   ├── App.css                  # Global styles
-│   │   └── index.tsx                # Entry point
-│   ├── public/
-│   │   └── index.html
-│   ├── Dockerfile
-│   ├── package.json
-│   └── tsconfig.json
-├── docker-compose.yml
-└── README.md
+│
+└── frontend/
+    ├── src/
+    │   ├── api/             # API client
+    │   ├── components/      # React components
+    │   ├── pages/           # Page components
+    │   ├── store/           # Zustand stores
+    │   ├── types.ts         # TypeScript types
+    │   ├── App.tsx          # Main app
+    │   └── main.tsx         # Entry point
+    ├── index.html
+    ├── package.json
+    └── vite.config.ts
 ```
 
-## Performance Considerations
+## Test tính năng tự động giao việc
 
-The system is designed to handle:
-- **1000+ concurrent users** with horizontal scaling
-- **Message throughput**: High volume of incoming messages via webhooks
-- **Real-time assignment**: Automatic routing with millisecond response times
-- **Database optimization**: Indexed queries for keywords, users, messages
+Sử dụng endpoint test để tạo tin nhắn:
 
-### Scaling Recommendations
+```bash
+curl -X POST "http://localhost:8000/api/webhook/test/create-message?content=Tôi muốn mua sản phẩm với giá tốt&platform=zalo"
+```
 
-1. **Backend Scaling**:
-   - Use load balancer (nginx, HAProxy)
-   - Run multiple FastAPI instances
-   - Use connection pooling for database
+Tin nhắn sẽ được tự động phân tích và giao cho nhân viên phù hợp.
 
-2. **Database Optimization**:
-   - Add indexes on frequently queried columns
-   - Implement read replicas for reports
-   - Archive old messages periodically
+## Lưu ý
 
-3. **Caching**:
-   - Redis for session management
-   - Cache keywords and department mappings
-   - Cache user KPI scores
+- Đảm bảo PostgreSQL đang chạy trước khi start backend
+- Backend phải chạy trước frontend
+- Tất cả mật khẩu demo đều là `admin123`, `manager123`, `staff123`
+- Webhook endpoints hiện tại là mock, cần credentials thực tế để tích hợp production
 
-## Security Features Implemented
+## License
 
-✅ Password hashing with bcrypt
-
-✅ JWT token-based authentication
-
-✅ Role-based authorization on all protected endpoints
-
-✅ SQL injection prevention (SQLAlchemy ORM)
-
-✅ CORS configuration for frontend origin
-
-✅ Security headers (X-Frame-Options, X-Content-Type-Options, X-XSS-Protection)
-
-✅ Input validation via Pydantic schemas
-
-✅ Exception handling and error logging
-
-### Recommendations for Production
-
-1. Use HTTPS/TLS (not just HTTP)
-2. Implement rate limiting
-3. Add request logging and monitoring
-4. Set up API keys for webhook verification
-5. Implement CSRF tokens for form submissions
-6. Use environment variables for secrets
-7. Add database encryption at rest
-8. Implement API versioning
-9. Add comprehensive audit logging
-10. Set up monitoring and alerting
-
-## Testing
-
-To test the API, use the provided curl examples or import the API into Postman.
-
-## Future Enhancements
-
-- [ ] Real-time notifications via WebSocket
-- [ ] Integration with Zalo OA, Meta APIs (full implementation)
-- [ ] Mobile app (React Native)
-- [ ] Advanced analytics dashboard
-- [ ] Chatbot integration
-- [ ] Multi-language support
-- [ ] Video/Voice integration
-- [ ] AI-powered response suggestions
-- [ ] Queue management system
-- [ ] SLA monitoring
+MIT

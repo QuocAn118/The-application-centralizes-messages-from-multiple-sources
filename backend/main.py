@@ -1,46 +1,75 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, webhook, messages, users
-from app.database import engine, Base
-from app.middleware import ErrorHandlingMiddleware, InputValidationMiddleware
-from app.logging_config import setup_logging
+from fastapi.responses import JSONResponse
+import logging
 
-# setup logging
-logger = setup_logging()
+from routers import auth, admin, manager, staff, webhook
 
-# create DB tables
-Base.metadata.create_all(bind=engine)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
-app = FastAPI(title="OmniChat API", version="1.0.0")
+logger = logging.getLogger(__name__)
 
-# Add security headers middleware
-app.add_middleware(InputValidationMiddleware)
-app.add_middleware(ErrorHandlingMiddleware)
+# Create FastAPI app
+app = FastAPI(
+    title="OmniChat API",
+    description="Hệ thống quản lý đa kênh cho doanh nghiệp",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
 
-# CORS configuration
+# CORS middleware - Robust configuration for development
+# Using wildcard origin and methods to ensure connectivity
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
-app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
-app.include_router(webhook.router, prefix="/webhook", tags=["Webhook"])
-app.include_router(messages.router, prefix="/messages", tags=["Messages"])
-app.include_router(users.router, prefix="/users", tags=["Users"])
-from app.routers import keywords, departments, reports
-app.include_router(keywords.router, prefix="/keywords", tags=["Keywords"])
-app.include_router(departments.router, prefix="/departments", tags=["Departments"])
-app.include_router(reports.router, prefix="/reports", tags=["Reports"])
-from app.routers import requests, shifts, kpi, integrations
-app.include_router(requests.router, prefix="/requests", tags=["Requests"])
-app.include_router(shifts.router, prefix="/shifts", tags=["Shifts"])
-app.include_router(kpi.router, prefix="/kpi", tags=["KPI"])
-app.include_router(integrations.router, prefix="/integrations", tags=["Integrations"])
+# Exception handlers
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Global exception: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"}
+    )
 
+# Include routers
+app.include_router(auth.router)
+app.include_router(admin.router)
+app.include_router(manager.router)
+app.include_router(staff.router)
+app.include_router(webhook.router)
+
+# Root endpoint
 @app.get("/")
-def root():
-    logger.info("Root endpoint accessed")
-    return {"status": "ok", "service": "OmniChat API", "version": "1.0.0"}
+async def root():
+    return {
+        "message": "OmniChat API",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "status": "running"
+    }
+
+# Health check
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info"
+    )

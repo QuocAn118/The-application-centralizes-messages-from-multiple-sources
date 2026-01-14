@@ -1,64 +1,141 @@
-import React, { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom'
-import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import Messages from './pages/Messages'
-import Keywords from './pages/Keywords'
-import Users from './pages/Users'
-import Reports from './pages/Reports'
-import Requests from './pages/Requests'
-import Shifts from './pages/Shifts'
-import KPI from './pages/KPI'
-import './App.css'
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ConfigProvider } from 'antd';
+import viVN from 'antd/locale/vi_VN';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-export default function App(){
-  const [loggedIn, setLoggedIn] = useState(false)
-  const [user, setUser] = useState<any>(null)
-  const nav = useNavigate()
+import { useAuthStore } from './store/authStore';
+import Login from './pages/Login';
+import Layout from './components/Layout';
 
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    if(token) setLoggedIn(true)
-  }, [])
+// Admin pages
+import AdminDashboard from './pages/admin/Dashboard';
+import UserManagement from './pages/admin/UserManagement';
 
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    setLoggedIn(false)
-    nav('/')
-  }
+// Manager pages
+import ManagerDashboard from './pages/manager/Dashboard';
 
-  if(!loggedIn) {
-    return <Login onLogin={() => setLoggedIn(true)} />
-  }
+// Staff pages
+import StaffDashboard from './pages/staff/Dashboard';
 
-  return (
-    <div className="app-container">
-      <nav className="navbar">
-        <h1>OmniChat</h1>
-        <ul>
-          <li><Link to="/dashboard">Dashboard</Link></li>
-          <li><Link to="/messages">Messages</Link></li>
-          <li><Link to="/keywords">Keywords</Link></li>
-          <li><Link to="/users">Users</Link></li>
-          <li><Link to="/reports">Reports</Link></li>
-          <li><Link to="/requests">Requests</Link></li>
-          <li><Link to="/shifts">Shifts</Link></li>
-          <li><Link to="/kpi">KPI</Link></li>
-          <li><button onClick={handleLogout}>Logout</button></li>
-        </ul>
-      </nav>
-      
-      <Routes>
-        <Route path="/dashboard" element={<Dashboard/>} />
-        <Route path="/messages" element={<Messages/>} />
-        <Route path="/keywords" element={<Keywords/>} />
-        <Route path="/users" element={<Users/>} />
-        <Route path="/reports" element={<Reports/>} />
-        <Route path="/requests" element={<Requests/>} />
-        <Route path="/shifts" element={<Shifts/>} />
-        <Route path="/kpi" element={<KPI/>} />
-        <Route path="/" element={<Dashboard/>} />
-      </Routes>
-    </div>
-  )
+import './index.css';
+
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            refetchOnWindowFocus: false,
+            retry: 1,
+        },
+    },
+});
+
+interface ProtectedRouteProps {
+    children: React.ReactNode;
+    allowedRoles?: string[];
 }
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
+    const { isAuthenticated, user } = useAuthStore();
+
+    if (!isAuthenticated) {
+        return <Navigate to="/login" replace />;
+    }
+
+    if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+        return <Navigate to="/" replace />;
+    }
+
+    return <>{children}</>;
+};
+
+const App: React.FC = () => {
+    const { isAuthenticated, user } = useAuthStore();
+
+    return (
+        <ConfigProvider
+            locale={viVN}
+            theme={{
+                token: {
+                    colorPrimary: '#1890ff',
+                    borderRadius: 8,
+                    fontFamily: 'Inter, sans-serif',
+                },
+            }}
+        >
+            <QueryClientProvider client={queryClient}>
+                <BrowserRouter>
+                    <Routes>
+                        <Route path="/login" element={<Login />} />
+
+                        <Route
+                            path="/"
+                            element={
+                                isAuthenticated ? (
+                                    user?.role === 'admin' ? (
+                                        <Navigate to="/admin/dashboard" replace />
+                                    ) : user?.role === 'manager' ? (
+                                        <Navigate to="/manager/dashboard" replace />
+                                    ) : (
+                                        <Navigate to="/staff/dashboard" replace />
+                                    )
+                                ) : (
+                                    <Navigate to="/login" replace />
+                                )
+                            }
+                        />
+
+                        {/* Admin Routes */}
+                        <Route
+                            path="/admin/dashboard"
+                            element={
+                                <ProtectedRoute allowedRoles={['admin']}>
+                                    <Layout>
+                                        <AdminDashboard />
+                                    </Layout>
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/admin/users"
+                            element={
+                                <ProtectedRoute allowedRoles={['admin']}>
+                                    <Layout>
+                                        <UserManagement />
+                                    </Layout>
+                                </ProtectedRoute>
+                            }
+                        />
+
+                        {/* Manager Routes */}
+                        <Route
+                            path="/manager/dashboard"
+                            element={
+                                <ProtectedRoute allowedRoles={['manager']}>
+                                    <Layout>
+                                        <ManagerDashboard />
+                                    </Layout>
+                                </ProtectedRoute>
+                            }
+                        />
+
+                        {/* Staff Routes */}
+                        <Route
+                            path="/staff/dashboard"
+                            element={
+                                <ProtectedRoute allowedRoles={['staff']}>
+                                    <Layout>
+                                        <StaffDashboard />
+                                    </Layout>
+                                </ProtectedRoute>
+                            }
+                        />
+
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                </BrowserRouter>
+            </QueryClientProvider>
+        </ConfigProvider>
+    );
+};
+
+export default App;
