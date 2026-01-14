@@ -351,7 +351,7 @@ async def delete_user(
 @router.put("/users/{user_id}/role")
 async def change_user_role(
     user_id: int,
-    new_role: str = Query(..., regex="^(admin|manager|staff)$"),
+    new_role: str = Query(..., pattern="^(admin|manager|staff)$"),
     current_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
