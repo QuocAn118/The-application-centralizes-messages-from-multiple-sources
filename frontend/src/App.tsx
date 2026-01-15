@@ -11,6 +11,7 @@ import Layout from './components/Layout';
 // Admin pages
 import AdminDashboard from './pages/admin/Dashboard';
 import UserManagement from './pages/admin/UserManagement';
+import AdminKeywords from './pages/admin/Keywords';
 
 // Manager pages
 import ManagerDashboard from './pages/manager/Dashboard';
@@ -106,6 +107,16 @@ const App: React.FC = () => {
                                 <ProtectedRoute allowedRoles={['admin']}>
                                     <Layout>
                                         <UserManagement />
+                                    </Layout>
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/admin/keywords"
+                            element={
+                                <ProtectedRoute allowedRoles={['admin']}>
+                                    <Layout>
+                                        <AdminKeywords />
                                     </Layout>
                                 </ProtectedRoute>
                             }

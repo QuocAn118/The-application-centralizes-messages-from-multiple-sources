@@ -26,16 +26,10 @@ async def get_department_staff(
     skip: int = 0,
     limit: int = 100
 ):
-    """Lấy danh sách nhân viên trong phòng ban"""
+    """Lấy danh sách TẤT CẢ nhân viên trong hệ thống"""
     
-    if not current_user.department_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Manager chưa được gán phòng ban"
-        )
-    
+    # Lấy tất cả staff, không phân biệt phòng ban
     staff = db.query(User).filter(
-        User.department_id == current_user.department_id,
         User.role == "staff",
         User.is_active == True
     ).offset(skip).limit(limit).all()
@@ -266,11 +260,10 @@ async def get_department_keywords(
     current_user: User = Depends(get_manager_user),
     db: Session = Depends(get_db)
 ):
-    """Lấy danh sách từ khóa của phòng ban"""
+    """Lấy danh sách TẤT CẢ từ khóa trong hệ thống"""
     
-    keywords = db.query(Keyword).filter(
-        Keyword.department_id == current_user.department_id
-    ).all()
+    # Lấy tất cả keywords, không phân biệt phòng ban
+    keywords = db.query(Keyword).all()
     
     return keywords
 
