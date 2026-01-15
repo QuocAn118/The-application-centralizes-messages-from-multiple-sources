@@ -8,7 +8,7 @@ from database import get_db
 from auth import get_staff_user, get_current_user
 from models import User, Message, MessageAssignment, Customer, Request, Notification
 from schemas import (
-    MessageWithCustomer, MessageUpdate,
+    MessageWithCustomer, MessageUpdate, MessageResponse,
     CustomerResponse,
     RequestResponse, RequestCreate,
     NotificationResponse
@@ -154,6 +154,124 @@ async def mark_message_in_progress(
     return {"message": "Đã đánh dấu tin nhắn đang xử lý"}
 
 # ============= Customers =============
+@router.get("/customers", response_model=List[dict])
+async def get_customers_list(
+    current_user: User = Depends(get_staff_user),
+    db: Session = Depends(get_db),
+    skip: int = 0,
+    limit: int = 50
+):
+    """Lấy danh sách khách hàng mà staff đang phụ trách"""
+    
+    # Lấy danh sách customer_id từ messages được giao
+    customer_ids = db.query(Message.customer_id).distinct().join(MessageAssignment).filter(
+        MessageAssignment.assigned_to == current_user.id
+    ).all()
+    
+    customer_ids = [cid[0] for cid in customer_ids]
+    
+    if not customer_ids:
+        return []
+    
+    customers = db.query(Customer).filter(Customer.id.in_(customer_ids)).offset(skip).limit(limit).all()
+    
+    result = []
+    for customer in customers:
+        # Lấy tin nhắn mới nhất
+        latest_message = db.query(Message).filter(
+            Message.customer_id == customer.id
+        ).order_by(Message.created_at.desc()).first()
+        
+        # Kiểm tra trạng thái xử lý
+        assignment = db.query(MessageAssignment).join(Message).filter(
+            Message.customer_id == customer.id,
+            MessageAssignment.assigned_to == current_user.id
+        ).order_by(MessageAssignment.assigned_at.desc()).first()
+        
+        status = "completed" if assignment and assignment.completed_at else "in_progress"
+        
+        result.append({
+            "id": customer.id,
+            "name": customer.name or "Không rõ",
+            "platform": customer.platform,
+            "latest_message": latest_message.content if latest_message else "",
+            "latest_message_time": latest_message.created_at if latest_message else None,
+            "status": status
+        })
+    
+    return result
+
+@router.get("/customers/{customer_id}/messages", response_model=List[MessageResponse])
+async def get_customer_messages(
+    customer_id: int,
+    current_user: User = Depends(get_staff_user),
+    db: Session = Depends(get_db)
+):
+    """Lấy lịch sử chat với khách hàng"""
+    
+    # Kiểm tra quyền truy cập
+    has_access = db.query(MessageAssignment).join(Message).filter(
+        Message.customer_id == customer_id,
+        MessageAssignment.assigned_to == current_user.id
+    ).first()
+    
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bạn không có quyền xem tin nhắn của khách hàng này"
+        )
+    
+    messages = db.query(Message).filter(
+        Message.customer_id == customer_id
+    ).order_by(Message.created_at.asc()).all()
+    
+    return messages
+
+@router.post("/customers/{customer_id}/messages", response_model=MessageResponse)
+async def send_message_to_customer(
+    customer_id: int,
+    content: str,
+    current_user: User = Depends(get_staff_user),
+    db: Session = Depends(get_db)
+):
+    """Gửi tin nhắn cho khách hàng"""
+    
+    # Kiểm tra quyền truy cập
+    has_access = db.query(MessageAssignment).join(Message).filter(
+        Message.customer_id == customer_id,
+        MessageAssignment.assigned_to == current_user.id
+    ).first()
+    
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bạn không có quyền gửi tin nhắn cho khách hàng này"
+        )
+    
+    # Lấy thông tin customer để biết platform
+    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+    
+    if not customer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy khách hàng"
+        )
+    
+    # Tạo tin nhắn mới
+    new_message = Message(
+        customer_id=customer_id,
+        content=content,
+        platform=customer.platform or "web",
+        direction="outgoing",
+        status="completed"
+    )
+    
+    db.add(new_message)
+    db.commit()
+    db.refresh(new_message)
+    
+    return new_message
+
 @router.get("/customers/{customer_id}", response_model=CustomerResponse)
 async def get_customer_info(
     customer_id: int,

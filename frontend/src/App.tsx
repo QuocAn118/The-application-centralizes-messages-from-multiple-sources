@@ -14,9 +14,14 @@ import UserManagement from './pages/admin/UserManagement';
 
 // Manager pages
 import ManagerDashboard from './pages/manager/Dashboard';
+import ManagerKeywords from './pages/manager/Keywords';
+import ManagerRequests from './pages/manager/ManagerRequests';
+import StaffManagement from './pages/manager/StaffManagement';
 
 // Staff pages
 import StaffDashboard from './pages/staff/Dashboard';
+import StaffMessages from './pages/staff/Messages';
+import StaffRequests from './pages/staff/Requests';
 
 import './index.css';
 
@@ -117,6 +122,36 @@ const App: React.FC = () => {
                                 </ProtectedRoute>
                             }
                         />
+                        <Route
+                            path="/manager/staff"
+                            element={
+                                <ProtectedRoute allowedRoles={['manager']}>
+                                    <Layout>
+                                        <StaffManagement />
+                                    </Layout>
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/manager/keywords"
+                            element={
+                                <ProtectedRoute allowedRoles={['manager']}>
+                                    <Layout>
+                                        <ManagerKeywords />
+                                    </Layout>
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/manager/requests"
+                            element={
+                                <ProtectedRoute allowedRoles={['manager']}>
+                                    <Layout>
+                                        <ManagerRequests />
+                                    </Layout>
+                                </ProtectedRoute>
+                            }
+                        />
 
                         {/* Staff Routes */}
                         <Route
@@ -125,6 +160,26 @@ const App: React.FC = () => {
                                 <ProtectedRoute allowedRoles={['staff']}>
                                     <Layout>
                                         <StaffDashboard />
+                                    </Layout>
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/staff/messages"
+                            element={
+                                <ProtectedRoute allowedRoles={['staff']}>
+                                    <Layout>
+                                        <StaffMessages />
+                                    </Layout>
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/staff/requests"
+                            element={
+                                <ProtectedRoute allowedRoles={['staff']}>
+                                    <Layout>
+                                        <StaffRequests />
                                     </Layout>
                                 </ProtectedRoute>
                             }

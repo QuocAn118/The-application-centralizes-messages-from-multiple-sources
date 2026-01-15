@@ -59,6 +59,8 @@ CREATE TABLE customers (
     zalo_id VARCHAR(255),
     meta_id VARCHAR(255),
     platform VARCHAR(50),
+    city VARCHAR(100),
+    total_orders INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -341,24 +343,37 @@ VALUES ('mua hàng', 1, 3),
 
 -- Insert sample customers
 INSERT INTO
-    customers (name, phone, email, platform)
+    customers (
+        name,
+        phone,
+        email,
+        platform,
+        city,
+        total_orders
+    )
 VALUES (
-        'Khách hàng A',
+        'Nguyễn Văn A',
         '0911111111',
         'customer1@example.com',
-        'zalo'
+        'facebook',
+        'Hà Nội',
+        5
     ),
     (
-        'Khách hàng B',
+        'Lê Thị B',
         '0922222222',
         'customer2@example.com',
-        'zalo'
+        'zalo',
+        'Hồ Chí Minh',
+        3
     ),
     (
-        'Khách hàng C',
+        'Trần Văn C',
         '0933333333',
         'customer3@example.com',
-        'facebook'
+        'email',
+        'Đà Nẵng',
+        8
     );
 
 -- Insert sample KPIs
