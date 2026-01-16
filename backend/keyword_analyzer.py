@@ -16,7 +16,15 @@ class KeywordAnalyzer:
         # Chuyển về chữ thường để so sánh
         content_lower = message_content.lower()
         
-      
+        # Lấy tất cả keywords đang active từ database
+        active_keywords = self.db.query(Keyword).filter(Keyword.is_active == True).all()
+        
+        matched_keywords = []
+        for kw in active_keywords:
+            if kw.keyword.lower() in content_lower:
+                matched_keywords.append(kw)
+        
+        return matched_keywords
     
     def calculate_staff_score(
         self, 
