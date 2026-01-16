@@ -159,33 +159,4 @@ class KeywordAnalyzer:
         if not best_staff:
             return None
         
-        # Tạo assignment
-        assignment = MessageAssignment(
-            message_id=message.id,
-            assigned_to=best_staff.id,
-            assigned_by=assigned_by_id,
-            match_score=score,
-            notes=f"Tự động giao dựa trên từ khóa: {', '.join([kw.keyword for kw in matched_keywords])}"
-        )
         
-        self.db.add(assignment)
-        
-        # Cập nhật trạng thái tin nhắn
-        message.status = "assigned"
-        
-        # Cập nhật KPI của nhân viên
-        current_date = dt_date.today()
-        kpi = self.db.query(KPI).filter(
-            KPI.user_id == best_staff.id,
-            KPI.metric_name == "Số tin nhắn xử lý",
-            KPI.period_start <= current_date,
-            KPI.period_end >= current_date
-        ).first()
-        
-        if kpi:
-            kpi.current_value = (kpi.current_value or Decimal(0)) + Decimal(1)
-        
-        self.db.commit()
-        self.db.refresh(assignment)
-        
-        return assignment
