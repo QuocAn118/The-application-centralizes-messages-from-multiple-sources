@@ -169,4 +169,25 @@ class KeywordAnalyzer:
         )
         
         self.db.add(assignment)
+
+        # Cập nhật trạng thái tin nhắn
+        message.status = "assigned"
+
+                # Cập nhật KPI của nhân viên
+        current_date = dt_date.today()
+        kpi = self.db.query(KPI).filter(
+            KPI.user_id == best_staff.id,
+            KPI.metric_name == "Số tin nhắn xử lý",
+            KPI.period_start <= current_date,
+            KPI.period_end >= current_date
+        ).first()
         
+        if kpi:
+            kpi.current_value = (kpi.current_value or Decimal(0)) + Decimal(1)
+        
+        self.db.commit()
+        self.db.refresh(assignment)
+        
+        return assignment
+
+       
