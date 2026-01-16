@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Card, Button, List, Tag, Modal, Form, Input, Select, Typography, message as antdMessage, Spin } from 'antd';
 import { PlusOutlined, FormOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import apiClient from '../../api/client';
-import './Requests.css';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;

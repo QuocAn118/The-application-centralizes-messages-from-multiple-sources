@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Row, Col, Card, Input, List, Avatar, Tag, Button, Typography, message as antdMessage, Spin } from 'antd';
 import { SearchOutlined, FacebookOutlined, MessageOutlined, CheckCircleOutlined, MailOutlined, PhoneOutlined, EnvironmentOutlined, CalendarOutlined, ShoppingOutlined } from '@ant-design/icons';
 import apiClient from '../../api/client';
-import './Messages.css';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;

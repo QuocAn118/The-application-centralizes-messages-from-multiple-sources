@@ -513,10 +513,11 @@ async def get_department_requests(
     db: Session = Depends(get_db),
     status_filter: Optional[str] = None
 ):
-    """Lấy danh sách yêu cầu của nhân viên trong phòng ban"""
+    """Lấy danh sách TẤT CẢ yêu cầu từ nhân viên trong hệ thống"""
     
+    # Lấy tất cả requests từ staff, không phân biệt phòng ban
     query = db.query(Request).join(User).filter(
-        User.department_id == current_user.department_id
+        User.role == "staff"
     )
     
     if status_filter:
