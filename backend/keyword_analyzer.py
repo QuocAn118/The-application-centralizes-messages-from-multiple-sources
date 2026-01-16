@@ -159,4 +159,14 @@ class KeywordAnalyzer:
         if not best_staff:
             return None
         
+# Tạo assignment
+        assignment = MessageAssignment(
+            message_id=message.id,
+            assigned_to=best_staff.id,
+            assigned_by=assigned_by_id,
+            match_score=score,
+            notes=f"Tự động giao dựa trên từ khóa: {', '.join([kw.keyword for kw in matched_keywords])}"
+        )
+        
+        self.db.add(assignment)
         
