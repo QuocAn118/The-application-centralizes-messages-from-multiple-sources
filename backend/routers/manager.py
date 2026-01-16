@@ -516,7 +516,7 @@ async def get_department_requests(
     """Lấy danh sách TẤT CẢ yêu cầu từ nhân viên trong hệ thống"""
     
     # Lấy tất cả requests từ staff, không phân biệt phòng ban
-    query = db.query(Request).join(User).filter(
+    query = db.query(Request).join(Request.user).filter(
         User.role == "staff"
     )
     
