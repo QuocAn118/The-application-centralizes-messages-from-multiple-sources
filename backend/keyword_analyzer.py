@@ -170,9 +170,9 @@ class KeywordAnalyzer:
         
         self.db.add(assignment)
 
-        # Cập nhật trạng thái tin nhắn
+    # Cập nhật trạng thái tin nhắn
         message.status = "assigned"
-
+        
                 # Cập nhật KPI của nhân viên
         current_date = dt_date.today()
         kpi = self.db.query(KPI).filter(
@@ -190,4 +190,3 @@ class KeywordAnalyzer:
         
         return assignment
 
-       
