@@ -175,7 +175,3 @@ Tin nhắn sẽ được tự động phân tích và giao cho nhân viên phù 
 - Backend phải chạy trước frontend
 - Tất cả mật khẩu demo đều là `admin123`, `manager123`, `staff123`
 - Webhook endpoints hiện tại là mock, cần credentials thực tế để tích hợp production
-
-## License
-
-MIT
