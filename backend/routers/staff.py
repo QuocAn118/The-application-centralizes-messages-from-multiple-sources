@@ -6,7 +6,8 @@ from datetime import datetime
 
 from database import get_db
 from auth import get_staff_user, get_current_user
-from models import User, Message, MessageAssignment, Customer, Request, Notification
+from models import User, Message, MessageAssignment, Customer, Request, Notification, KPI
+from routers.webhook import send_telegram_message
 from schemas import (
     MessageWithCustomer, MessageUpdate, MessageResponse,
     CustomerResponse,
@@ -256,7 +257,15 @@ async def send_message_to_customer(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Không tìm thấy khách hàng"
         )
-    
+
+    # Xử lý gửi tin nhắn tùy theo platform
+    if customer.platform == "telegram" and customer.meta_id:
+        result = send_telegram_message(customer.meta_id, content)
+        if not result or not result.get("ok"):
+             # Log warning nhưng không block việc lưu tin nhắn? 
+             # Hoặc raise error tùy business logic. Ở đây raise error.
+             raise HTTPException(status_code=500, detail="Failed to send message to Telegram")
+
     # Tạo tin nhắn mới
     new_message = Message(
         customer_id=customer_id,
