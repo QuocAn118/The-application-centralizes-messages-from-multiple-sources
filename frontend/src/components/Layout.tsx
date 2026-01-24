@@ -58,13 +58,15 @@ const AppLayout: React.FC<LayoutProps> = ({ children }) => {
     const getMenuItems = () => {
         if (!user) return [];
 
-        const baseItems = [
-            {
+        const baseItems = [];
+
+        if (user.role === 'staff' || user.role === 'admin') {
+            baseItems.push({
                 key: `/${user.role}/dashboard`,
                 icon: <DashboardOutlined />,
                 label: 'Dashboard',
-            },
-        ];
+            });
+        }
 
         if (user.role === 'admin') {
             return [
@@ -156,10 +158,10 @@ const AppLayout: React.FC<LayoutProps> = ({ children }) => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderBottom: '1px solid #f0f0f0',
+                    padding: '0 16px'
                 }}>
-                    <Text strong style={{ fontSize: 20, color: '#1890ff' }}>
-                        OmniChat
-                    </Text>
+                    <img src="/logo.png" alt="OmniChat" style={{ height: 40, marginRight: 8 }} />
+                    <img src="/logo.png" alt="OmniChat" style={{ height: 40, marginRight: 8 }} />
                 </div>
                 <Menu
                     mode="inline"
