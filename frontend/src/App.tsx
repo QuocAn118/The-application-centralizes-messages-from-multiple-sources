@@ -14,7 +14,7 @@ import UserManagement from './pages/admin/UserManagement';
 import AdminKeywords from './pages/admin/Keywords';
 
 // Manager pages
-import ManagerDashboard from './pages/manager/Dashboard';
+import ManagerKPIs from './pages/manager/KPIs';
 import ManagerKeywords from './pages/manager/Keywords';
 import ManagerRequests from './pages/manager/ManagerRequests';
 import StaffManagement from './pages/manager/StaffManagement';
@@ -122,16 +122,10 @@ const App: React.FC = () => {
                             }
                         />
 
-                        {/* Manager Routes */}
+                        {/* Manager Routes - Dashboard removed */}
                         <Route
-                            path="/manager/dashboard"
-                            element={
-                                <ProtectedRoute allowedRoles={['manager']}>
-                                    <Layout>
-                                        <ManagerDashboard />
-                                    </Layout>
-                                </ProtectedRoute>
-                            }
+                            path="/manager"
+                            element={<Navigate to="/manager/staff" replace />}
                         />
                         <Route
                             path="/manager/staff"
@@ -139,6 +133,16 @@ const App: React.FC = () => {
                                 <ProtectedRoute allowedRoles={['manager']}>
                                     <Layout>
                                         <StaffManagement />
+                                    </Layout>
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/manager/kpis"
+                            element={
+                                <ProtectedRoute allowedRoles={['manager']}>
+                                    <Layout>
+                                        <ManagerKPIs />
                                     </Layout>
                                 </ProtectedRoute>
                             }
