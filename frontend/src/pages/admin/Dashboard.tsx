@@ -1,42 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, Card, Statistic, Typography, Tabs, DatePicker } from 'antd';
-import { UserOutlined, TeamOutlined, BarChartOutlined } from '@ant-design/icons';
+import { Row, Col, Card, Statistic, Table, Typography, Spin, message } from 'antd';
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-    PieChart, Pie, Cell
-} from 'recharts';
+    UserOutlined,
+    MessageOutlined,
+    TeamOutlined,
+    FileTextOutlined,
+    CheckCircleOutlined,
+    ClockCircleOutlined,
+} from '@ant-design/icons';
 import apiClient from '../../api/client';
+import { DashboardStats, User } from '../../types';
 
 const { Title } = Typography;
-const { RangePicker } = DatePicker;
-
-// Mock data cho biểu đồ (Trong thực tế nên lấy từ API stats)
-const deptData = [
-    { name: 'Kinh doanh', tin_nhan: 400, yeu_cau: 240 },
-    { name: 'Kỹ thuật', tin_nhan: 300, yeu_cau: 139 },
-    { name: 'CSKH', tin_nhan: 200, yeu_cau: 980 },
-    { name: 'Marketing', tin_nhan: 278, yeu_cau: 390 },
-];
-
-const requestTypeData = [
-    { name: 'Nghỉ phép', value: 400 },
-    { name: 'Tăng lương', value: 300 },
-    { name: 'Thiết bị', value: 300 },
-    { name: 'Khác', value: 200 },
-];
-
-const staffPerformanceData = [
-    { name: 'Nguyễn Văn A', mess: 120, req: 10 },
-    { name: 'Trần Thị B', mess: 98, req: 5 },
-    { name: 'Lê Văn C', mess: 86, req: 8 },
-    { name: 'Phạm Thị D', mess: 99, req: 12 },
-    { name: 'Hoàng Văn E', mess: 85, req: 6 },
-];
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 const AdminDashboard: React.FC = () => {
-    const [stats, setStats] = useState({ users: 0, keywords: 0, customers: 0 });
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [recentUsers, setRecentUsers] = useState<User[]>([]);
 
     useEffect(() => {
         fetchDashboardData();
@@ -44,139 +24,143 @@ const AdminDashboard: React.FC = () => {
 
     const fetchDashboardData = async () => {
         try {
-            // Lấy số liệu tổng quan thực tế
-            const [usersRes, keywordsRes] = await Promise.all([
-                apiClient.get('/api/admin/users'),
-                apiClient.get('/api/admin/keywords'),
+            setLoading(true);
+            const [statsRes, usersRes] = await Promise.all([
+                apiClient.get<DashboardStats>('/api/admin/dashboard'),
+                apiClient.get<User[]>('/api/admin/users?limit=5'),
             ]);
-            
-            setStats({
-                users: usersRes.data.length,
-                keywords: keywordsRes.data.length,
-                customers: 125, // Mock number or fetch from real API if available
-            });
-        } catch (error) {
-            console.error('Error fetching dashboard data', error);
+            setStats(statsRes.data);
+            setRecentUsers(usersRes.data);
+        } catch (error: any) {
+            message.error('Không thể tải dữ liệu dashboard');
+        } finally {
+            setLoading(false);
         }
     };
+
+    const userColumns = [
+        {
+            title: 'Tên',
+            dataIndex: 'full_name',
+            key: 'full_name',
+        },
+        {
+            title: 'Email',
+            dataIndex: 'email',
+            key: 'email',
+        },
+        {
+            title: 'Vai trò',
+            dataIndex: 'role',
+            key: 'role',
+            render: (role: string) => {
+                const roleMap: Record<string, string> = {
+                    admin: 'Quản trị viên',
+                    manager: 'Quản lý',
+                    staff: 'Nhân viên',
+                };
+                return roleMap[role] || role;
+            },
+        },
+        {
+            title: 'Trạng thái',
+            dataIndex: 'is_active',
+            key: 'is_active',
+            render: (isActive: boolean) => (
+                <span style={{ color: isActive ? '#52c41a' : '#ff4d4f' }}>
+                    {isActive ? 'Hoạt động' : 'Không hoạt động'}
+                </span>
+            ),
+        },
+    ];
+
+    if (loading) {
+        return (
+            <div className="loading-container">
+                <Spin size="large" />
+            </div>
+        );
+    }
 
     return (
         <div className="page-container">
             <div className="page-header">
-                <Title level={2} className="page-title">Dashboard Quản trị</Title>
-                <div style={{ float: 'right' }}>
-                     <RangePicker />
-                </div>
+                <Title level={2} className="page-title">Dashboard Quản trị viên</Title>
+                <p className="page-subtitle">Tổng quan hệ thống OmniChat</p>
             </div>
 
             <Row gutter={[16, 16]}>
-                <Col xs={24} sm={8}>
-                    <Card>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card className="stat-card">
                         <Statistic
-                            title="Tổng người dùng"
-                            value={stats.users}
+                            title={<span className="stat-label">Tổng tin nhắn</span>}
+                            value={stats?.total_messages || 0}
+                            prefix={<MessageOutlined />}
+                            valueStyle={{ color: 'white' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card className="stat-card" style={{ background: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)' }}>
+                        <Statistic
+                            title={<span className="stat-label">Đã xử lý</span>}
+                            value={stats?.completed_messages || 0}
+                            prefix={<CheckCircleOutlined />}
+                            valueStyle={{ color: 'white' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card className="stat-card" style={{ background: 'linear-gradient(135deg, #faad14 0%, #ffc53d 100%)' }}>
+                        <Statistic
+                            title={<span className="stat-label">Chờ xử lý</span>}
+                            value={stats?.pending_messages || 0}
+                            prefix={<ClockCircleOutlined />}
+                            valueStyle={{ color: 'white' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card className="stat-card" style={{ background: 'linear-gradient(135deg, #722ed1 0%, #9254de 100%)' }}>
+                        <Statistic
+                            title={<span className="stat-label">Người dùng</span>}
+                            value={stats?.total_users || 0}
                             prefix={<UserOutlined />}
-                            valueStyle={{ color: '#3f8600' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={8}>
-                    <Card>
-                        <Statistic
-                            title="Tổng từ khóa"
-                            value={stats.keywords}
-                            prefix={<BarChartOutlined />}
-                            valueStyle={{ color: '#cf1322' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={8}>
-                    <Card>
-                        <Statistic
-                            title="Tổng khách hàng"
-                            value={stats.customers}
-                            prefix={<TeamOutlined />}
-                            valueStyle={{ color: '#1890ff' }}
+                            valueStyle={{ color: 'white' }}
                         />
                     </Card>
                 </Col>
             </Row>
 
-            <Tabs defaultActiveKey="1" style={{ marginTop: 24, background: '#fff', padding: 24, borderRadius: 8 }}>
-                <Tabs.TabPane tab="Thống kê theo Phòng ban" key="1">
-                    <div style={{ height: 400 }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart
-                                data={deptData}
-                                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                            >
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend />
-                                <Bar dataKey="tin_nhan" name="Tin nhắn xử lý" fill="#8884d8" />
-                                <Bar dataKey="yeu_cau" name="Yêu cầu nội bộ" fill="#82ca9d" />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </Tabs.TabPane>
-                
-                <Tabs.TabPane tab="Theo Loại Yêu cầu" key="2">
-                    <Row>
-                        <Col span={12}>
-                            <div style={{ height: 400 }}>
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={requestTypeData}
-                                            cx="50%"
-                                            cy="50%"
-                                            labelLine={false}
-                                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                            outerRadius={150}
-                                            fill="#8884d8"
-                                            dataKey="value"
-                                        >
-                                            {requestTypeData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </Col>
-                        <Col span={12}>
-                             {/* Thêm biểu đồ phụ hoặc thông tin chi tiết */}
-                             <Card title="Ghi chú" bordered={false}>
-                                 <p>Biểu đồ thể hiện tỷ lệ các loại yêu cầu được gửi lên trong tháng.</p>
-                                 <p>Nghỉ phép chiếm tỷ trọng cao nhất.</p>
-                             </Card>
-                        </Col>
-                    </Row>
-                </Tabs.TabPane>
+            <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
+                <Col xs={24} lg={12}>
+                    <Card>
+                        <Statistic
+                            title="Tổng phòng ban"
+                            value={stats?.total_departments || 0}
+                            prefix={<TeamOutlined />}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} lg={12}>
+                    <Card>
+                        <Statistic
+                            title="Yêu cầu chờ duyệt"
+                            value={stats?.pending_requests || 0}
+                            prefix={<FileTextOutlined />}
+                        />
+                    </Card>
+                </Col>
+            </Row>
 
-                <Tabs.TabPane tab="Hiệu suất Nhân viên" key="3">
-                    <div style={{ height: 400 }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart
-                                layout="vertical"
-                                data={staffPerformanceData}
-                                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                            >
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis type="number" />
-                                <YAxis dataKey="name" type="category" width={150} />
-                                <Tooltip />
-                                <Legend />
-                                <Bar dataKey="mess" name="Tin nhắn" fill="#1890ff" />
-                                <Bar dataKey="req" name="Yêu cầu" fill="#ffc658" />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </Tabs.TabPane>
-            </Tabs>
+            <Card style={{ marginTop: 24 }} title="Người dùng mới nhất">
+                <Table
+                    dataSource={recentUsers}
+                    columns={userColumns}
+                    rowKey="id"
+                    pagination={false}
+                />
+            </Card>
         </div>
     );
 };
