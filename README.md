@@ -159,16 +159,6 @@ omnichat/
     └── vite.config.ts
 ```
 
-## Test tính năng tự động giao việc
-
-Sử dụng endpoint test để tạo tin nhắn:
-
-```bash
-curl -X POST "http://localhost:8000/api/webhook/test/create-message?content=Tôi muốn mua sản phẩm với giá tốt&platform=zalo"
-```
-
-Tin nhắn sẽ được tự động phân tích và giao cho nhân viên phù hợp.
-
 ## Lưu ý
 
 - Đảm bảo PostgreSQL đang chạy trước khi start backend
