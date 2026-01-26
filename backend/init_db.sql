@@ -486,3 +486,162 @@ COMMENT ON TABLE message_assignments IS 'Bảng phân công xử lý tin nhắn'
 COMMENT ON TABLE requests IS 'Bảng quản lý yêu cầu nội bộ của nhân viên';
 
 COMMENT ON TABLE notifications IS 'Bảng quản lý thông báo hệ thống';
+
+
+-- Insert additional sample customers with detailed information
+INSERT INTO
+    customers (
+        name,
+        phone,
+        email,
+        platform,
+        city,
+        total_orders
+    )
+VALUES (
+        'Nguy?n Th? Huong',
+        '0987654321',
+        'huong.nguyen@gmail.com',
+        'zalo',
+        'Hà N?i',
+        12
+    ),
+    (
+        'Tr?n Van Minh',
+        '0912345678',
+        'minh.tran@yahoo.com',
+        'facebook',
+        'H? Chí Minh',
+        5
+    ),
+    (
+        'Lê Th? Mai',
+        '0909876543',
+        'mai.le@outlook.com',
+        'zalo',
+        'Ðà N?ng',
+        8
+    ),
+    (
+        'Ph?m Qu?c Anh',
+        '0938765432',
+        'anh.pham@gmail.com',
+        'facebook',
+        'H?i Phòng',
+        3
+    );
+
+-- Insert detailed sample messages from customers
+INSERT INTO
+    messages (
+        customer_id,
+        content,
+        platform,
+        direction,
+        status
+    )
+VALUES (
+        (SELECT id FROM customers WHERE phone = '0987654321'),
+        'Chào shop, em mu?n h?i v? s?n ph?m iPhone 15 Pro Max hi?n t?i còn hàng không ?? Giá bao nhiêu và có khuy?n mãi gì không?',
+        'zalo',
+        'incoming',
+        'assigned'
+    ),
+    (
+        (SELECT id FROM customers WHERE phone = '0912345678'),
+        'S?n ph?m em mua hôm qua b? l?i không ho?t d?ng du?c. Màn hình c? nh?p nháy r?i t?t ngu?n. Em c?n du?c h? tr? cài d?t l?i.',
+        'facebook',
+        'incoming',
+        'assigned'
+    ),
+    (
+        (SELECT id FROM customers WHERE phone = '0909876543'),
+        'Em mu?n du?c h? tr? v? chính sách d?i tr? hàng. Em mua s?n ph?m du?c 3 ngày nhung không v?a ý, có th? d?i sang s?n ph?m khác du?c không ??',
+        'zalo',
+        'incoming',
+        'assigned'
+    ),
+    (
+        (SELECT id FROM customers WHERE phone = '0938765432'),
+        'Shop cho em h?i giá c? c?a laptop Dell Inspiron 15 bao nhiêu? Hi?n t?i có chuong trình khuy?n mãi nào không?',
+        'facebook',
+        'incoming',
+        'assigned'
+    );
+
+-- Assign messages to appropriate staff members
+INSERT INTO
+    message_assignments (
+        message_id,
+        assigned_to,
+        assigned_by,
+        match_score,
+        notes
+    )
+SELECT
+    m.id,
+    (SELECT id FROM users WHERE email = 'staff1@omnichat.com'),
+    (SELECT id FROM users WHERE email = 'manager.sales@omnichat.com'),
+    95.5,
+    'T? d?ng gán d?a trên t? khóa: mua hàng, giá, khuy?n mãi'
+FROM messages m
+JOIN customers c ON m.customer_id = c.id
+WHERE c.phone = '0987654321'
+AND m.content LIKE '%iPhone%';
+
+INSERT INTO
+    message_assignments (
+        message_id,
+        assigned_to,
+        assigned_by,
+        match_score,
+        notes
+    )
+SELECT
+    m.id,
+    (SELECT id FROM users WHERE email = 'staff2@omnichat.com'),
+    (SELECT id FROM users WHERE email = 'manager.tech@omnichat.com'),
+    98.0,
+    'T? d?ng gán d?a trên t? khóa: l?i, không ho?t d?ng, cài d?t'
+FROM messages m
+JOIN customers c ON m.customer_id = c.id
+WHERE c.phone = '0912345678'
+AND m.content LIKE '%l?i%';
+
+INSERT INTO
+    message_assignments (
+        message_id,
+        assigned_to,
+        assigned_by,
+        match_score,
+        notes
+    )
+SELECT
+    m.id,
+    (SELECT id FROM users WHERE email = 'staff3@omnichat.com'),
+    (SELECT id FROM users WHERE email = 'manager.cs@omnichat.com'),
+    92.0,
+    'T? d?ng gán d?a trên t? khóa: h? tr?, d?i tr?'
+FROM messages m
+JOIN customers c ON m.customer_id = c.id
+WHERE c.phone = '0909876543'
+AND m.content LIKE '%h? tr?%';
+
+INSERT INTO
+    message_assignments (
+        message_id,
+        assigned_to,
+        assigned_by,
+        match_score,
+        notes
+    )
+SELECT
+    m.id,
+    (SELECT id FROM users WHERE email = 'staff1@omnichat.com'),
+    (SELECT id FROM users WHERE email = 'manager.sales@omnichat.com'),
+    90.0,
+    'T? d?ng gán d?a trên t? khóa: giá c?, khuy?n mãi'
+FROM messages m
+JOIN customers c ON m.customer_id = c.id
+WHERE c.phone = '0938765432'
+AND m.content LIKE '%laptop%';
