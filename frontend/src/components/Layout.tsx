@@ -89,7 +89,6 @@ const AppLayout: React.FC<LayoutProps> = ({ children }) => {
 
         if (user.role === 'manager') {
             return [
-                ...baseItems,
                 {
                     key: '/manager/staff',
                     icon: <TeamOutlined />,

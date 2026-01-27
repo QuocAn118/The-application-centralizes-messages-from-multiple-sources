@@ -12,12 +12,14 @@ import Layout from './components/Layout';
 import AdminDashboard from './pages/admin/Dashboard';
 import UserManagement from './pages/admin/UserManagement';
 import AdminKeywords from './pages/admin/Keywords';
+import AdminStatistics from './pages/admin/Statistics';
 
 // Manager pages
-import ManagerDashboard from './pages/manager/Dashboard';
 import ManagerKeywords from './pages/manager/Keywords';
 import ManagerRequests from './pages/manager/ManagerRequests';
 import StaffManagement from './pages/manager/StaffManagement';
+import KPIManagement from './pages/manager/KPIManagement';
+import ShiftsManagement from './pages/manager/ShiftsManagement';
 
 // Staff pages
 import StaffDashboard from './pages/staff/Dashboard';
@@ -80,7 +82,7 @@ const App: React.FC = () => {
                                     user?.role === 'admin' ? (
                                         <Navigate to="/admin/dashboard" replace />
                                     ) : user?.role === 'manager' ? (
-                                        <Navigate to="/manager/dashboard" replace />
+                                        <Navigate to="/manager/staff" replace />
                                     ) : (
                                         <Navigate to="/staff/dashboard" replace />
                                     )
@@ -121,17 +123,21 @@ const App: React.FC = () => {
                                 </ProtectedRoute>
                             }
                         />
+                        <Route
+                            path="/admin/statistics"
+                            element={
+                                <ProtectedRoute allowedRoles={['admin']}>
+                                    <Layout>
+                                        <AdminStatistics />
+                                    </Layout>
+                                </ProtectedRoute>
+                            }
+                        />
 
                         {/* Manager Routes */}
                         <Route
                             path="/manager/dashboard"
-                            element={
-                                <ProtectedRoute allowedRoles={['manager']}>
-                                    <Layout>
-                                        <ManagerDashboard />
-                                    </Layout>
-                                </ProtectedRoute>
-                            }
+                            element={<Navigate to="/manager/staff" replace />}
                         />
                         <Route
                             path="/manager/staff"
@@ -149,6 +155,26 @@ const App: React.FC = () => {
                                 <ProtectedRoute allowedRoles={['manager']}>
                                     <Layout>
                                         <ManagerKeywords />
+                                    </Layout>
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/manager/kpis"
+                            element={
+                                <ProtectedRoute allowedRoles={['manager']}>
+                                    <Layout>
+                                        <KPIManagement />
+                                    </Layout>
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/manager/shifts"
+                            element={
+                                <ProtectedRoute allowedRoles={['manager']}>
+                                    <Layout>
+                                        <ShiftsManagement />
                                     </Layout>
                                 </ProtectedRoute>
                             }

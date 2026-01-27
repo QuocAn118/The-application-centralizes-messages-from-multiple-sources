@@ -1,4 +1,4 @@
--- Active: 1768282269732@@127.0.0.1@5432@omnichat_db
+-- Active: 1769480225896@@127.0.0.1@5432@omnichat_db
 -- OmniChat Database Schema
 -- PostgreSQL Database Initialization Script
 

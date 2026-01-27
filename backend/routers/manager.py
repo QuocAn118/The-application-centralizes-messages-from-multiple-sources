@@ -260,10 +260,18 @@ async def get_department_keywords(
     current_user: User = Depends(get_manager_user),
     db: Session = Depends(get_db)
 ):
-    """Lấy danh sách TẤT CẢ từ khóa trong hệ thống"""
+    """Lấy danh sách từ khóa của phòng ban manager"""
     
-    # Lấy tất cả keywords, không phân biệt phòng ban
-    keywords = db.query(Keyword).all()
+    if not current_user.department_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Manager chưa được gán phòng ban"
+        )
+    
+    # Chỉ lấy keywords của phòng ban manager
+    keywords = db.query(Keyword).filter(
+        Keyword.department_id == current_user.department_id
+    ).all()
     
     return keywords
 
