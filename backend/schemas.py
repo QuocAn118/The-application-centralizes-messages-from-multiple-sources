@@ -74,11 +74,13 @@ class CustomerBase(BaseModel):
 class CustomerCreate(CustomerBase):
     zalo_id: Optional[str] = None
     meta_id: Optional[str] = None
+    telegram_id: Optional[str] = None
 
 class CustomerResponse(CustomerBase):
     id: int
     zalo_id: Optional[str] = None
     meta_id: Optional[str] = None
+    telegram_id: Optional[str] = None
     city: Optional[str] = None
     total_orders: int = 0
     created_at: datetime

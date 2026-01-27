@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from typing import List, Optional
 from datetime import datetime
+import os
+import httpx
 
 from database import get_db
 from auth import get_staff_user, get_current_user
@@ -15,6 +17,8 @@ from schemas import (
 )
 
 router = APIRouter(prefix="/api/staff", tags=["Staff"])
+
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 # ============= Messages =============
 @router.get("/messages", response_model=List[MessageWithCustomer])
@@ -257,11 +261,12 @@ async def send_message_to_customer(
             detail="Không tìm thấy khách hàng"
         )
     
-    # Tạo tin nhắn mới
+    # Tạo tin nhắn mới (luôn lưu trong hệ thống)
+    platform = customer.platform or "web"
     new_message = Message(
         customer_id=customer_id,
         content=content,
-        platform=customer.platform or "web",
+        platform=platform,
         direction="outgoing",
         status="completed"
     )
@@ -269,6 +274,21 @@ async def send_message_to_customer(
     db.add(new_message)
     db.commit()
     db.refresh(new_message)
+
+    # Nếu là khách Telegram thì gửi ra Telegram Bot
+    if platform == "telegram" and customer.telegram_id and TELEGRAM_BOT_TOKEN:
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                await client.post(
+                    f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                    json={
+                        "chat_id": customer.telegram_id,
+                        "text": content
+                    }
+                )
+        except Exception:
+            # Không chặn lỗi gửi Telegram, chỉ log ở server (FastAPI log)
+            pass
     
     return new_message
 

@@ -51,6 +51,7 @@ class Customer(Base):
     email = Column(String(255))
     zalo_id = Column(String(255))
     meta_id = Column(String(255))
+    telegram_id = Column(String(255))
     platform = Column(String(50))
     city = Column(String(100))
     total_orders = Column(Integer, default=0)

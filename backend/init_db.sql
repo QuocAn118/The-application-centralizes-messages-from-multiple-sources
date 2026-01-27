@@ -643,3 +643,5 @@ FROM messages m
 JOIN customers c ON m.customer_id = c.id
 WHERE c.phone = '0938765432'
 AND m.content LIKE '%laptop%';
+
+ALTER TABLE customers ADD COLUMN telegram_id VARCHAR(255);

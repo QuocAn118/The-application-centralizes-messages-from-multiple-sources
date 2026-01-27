@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request as FastAP
 from sqlalchemy.orm import Session
 from typing import Dict, Any
 import logging
+import os
 
 from database import get_db
 from models import Customer, Message, Notification, User
@@ -11,6 +12,8 @@ from schemas import ZaloWebhookMessage
 router = APIRouter(prefix="/api/webhook", tags=["Webhooks"])
 
 logger = logging.getLogger(__name__)
+
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 @router.post("/zalo")
 async def zalo_webhook(
@@ -249,3 +252,82 @@ async def create_test_message(
             "assigned_to": None,
             "message": "Không tìm thấy nhân viên phù hợp"
         }
+
+
+@router.post("/telegram")
+async def telegram_webhook(
+    request: FastAPIRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Webhook nhận tin nhắn từ Telegram Bot.
+
+    Bạn cần cấu hình webhook của Bot Telegram trỏ tới:
+    /api/webhook/telegram
+    """
+
+    try:
+        data = await request.json()
+        logger.info(f"Received Telegram webhook: {data}")
+
+        message_data = data.get("message") or data.get("edited_message")
+        if not message_data:
+            # Không phải event tin nhắn, bỏ qua
+            return {"status": "ignored"}
+
+        chat = message_data.get("chat", {})
+        chat_id = chat.get("id")
+        text = message_data.get("text") or ""
+        message_id = message_data.get("message_id")
+
+        if not chat_id or not text:
+            return {"status": "ignored"}
+
+        # Tìm hoặc tạo customer theo telegram_id
+        customer = db.query(Customer).filter(Customer.telegram_id == str(chat_id)).first()
+        if not customer:
+            customer = Customer(
+                telegram_id=str(chat_id),
+                platform="telegram",
+                name=f"Khách hàng Telegram {chat_id}"
+            )
+            db.add(customer)
+            db.commit()
+            db.refresh(customer)
+
+        # Lưu tin nhắn vào hệ thống
+        new_message = Message(
+            customer_id=customer.id,
+            content=text,
+            platform="telegram",
+            external_id=str(message_id),
+            direction="incoming",
+            status="pending"
+        )
+        db.add(new_message)
+        db.commit()
+        db.refresh(new_message)
+
+        # Tự động giao việc cho nhân viên
+        analyzer = KeywordAnalyzer(db)
+        assignment = analyzer.auto_assign_message(new_message)
+
+        if assignment:
+            notification = Notification(
+                user_id=assignment.assigned_to,
+                title="Tin nhắn mới từ Telegram",
+                message=f"Bạn có tin nhắn mới từ {customer.name}: {text[:50]}...",
+                type="message",
+                link=f"/staff/messages/{new_message.id}"
+            )
+            db.add(notification)
+            db.commit()
+
+        return {"status": "success"}
+
+    except Exception as e:
+        logger.error(f"Error processing Telegram webhook: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing Telegram webhook: {str(e)}"
+        )
