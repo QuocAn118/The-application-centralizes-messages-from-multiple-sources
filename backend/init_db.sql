@@ -499,35 +499,35 @@ INSERT INTO
         total_orders
     )
 VALUES (
-        'Nguyen Thi Huong',
+        'Nguy?n Th? Huong',
         '0987654321',
         'huong.nguyen@gmail.com',
         'zalo',
-        'Ha Noi',
+        'Hà N?i',
         12
     ),
     (
-        'Tran Van Minh',
+        'Tr?n Van Minh',
         '0912345678',
         'minh.tran@yahoo.com',
         'facebook',
-        'Ho Chi Minh',
+        'H? Chí Minh',
         5
     ),
     (
-        'Le Thi Mai',
+        'Lê Th? Mai',
         '0909876543',
         'mai.le@outlook.com',
         'zalo',
-        'Da Nang',
+        'Ðà N?ng',
         8
     ),
     (
-        'Pham Quoc Anh',
+        'Ph?m Qu?c Anh',
         '0938765432',
         'anh.pham@gmail.com',
         'facebook',
-        'Hai Phong',
+        'H?i Phòng',
         3
     );
 
@@ -542,28 +542,28 @@ INSERT INTO
     )
 VALUES (
         (SELECT id FROM customers WHERE phone = '0987654321'),
-        'Chào shop, em muốn hỏi về sản phẩm iPhone 15 Pro Max hiện tại còn hàng không ?? Giá bao nhiêu và có khuyến mãi gì không?',
+        'Chào shop, em mu?n h?i v? s?n ph?m iPhone 15 Pro Max hi?n t?i còn hàng không ?? Giá bao nhiêu và có khuy?n mãi gì không?',
         'zalo',
         'incoming',
         'assigned'
     ),
     (
         (SELECT id FROM customers WHERE phone = '0912345678'),
-        'Sản phẩm em mua hôm qua bị lỗi không hoạt động được. Màn hình có nhấp nháy rồi tắt nguồn. Em cần được hỗ trợ cài đặt lại.',
+        'S?n ph?m em mua hôm qua b? l?i không ho?t d?ng du?c. Màn hình c? nh?p nháy r?i t?t ngu?n. Em c?n du?c h? tr? cài d?t l?i.',
         'facebook',
         'incoming',
         'assigned'
     ),
     (
         (SELECT id FROM customers WHERE phone = '0909876543'),
-        'Em muốn được hỗ trợ về chính sách đổi trả hàng. Em mua sản phẩm được 3 ngày nhưng không vừa ý, có thể đổi sang sản phẩm khác được không ??',
+        'Em mu?n du?c h? tr? v? chính sách d?i tr? hàng. Em mua s?n ph?m du?c 3 ngày nhung không v?a ý, có th? d?i sang s?n ph?m khác du?c không ??',
         'zalo',
         'incoming',
         'assigned'
     ),
     (
         (SELECT id FROM customers WHERE phone = '0938765432'),
-        'Shop cho em hỏi giá cả của laptop Dell Inspiron 15 bao nhiêu? Hiện tại có chương trình khuyến mãi nào không?',
+        'Shop cho em h?i giá c? c?a laptop Dell Inspiron 15 bao nhiêu? Hi?n t?i có chuong trình khuy?n mãi nào không?',
         'facebook',
         'incoming',
         'assigned'
@@ -583,7 +583,7 @@ SELECT
     (SELECT id FROM users WHERE email = 'staff1@omnichat.com'),
     (SELECT id FROM users WHERE email = 'manager.sales@omnichat.com'),
     95.5,
-    'Tự động gán dựa trên từ khóa: mua hàng, giá, khuyến mãi'
+    'T? d?ng gán d?a trên t? khóa: mua hàng, giá, khuy?n mãi'
 FROM messages m
 JOIN customers c ON m.customer_id = c.id
 WHERE c.phone = '0987654321'
@@ -602,11 +602,12 @@ SELECT
     (SELECT id FROM users WHERE email = 'staff2@omnichat.com'),
     (SELECT id FROM users WHERE email = 'manager.tech@omnichat.com'),
     98.0,
-    'Tự động gán dựa trên từ khóa: lỗi, không hoạt động, cài đặt'
+    'T? d?ng gán d?a trên t? khóa: l?i, không ho?t d?ng, cài d?t'
 FROM messages m
 JOIN customers c ON m.customer_id = c.id
 WHERE c.phone = '0912345678'
-AND m.content LIKE '%lỗi%';
+AND m.content LIKE '%l?i%';
+
 INSERT INTO
     message_assignments (
         message_id,
@@ -620,11 +621,12 @@ SELECT
     (SELECT id FROM users WHERE email = 'staff3@omnichat.com'),
     (SELECT id FROM users WHERE email = 'manager.cs@omnichat.com'),
     92.0,
-    'Tự động gán dựa trên từ khóa: hỗ trợ, đổi trả'
+    'T? d?ng gán d?a trên t? khóa: h? tr?, d?i tr?'
 FROM messages m
 JOIN customers c ON m.customer_id = c.id
 WHERE c.phone = '0909876543'
-AND m.content LIKE '%hỗ trợ%';
+AND m.content LIKE '%h? tr?%';
+
 INSERT INTO
     message_assignments (
         message_id,
@@ -638,10 +640,8 @@ SELECT
     (SELECT id FROM users WHERE email = 'staff1@omnichat.com'),
     (SELECT id FROM users WHERE email = 'manager.sales@omnichat.com'),
     90.0,
-    'Tự động gán dựa trên từ khóa: giá cả, khuyến mãi'
+    'T? d?ng gán d?a trên t? khóa: giá c?, khuy?n mãi'
 FROM messages m
 JOIN customers c ON m.customer_id = c.id
 WHERE c.phone = '0938765432'
 AND m.content LIKE '%laptop%';
-
-ALTER TABLE customers ADD COLUMN telegram_id VARCHAR(255);
