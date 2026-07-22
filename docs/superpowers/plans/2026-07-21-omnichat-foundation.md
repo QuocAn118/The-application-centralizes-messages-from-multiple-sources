@@ -220,6 +220,9 @@ omit = ["src/main.py"]
 
 [tool.importlinter]
 root_package = "src"
+# Bắt buộc khi contract cấm import gói ngoài (sqlalchemy, fastapi, pydantic).
+# Thiếu dòng này, import-linter báo lỗi cấu hình thay vì kiểm tra contract.
+include_external_packages = true
 
 [[tool.importlinter.contracts]]
 name = "Domain khong duoc phu thuoc tang ngoai"
@@ -291,6 +294,7 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.import_linter_cache/
 .coverage
 htmlcov/
 *.egg-info/
