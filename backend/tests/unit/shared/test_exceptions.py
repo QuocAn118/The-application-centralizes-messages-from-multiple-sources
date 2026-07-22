@@ -30,3 +30,19 @@ def test_cac_loi_ung_dung_deu_ke_thua_application_error(
     lop_loi: type[ApplicationError],
 ) -> None:
     assert issubclass(lop_loi, ApplicationError)
+
+
+@pytest.mark.parametrize(
+    "lop_loi",
+    [NotFoundError, ConflictError, PermissionDeniedError, AuthenticationError],
+)
+def test_loi_ung_dung_giu_lai_ma_loi_va_thong_diep(
+    lop_loi: type[ApplicationError],
+) -> None:
+    """Tầng presentation đọc ``.code`` để ánh xạ sang mã HTTP — nếu thuộc tính
+    này không được gán, toàn bộ xử lý lỗi của API sẽ hỏng."""
+    loi = lop_loi("Thong diep thu", code="MA_THU")
+
+    assert loi.message == "Thong diep thu"
+    assert loi.code == "MA_THU"
+    assert str(loi) == "Thong diep thu"
