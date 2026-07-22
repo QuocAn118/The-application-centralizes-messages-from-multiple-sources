@@ -33,7 +33,7 @@
 | `src/shared/domain/identifiers.py` | `new_id()` — sinh UUID v7 |
 | `src/shared/domain/entity.py` | Lớp cơ sở `Entity`, `AggregateRoot` |
 | `src/shared/domain/value_object.py` | Lớp cơ sở `ValueObject` |
-| `src/shared/domain/exceptions.py` | `DomainError`, `BusinessRuleViolation` |
+| `src/shared/domain/exceptions.py` | `DomainError`, `BusinessRuleViolationError` |
 | `src/shared/application/exceptions.py` | `NotFoundError`, `PermissionDeniedError`, `AuthenticationError`, `ConflictError` |
 | `src/shared/application/unit_of_work.py` | Interface `IUnitOfWork` |
 | `src/shared/application/ports.py` | Port `IClock` |
@@ -419,7 +419,7 @@ git commit -m "chore: scaffold backend project with uv and quality tooling"
   - `Entity` — dataclass base, có `id: UUID`, so sánh theo `id`.
   - `ValueObject` — base cho frozen dataclass.
   - `DomainError(message: str, code: str)` — lớp gốc mọi lỗi nghiệp vụ, thuộc tính `.code` và `.message`.
-  - `BusinessRuleViolation(DomainError)`.
+  - `BusinessRuleViolationError(DomainError)`.
   - `NotFoundError(message, code)`, `ConflictError(message, code)`, `PermissionDeniedError(message, code)`, `AuthenticationError(message, code)` — đều kế thừa `ApplicationError`.
   - `IClock` — protocol có `now() -> datetime` trả về thời điểm UTC có timezone.
   - `SystemClock` — implementation của `IClock`.
@@ -429,15 +429,17 @@ git commit -m "chore: scaffold backend project with uv and quality tooling"
 File `backend/tests/unit/shared/test_entity.py`:
 
 ```python
-from dataclasses import dataclass
+from dataclasses import FrozenInstanceError, dataclass
 from uuid import UUID
+
+import pytest
 
 from src.shared.domain.entity import Entity
 from src.shared.domain.identifiers import new_id
 from src.shared.domain.value_object import ValueObject
 
 
-@dataclass(eq=False)
+@dataclass(eq=False, kw_only=True)
 class _EntityGiaLap(Entity):
     ten: str
 
@@ -475,10 +477,8 @@ def test_value_object_bang_nhau_khi_cung_gia_tri() -> None:
 
 
 def test_value_object_khong_the_thay_doi() -> None:
-    import pytest
-
     vo = _ValueObjectGiaLap(gia_tri="x")
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         vo.gia_tri = "y"  # type: ignore[misc]
 ```
 
@@ -494,7 +494,7 @@ from src.shared.application.exceptions import (
     NotFoundError,
     PermissionDeniedError,
 )
-from src.shared.domain.exceptions import BusinessRuleViolation, DomainError
+from src.shared.domain.exceptions import BusinessRuleViolationError, DomainError
 
 
 def test_domain_error_giu_lai_ma_loi_va_thong_diep() -> None:
@@ -506,7 +506,7 @@ def test_domain_error_giu_lai_ma_loi_va_thong_diep() -> None:
 
 
 def test_business_rule_violation_la_domain_error() -> None:
-    assert issubclass(BusinessRuleViolation, DomainError)
+    assert issubclass(BusinessRuleViolationError, DomainError)
 
 
 @pytest.mark.parametrize(
@@ -589,7 +589,7 @@ from uuid import UUID
 from src.shared.domain.identifiers import new_id
 
 
-@dataclass(eq=False)
+@dataclass(eq=False, kw_only=True)
 class Entity:
     """Entity được định danh bằng ``id``, không phải bằng giá trị thuộc tính.
 
@@ -609,7 +609,7 @@ class Entity:
         return hash((type(self).__name__, self.id))
 
 
-@dataclass(eq=False)
+@dataclass(eq=False, kw_only=True)
 class AggregateRoot(Entity):
     """Entity đóng vai trò điểm vào của một aggregate.
 
@@ -653,7 +653,7 @@ class DomainError(Exception):
         self.code = code
 
 
-class BusinessRuleViolation(DomainError):
+class BusinessRuleViolationError(DomainError):
     """Một quy tắc nghiệp vụ bị vi phạm."""
 ```
 

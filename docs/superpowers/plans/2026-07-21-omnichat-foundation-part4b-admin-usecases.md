@@ -467,7 +467,7 @@ class TestVoHieuHoaVaKichHoatLai:
         staff = bc.them(Role.STAFF, bc.phong_a.id, dang_hoat_dong=False)
         bc.phong_a.deactivate(active_member_count=0, now=BAY_GIO)
 
-        with pytest.raises(Exception):
+        with pytest.raises(InactiveDepartmentError):
             await bc.kich_hoat_lai().execute(requester=admin, user_id=staff.id)
 
 

@@ -32,6 +32,8 @@ Giai đoạn này viết toàn bộ business rule dưới dạng Python thuần.
 File `backend/tests/unit/identity/test_value_objects.py`:
 
 ```python
+from dataclasses import FrozenInstanceError
+
 import pytest
 
 from src.modules.identity.domain.value_objects.email import Email, InvalidEmailError
@@ -65,7 +67,7 @@ class TestEmail:
 
     def test_khong_the_thay_doi_sau_khi_tao(self) -> None:
         email = Email("a@b.vn")
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             email.value = "c@d.vn"  # type: ignore[misc]
 
 
@@ -269,14 +271,14 @@ git commit -m "feat: add identity value objects for email, role, and password ha
 - Test: `backend/tests/unit/identity/test_department.py`
 
 **Interfaces:**
-- Consumes: `AggregateRoot`, `BusinessRuleViolation` từ Task 2.
+- Consumes: `AggregateRoot`, `BusinessRuleViolationError` từ Task 2.
 - Produces:
   - `Department` — `AggregateRoot`. Trường: `id: UUID`, `name: str`, `description: str | None`, `is_active: bool`, `created_at: datetime`, `updated_at: datetime`.
   - `Department.create(name: str, description: str | None, now: datetime) -> Department` — factory, chuẩn hoá tên, ném `EmptyDepartmentNameError` nếu tên rỗng.
   - `Department.rename(new_name: str, now: datetime) -> None`.
   - `Department.update_description(description: str | None, now: datetime) -> None`.
   - `Department.deactivate(active_member_count: int, now: datetime) -> None` — ném `DepartmentHasActiveMembersError` nếu `active_member_count > 0`.
-  - `EmptyDepartmentNameError`, `DepartmentHasActiveMembersError` — kế thừa `BusinessRuleViolation`.
+  - `EmptyDepartmentNameError`, `DepartmentHasActiveMembersError` — kế thừa `BusinessRuleViolationError`.
 
 **Ghi chú thiết kế:** `deactivate` nhận `active_member_count` làm tham số thay vì tự truy vấn. Domain entity không được biết tới repository; use case đếm trước rồi truyền vào. Nhờ vậy quy tắc vẫn nằm trong domain và test được mà không cần cơ sở dữ liệu.
 
@@ -381,10 +383,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from src.shared.domain.entity import AggregateRoot
-from src.shared.domain.exceptions import BusinessRuleViolation
+from src.shared.domain.exceptions import BusinessRuleViolationError
 
 
-class EmptyDepartmentNameError(BusinessRuleViolation):
+class EmptyDepartmentNameError(BusinessRuleViolationError):
     """Tên phòng ban không được rỗng."""
 
     def __init__(self) -> None:
@@ -394,7 +396,7 @@ class EmptyDepartmentNameError(BusinessRuleViolation):
         )
 
 
-class DepartmentHasActiveMembersError(BusinessRuleViolation):
+class DepartmentHasActiveMembersError(BusinessRuleViolationError):
     """Không thể vô hiệu hoá phòng ban còn nhân viên đang hoạt động."""
 
     def __init__(self, so_nhan_vien: int) -> None:
@@ -405,18 +407,18 @@ class DepartmentHasActiveMembersError(BusinessRuleViolation):
         )
 
 
-@dataclass(eq=False)
+@dataclass(eq=False, kw_only=True)
 class Department(AggregateRoot):
     """Phòng ban — đơn vị tổ chức và cũng là phạm vi phân quyền của Manager.
 
     Danh sách phẳng, không có phòng cha hay phòng con.
     """
 
-    name: str = ""
+    name: str
     description: str | None = None
     is_active: bool = True
-    created_at: datetime = field(default_factory=lambda: datetime.min)
-    updated_at: datetime = field(default_factory=lambda: datetime.min)
+    created_at: datetime
+    updated_at: datetime
 
     @staticmethod
     def _chuan_hoa_ten(name: str) -> str:
@@ -497,7 +499,7 @@ git commit -m "feat: add department entity with deactivation rules"
 - Test: `backend/tests/unit/identity/test_user.py`
 
 **Interfaces:**
-- Consumes: `AggregateRoot`, `BusinessRuleViolation`, `Email`, `Role`, `PasswordHash`.
+- Consumes: `AggregateRoot`, `BusinessRuleViolationError`, `Email`, `Role`, `PasswordHash`.
 - Produces:
   - `User` — `AggregateRoot`. Trường: `id: UUID`, `email: Email`, `password_hash: PasswordHash`, `full_name: str`, `phone: str | None`, `role: Role`, `department_id: UUID | None`, `is_active: bool`, `must_change_password: bool`, `last_login_at: datetime | None`, `created_at: datetime`, `updated_at: datetime`.
   - `User.create(email, password_hash, full_name, role, department_id, now, phone=None, must_change_password=True) -> User`.
@@ -829,10 +831,10 @@ from src.modules.identity.domain.value_objects.email import Email
 from src.modules.identity.domain.value_objects.password_hash import PasswordHash
 from src.modules.identity.domain.value_objects.role import Role
 from src.shared.domain.entity import AggregateRoot
-from src.shared.domain.exceptions import BusinessRuleViolation
+from src.shared.domain.exceptions import BusinessRuleViolationError
 
 
-class DepartmentRequiredError(BusinessRuleViolation):
+class DepartmentRequiredError(BusinessRuleViolationError):
     """Staff và Manager bắt buộc thuộc một phòng ban."""
 
     def __init__(self, role: Role) -> None:
@@ -842,7 +844,7 @@ class DepartmentRequiredError(BusinessRuleViolation):
         )
 
 
-class AdminCannotHaveDepartmentError(BusinessRuleViolation):
+class AdminCannotHaveDepartmentError(BusinessRuleViolationError):
     """Admin quản trị toàn hệ thống nên không gắn với phòng ban."""
 
     def __init__(self) -> None:
@@ -852,7 +854,7 @@ class AdminCannotHaveDepartmentError(BusinessRuleViolation):
         )
 
 
-class DepartmentAlreadyHasManagerError(BusinessRuleViolation):
+class DepartmentAlreadyHasManagerError(BusinessRuleViolationError):
     """Mỗi phòng ban chỉ có tối đa một quản lý đang hoạt động."""
 
     def __init__(self) -> None:
@@ -862,7 +864,7 @@ class DepartmentAlreadyHasManagerError(BusinessRuleViolation):
         )
 
 
-class LastAdminCannotBeDeactivatedError(BusinessRuleViolation):
+class LastAdminCannotBeDeactivatedError(BusinessRuleViolationError):
     """Hệ thống phải luôn còn ít nhất một quản trị viên hoạt động."""
 
     def __init__(self) -> None:
@@ -872,7 +874,7 @@ class LastAdminCannotBeDeactivatedError(BusinessRuleViolation):
         )
 
 
-class InactiveDepartmentError(BusinessRuleViolation):
+class InactiveDepartmentError(BusinessRuleViolationError):
     """Không thể kích hoạt lại nhân viên thuộc phòng ban đã bị vô hiệu hoá."""
 
     def __init__(self) -> None:
@@ -883,14 +885,14 @@ class InactiveDepartmentError(BusinessRuleViolation):
         )
 
 
-class EmptyFullNameError(BusinessRuleViolation):
+class EmptyFullNameError(BusinessRuleViolationError):
     """Họ tên không được rỗng."""
 
     def __init__(self) -> None:
         super().__init__("Họ tên không được để trống.", code="EMPTY_FULL_NAME")
 
 
-class CannotChangeToAdminError(BusinessRuleViolation):
+class CannotChangeToAdminError(BusinessRuleViolationError):
     """Chỉ cho phép chuyển đổi giữa Staff và Manager."""
 
     def __init__(self) -> None:
@@ -901,7 +903,7 @@ class CannotChangeToAdminError(BusinessRuleViolation):
         )
 
 
-@dataclass(eq=False)
+@dataclass(eq=False, kw_only=True)
 class User(AggregateRoot):
     """Người dùng hệ thống — Staff, Manager hoặc Admin dùng chung một entity.
 
@@ -910,17 +912,17 @@ class User(AggregateRoot):
     rồi truyền vào, nhờ đó domain không phụ thuộc repository.
     """
 
-    email: Email = field(default_factory=lambda: Email("chua@dat.vn"))
-    password_hash: PasswordHash = field(default_factory=lambda: PasswordHash("chua-dat"))
-    full_name: str = ""
+    email: Email
+    password_hash: PasswordHash
+    full_name: str
+    role: Role
+    created_at: datetime
+    updated_at: datetime
     phone: str | None = None
-    role: Role = Role.STAFF
     department_id: UUID | None = None
     is_active: bool = True
     must_change_password: bool = True
     last_login_at: datetime | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.min)
-    updated_at: datetime = field(default_factory=lambda: datetime.min)
 
     @staticmethod
     def _kiem_tra_phong_ban(role: Role, department_id: UUID | None) -> None:
@@ -1107,7 +1109,7 @@ git commit -m "feat: add user entity with role, department, and lifecycle rules"
 - Test: `backend/tests/unit/identity/test_audit_log.py`
 
 **Interfaces:**
-- Consumes: `AggregateRoot`, `BusinessRuleViolation`.
+- Consumes: `AggregateRoot`, `BusinessRuleViolationError`.
 - Produces:
   - `RefreshToken` — trường: `id: UUID`, `user_id: UUID`, `token_hash: str`, `expires_at: datetime`, `revoked_at: datetime | None`, `replaced_by_id: UUID | None`, `user_agent: str | None`, `ip_address: str | None`, `created_at: datetime`.
   - `RefreshToken.issue(user_id, token_hash, expires_at, now, user_agent=None, ip_address=None) -> RefreshToken`.
@@ -1295,7 +1297,7 @@ from src.shared.domain.entity import AggregateRoot
 from src.shared.domain.identifiers import new_id
 
 
-@dataclass(eq=False)
+@dataclass(eq=False, kw_only=True)
 class RefreshToken(AggregateRoot):
     """Một refresh token đã cấp cho người dùng.
 
@@ -1307,14 +1309,14 @@ class RefreshToken(AggregateRoot):
     toàn bộ chuỗi.
     """
 
-    user_id: UUID = field(default_factory=new_id)
-    token_hash: str = ""
-    expires_at: datetime = field(default_factory=lambda: datetime.min)
+    user_id: UUID
+    token_hash: str
+    expires_at: datetime
+    created_at: datetime
     revoked_at: datetime | None = None
     replaced_by_id: UUID | None = None
     user_agent: str | None = None
     ip_address: str | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.min)
 
     @classmethod
     def issue(
@@ -1357,7 +1359,13 @@ class RefreshToken(AggregateRoot):
         self.replaced_by_id = new_token_id
 ```
 
-**Lưu ý về giá trị mặc định:** `AggregateRoot` đã khai báo `id` có giá trị mặc định, nên theo quy tắc dataclass của Python, **mọi trường khai báo sau đó cũng bắt buộc phải có mặc định** — thiếu sẽ gặp `TypeError: non-default argument follows default argument` ngay lúc import. Vì vậy `user_id`, `token_hash`, `expires_at` đều mang giá trị mặc định dù về mặt nghiệp vụ chúng là bắt buộc. Những giá trị này không bao giờ được dùng trong thực tế vì mọi `RefreshToken` đều tạo qua `issue()`. Quy tắc tương tự áp dụng cho `User`, `Department` và `AuditLog`.
+**Lưu ý về `kw_only=True`:** `Entity` khai báo `id` có giá trị mặc định. Trong dataclass thông thường, điều đó buộc **mọi trường khai báo sau nó cũng phải có mặc định** — kể cả ở lớp con — nếu không sẽ gặp `TypeError: non-default argument follows default argument` ngay lúc import.
+
+`kw_only=True` gỡ ràng buộc đó: tham số chỉ-theo-tên không có thứ tự nên trường bắt buộc đứng sau trường có mặc định là hợp lệ. Nhờ vậy `user_id`, `token_hash`, `expires_at` khai báo đúng bản chất nghiệp vụ là bắt buộc, thay vì mang giá trị mặc định giả mà mọi factory đều phải ghi đè.
+
+Đánh đổi: mọi lời gọi phải dùng tham số tên — `RefreshToken(user_id=..., token_hash=...)`, không dùng được `RefreshToken(uid, hash)`. Toàn bộ code trong plan vốn đã viết theo kiểu này.
+
+Quy tắc tương tự áp dụng cho `User`, `Department` và `AuditLog`.
 
 - [ ] **Step 5: Viết `audit_log.py`**
 
@@ -1399,21 +1407,21 @@ class AuditAction(StrEnum):
     AUTH_TOKEN_REUSE_DETECTED = "auth.token_reuse_detected"
 
 
-@dataclass(eq=False)
+@dataclass(eq=False, kw_only=True)
 class AuditLog(Entity):
     """Bản ghi một hành động đã xảy ra trong hệ thống.
 
     Chỉ ghi thêm: entity này cố ý không có phương thức sửa hay xoá.
     """
 
-    action: AuditAction = AuditAction.USER_CREATED
+    action: AuditAction
+    resource_type: str
+    created_at: datetime
     actor_id: UUID | None = None
-    resource_type: str = ""
     resource_id: str | None = None
     changes: dict[str, Any] | None = None
     ip_address: str | None = None
     user_agent: str | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.min)
 
     @classmethod
     def record(
