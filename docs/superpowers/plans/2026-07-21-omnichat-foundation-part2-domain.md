@@ -36,7 +36,12 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from src.modules.identity.domain.value_objects.email import Email, InvalidEmailError
+from src.modules.identity.domain.value_objects.email import (
+    DO_DAI_EMAIL_TOI_DA,
+    Email,
+    EmailTooLongError,
+    InvalidEmailError,
+)
 from src.modules.identity.domain.value_objects.password_hash import (
     InvalidPasswordHashError,
     PasswordHash,
@@ -64,6 +69,20 @@ class TestEmail:
 
     def test_hai_email_cung_gia_tri_thi_bang_nhau(self) -> None:
         assert Email("a@b.vn") == Email("A@B.VN")
+
+    def test_chap_nhan_email_dung_bang_gioi_han(self) -> None:
+        phan_dau = "a" * (DO_DAI_EMAIL_TOI_DA - len("@congty.vn"))
+        dung_gioi_han = f"{phan_dau}@congty.vn"
+
+        assert len(Email(dung_gioi_han).value) == DO_DAI_EMAIL_TOI_DA
+
+    def test_tu_choi_email_vuot_gioi_han(self) -> None:
+        """Cột ``users.email`` là VARCHAR(320) — domain phải chặn trước khi
+        cơ sở dữ liệu ném DataError khó truy nguyên."""
+        qua_dai = "a" * (DO_DAI_EMAIL_TOI_DA - len("@congty.vn") + 1) + "@congty.vn"
+
+        with pytest.raises(EmailTooLongError):
+            Email(qua_dai)
 
     def test_khong_the_thay_doi_sau_khi_tao(self) -> None:
         email = Email("a@b.vn")
@@ -123,6 +142,11 @@ from src.shared.domain.exceptions import DomainError
 
 _DINH_DANG_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
+# Giới hạn của RFC 5321 và cũng là độ rộng cột ``users.email`` (VARCHAR 320).
+# Domain phải từ chối thứ mà cơ sở dữ liệu không lưu nổi, nếu không lỗi sẽ nổ ở
+# tầng lưu trữ dưới dạng DataError khó truy nguyên.
+DO_DAI_EMAIL_TOI_DA = 320
+
 
 class InvalidEmailError(DomainError):
     """Địa chỉ email không đúng định dạng."""
@@ -131,6 +155,17 @@ class InvalidEmailError(DomainError):
         super().__init__(
             f"Địa chỉ email không hợp lệ: {gia_tri!r}",
             code="INVALID_EMAIL",
+        )
+
+
+class EmailTooLongError(DomainError):
+    """Địa chỉ email vượt quá độ dài tối đa."""
+
+    def __init__(self, do_dai: int) -> None:
+        super().__init__(
+            f"Địa chỉ email dài {do_dai} ký tự, vượt quá giới hạn "
+            f"{DO_DAI_EMAIL_TOI_DA} ký tự.",
+            code="EMAIL_TOO_LONG",
         )
 
 
@@ -149,6 +184,8 @@ class Email:
         chuan_hoa = self.value.strip().lower()
         if not _DINH_DANG_EMAIL.match(chuan_hoa):
             raise InvalidEmailError(self.value)
+        if len(chuan_hoa) > DO_DAI_EMAIL_TOI_DA:
+            raise EmailTooLongError(len(chuan_hoa))
         object.__setattr__(self, "value", chuan_hoa)
 
     def __str__(self) -> str:
