@@ -272,7 +272,12 @@ from src.shared.application.exceptions import (
 from src.shared.domain.exceptions import DomainError
 from src.shared.infrastructure.config import get_settings
 from src.shared.infrastructure.database import create_engine_and_session_factory
+from src.shared.infrastructure.event_loop import cau_hinh_event_loop
 from src.shared.infrastructure.logging import cau_hinh_logging, request_id_var
+
+# Uvicorn không tự chọn event loop tương thích với psycopg trên Windows, nên
+# phải cấu hình ngay khi module được nạp — trước khi uvicorn dựng loop.
+cau_hinh_event_loop()
 
 logger = logging.getLogger(__name__)
 
