@@ -17,6 +17,7 @@
 - Database dev: `omnichat`. Database test: `omnichat_test`. User: `postgres`, host `localhost`, cổng `5432`.
 - `src/modules/*/domain/` chỉ được import stdlib. Cấm import SQLAlchemy, FastAPI, Pydantic. Ràng buộc này do `import-linter` kiểm tra trong CI.
 - Mọi truy cập cơ sở dữ liệu dùng `AsyncSession`; mọi use case là `async def`.
+- **Trên Windows phải chuyển event loop sang `WindowsSelectorEventLoopPolicy` trước khi mở kết nối async.** psycopg từ chối chạy trên `ProactorEventLoop` — event loop mặc định của Windows — với `InterfaceError: Psycopg cannot use the 'ProactorEventLoop' to run in async mode`. Mọi entry point chạy code async (`tests/conftest.py`, `migrations/env.py`, `src/main.py`, và các script trong `scripts/`) phải gọi `cau_hinh_event_loop()` từ `src/shared/infrastructure/event_loop.py` trước khi tạo engine. Hàm này không làm gì trên Linux và macOS.
 - Khoá chính là UUID v7 sinh ở tầng ứng dụng qua hàm `new_id()` trong `src/shared/domain/identifiers.py`. **Thư viện chuẩn Python 3.13 không có `uuid.uuid7()`** — hàm đó chỉ xuất hiện từ Python 3.14. Dự án dùng gói `uuid-utils` và bọc lại sau một hàm duy nhất, để khi nâng lên Python 3.14 chỉ phải sửa một chỗ.
 - Mọi cột thời gian dùng `TIMESTAMP WITH TIME ZONE`, lưu UTC.
 - `role` lưu VARCHAR kèm CHECK constraint, không dùng kiểu ENUM của PostgreSQL.
@@ -41,6 +42,7 @@
 | `src/shared/infrastructure/database.py` | Async engine, session factory, `Base` |
 | `src/shared/infrastructure/sqlalchemy_uow.py` | `SqlAlchemyUnitOfWork` |
 | `src/shared/infrastructure/clock.py` | `SystemClock` |
+| `src/shared/infrastructure/event_loop.py` | `cau_hinh_event_loop()` — chọn event loop tương thích psycopg trên Windows |
 | `src/shared/infrastructure/logging.py` | Structured logging kèm `request_id` |
 | `src/modules/identity/domain/value_objects/` | `Email`, `PasswordHash`, `Role` |
 | `src/modules/identity/domain/entities/` | `User`, `Department`, `RefreshToken`, `AuditLog` |
@@ -833,6 +835,7 @@ git commit -m "feat: add shared kernel with entity, value object, and error type
 ## Task 3: Kết nối cơ sở dữ liệu, Alembic và Unit of Work
 
 **Files:**
+- Create: `backend/src/shared/infrastructure/event_loop.py`
 - Create: `backend/src/shared/infrastructure/config.py`
 - Create: `backend/src/shared/infrastructure/database.py`
 - Create: `backend/src/shared/application/unit_of_work.py`
@@ -841,12 +844,14 @@ git commit -m "feat: add shared kernel with entity, value object, and error type
 - Create: `backend/migrations/env.py`
 - Create: `backend/migrations/script.py.mako`
 - Create: `backend/tests/conftest.py`
+- Test: `backend/tests/unit/shared/test_event_loop.py`
 - Test: `backend/tests/integration/__init__.py`
 - Test: `backend/tests/integration/test_database.py`
 
 **Interfaces:**
 - Consumes: `src.shared.application.exceptions` từ Task 2.
 - Produces:
+  - `cau_hinh_event_loop() -> None` — chuyển Windows sang `SelectorEventLoop`; không làm gì trên nền tảng khác. Mọi entry point async phải gọi trước khi tạo engine.
   - `Settings` — đọc cấu hình từ biến môi trường; thuộc tính `database_url`, `test_database_url`, `jwt_secret_key`, `jwt_algorithm`, `access_token_expire_minutes`, `refresh_token_expire_days`, `login_rate_limit_attempts`, `login_rate_limit_window_seconds`, `app_env`, `log_level`.
   - `get_settings() -> Settings` — có cache.
   - `Base` — lớp cơ sở khai báo cho mọi ORM model.
@@ -872,6 +877,44 @@ python -c "import secrets; print('JWT_SECRET_KEY=' + secrets.token_urlsafe(64))"
 ```
 
 Chép giá trị in ra, thay dòng `JWT_SECRET_KEY=` trong `.env`.
+
+- [ ] **Step 2b: Viết test cho `event_loop.py`**
+
+File `backend/tests/unit/shared/test_event_loop.py`:
+
+```python
+import asyncio
+import sys
+
+import pytest
+
+from src.shared.infrastructure.event_loop import cau_hinh_event_loop
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Chỉ áp dụng cho Windows")
+def test_tren_windows_chon_selector_event_loop() -> None:
+    """psycopg từ chối ProactorEventLoop — nếu test này đỏ thì mọi test chạm
+    cơ sở dữ liệu cũng sẽ đỏ theo."""
+    cau_hinh_event_loop()
+
+    assert isinstance(
+        asyncio.get_event_loop_policy(), asyncio.WindowsSelectorEventLoopPolicy
+    )
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Chỉ áp dụng cho Linux/macOS")
+def test_ngoai_windows_khong_doi_gi() -> None:
+    truoc = asyncio.get_event_loop_policy()
+
+    cau_hinh_event_loop()
+
+    assert asyncio.get_event_loop_policy() is truoc
+
+
+def test_goi_nhieu_lan_khong_gay_loi() -> None:
+    cau_hinh_event_loop()
+    cau_hinh_event_loop()
+```
 
 - [ ] **Step 3: Viết test integration cho kết nối và Unit of Work**
 
@@ -940,6 +983,34 @@ uv run pytest tests/integration -v
 ```
 
 Expected: FAIL với `ModuleNotFoundError` hoặc `fixture 'db_session' not found`.
+
+- [ ] **Step 4b: Viết `src/shared/infrastructure/event_loop.py`**
+
+```python
+"""Cấu hình event loop cho từng nền tảng."""
+
+import asyncio
+import sys
+
+
+def cau_hinh_event_loop() -> None:
+    """Chuyển Windows sang ``SelectorEventLoop`` trước khi mở kết nối async.
+
+    Từ Python 3.8, event loop mặc định của Windows là ``ProactorEventLoop``.
+    psycopg từ chối chạy trên nó và ném ``InterfaceError: Psycopg cannot use
+    the 'ProactorEventLoop' to run in async mode``. Đây là hạn chế đã biết của
+    driver, không phải lỗi cấu hình.
+
+    Mọi entry point chạy code async phải gọi hàm này **trước khi** tạo engine:
+    ``tests/conftest.py``, ``migrations/env.py``, ``src/main.py``, và các script
+    trong ``scripts/``. Gọi nhiều lần không gây hại.
+
+    Trên Linux và macOS hàm này không làm gì — nơi triển khai thật sẽ chạy
+    Linux, nên chi phí bằng không ở môi trường sản xuất.
+    """
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+```
 
 - [ ] **Step 5: Viết `src/shared/infrastructure/config.py`**
 
@@ -1118,6 +1189,11 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from src.shared.infrastructure.config import get_settings
 from src.shared.infrastructure.database import create_engine_and_session_factory
+from src.shared.infrastructure.event_loop import cau_hinh_event_loop
+
+# Phải chạy trước khi pytest-asyncio tạo event loop đầu tiên, nếu không psycopg
+# sẽ từ chối chạy trên ProactorEventLoop của Windows.
+cau_hinh_event_loop()
 
 
 @pytest.fixture(scope="session")
@@ -1193,6 +1269,11 @@ from sqlalchemy import pool
 
 from src.shared.infrastructure.config import get_settings
 from src.shared.infrastructure.database import Base
+from src.shared.infrastructure.event_loop import cau_hinh_event_loop
+
+# Alembic gọi asyncio.run() để chạy migration — cần đúng loại event loop mà
+# psycopg chấp nhận, giống mọi entry point async khác.
+cau_hinh_event_loop()
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_settings().database_url)

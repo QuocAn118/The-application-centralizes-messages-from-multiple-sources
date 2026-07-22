@@ -415,9 +415,11 @@ from src.modules.identity.infrastructure.security.password_hasher import (
 from src.shared.infrastructure.clock import SystemClock
 from src.shared.infrastructure.config import get_settings
 from src.shared.infrastructure.database import create_engine_and_session_factory
+from src.shared.infrastructure.event_loop import cau_hinh_event_loop
 
 
 async def tao_quan_tri_vien(email: str, ho_ten: str, mat_khau: str) -> None:
+    cau_hinh_event_loop()
     settings = get_settings()
     engine, session_factory = create_engine_and_session_factory(settings.database_url)
 
@@ -958,6 +960,24 @@ presentation → application → domain
 
 `domain/` chỉ import thư viện chuẩn. `import-linter` kiểm tra quy tắc này trong
 CI — nếu vi phạm, pipeline sẽ đỏ.
+
+## Ghi chú khi phát triển trên Windows
+
+psycopg không chạy được trên `ProactorEventLoop` — event loop mặc định của
+Windows từ Python 3.8. Vì vậy mọi entry point chạy code async đều gọi
+`cau_hinh_event_loop()` từ `src/shared/infrastructure/event_loop.py` trước khi
+mở kết nối: `tests/conftest.py`, `migrations/env.py`, `src/main.py`, và
+`scripts/seed_admin.py`.
+
+Nếu bạn thêm một entry point async mới mà quên gọi hàm này, lỗi sẽ là:
+
+```
+psycopg.InterfaceError: Psycopg cannot use the 'ProactorEventLoop' to run in
+async mode. Please use a compatible event loop, for instance by setting
+'asyncio.set_event_loop_policy(WindowsSelectorEventLoopPolicy())'
+```
+
+Trên Linux và macOS hàm này không làm gì.
 
 ## Giới hạn đã biết
 
