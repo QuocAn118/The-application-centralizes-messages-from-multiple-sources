@@ -2,7 +2,12 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from src.modules.identity.domain.value_objects.email import Email, InvalidEmailError
+from src.modules.identity.domain.value_objects.email import (
+    DO_DAI_EMAIL_TOI_DA,
+    Email,
+    EmailTooLongError,
+    InvalidEmailError,
+)
 from src.modules.identity.domain.value_objects.password_hash import (
     InvalidPasswordHashError,
     PasswordHash,
@@ -30,6 +35,20 @@ class TestEmail:
 
     def test_hai_email_cung_gia_tri_thi_bang_nhau(self) -> None:
         assert Email("a@b.vn") == Email("A@B.VN")
+
+    def test_chap_nhan_email_dung_bang_gioi_han(self) -> None:
+        phan_dau = "a" * (DO_DAI_EMAIL_TOI_DA - len("@congty.vn"))
+        dung_gioi_han = f"{phan_dau}@congty.vn"
+
+        assert len(Email(dung_gioi_han).value) == DO_DAI_EMAIL_TOI_DA
+
+    def test_tu_choi_email_vuot_gioi_han(self) -> None:
+        """Cột ``users.email`` là VARCHAR(320) — domain phải chặn trước khi
+        cơ sở dữ liệu ném DataError khó truy nguyên."""
+        qua_dai = "a" * (DO_DAI_EMAIL_TOI_DA - len("@congty.vn") + 1) + "@congty.vn"
+
+        with pytest.raises(EmailTooLongError):
+            Email(qua_dai)
 
     def test_khong_the_thay_doi_sau_khi_tao(self) -> None:
         email = Email("a@b.vn")
