@@ -48,7 +48,7 @@ backend/
 │   │   ├── domain/
 │   │   │   ├── entity.py           # Entity base, AggregateRoot
 │   │   │   ├── value_object.py     # ValueObject base (frozen dataclass)
-│   │   │   └── exceptions.py       # DomainError, BusinessRuleViolation
+│   │   │   └── exceptions.py       # DomainError, BusinessRuleViolationError
 │   │   ├── application/
 │   │   │   ├── use_case.py         # UseCase[TInput, TOutput]
 │   │   │   ├── unit_of_work.py     # UnitOfWork interface

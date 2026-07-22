@@ -89,6 +89,7 @@ import pytest
 
 from src.modules.identity.application.use_cases.change_password import (
     ChangePassword,
+    InvalidCurrentPasswordError,
     WeakPasswordError,
 )
 from src.modules.identity.application.use_cases.login_user import (
@@ -98,6 +99,7 @@ from src.modules.identity.application.use_cases.login_user import (
 )
 from src.modules.identity.application.use_cases.logout_user import LogoutUser
 from src.modules.identity.application.use_cases.refresh_access_token import (
+    InvalidRefreshTokenError,
     RefreshAccessToken,
 )
 from src.modules.identity.domain.entities.audit_log import AuditAction
@@ -808,7 +810,7 @@ class TestLamMoiToken:
         cu = dang_nhap.tokens.refresh_token
         await bc.lam_moi().execute(cu)
 
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidRefreshTokenError):
             await bc.lam_moi().execute(cu)
 
     async def test_dung_lai_token_cu_thu_hoi_ca_chuoi(self) -> None:
@@ -819,10 +821,10 @@ class TestLamMoiToken:
         cu = dang_nhap.tokens.refresh_token
         moi = await bc.lam_moi().execute(cu)
 
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidRefreshTokenError):
             await bc.lam_moi().execute(cu)
 
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidRefreshTokenError):
             await bc.lam_moi().execute(moi.refresh_token)
 
     async def test_ghi_nhat_ky_khi_phat_hien_tai_su_dung(self) -> None:
@@ -832,7 +834,7 @@ class TestLamMoiToken:
         cu = dang_nhap.tokens.refresh_token
         await bc.lam_moi().execute(cu)
 
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidRefreshTokenError):
             await bc.lam_moi().execute(cu)
 
         assert any(
@@ -843,7 +845,7 @@ class TestLamMoiToken:
     async def test_token_khong_ton_tai_bi_tu_choi(self) -> None:
         bc = _BoiCanh()
 
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidRefreshTokenError):
             await bc.lam_moi().execute("token-bia-dat")
 
     async def test_token_het_han_bi_tu_choi(self) -> None:
@@ -853,7 +855,7 @@ class TestLamMoiToken:
 
         bc.clock.advance(days=8)
 
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidRefreshTokenError):
             await bc.lam_moi().execute(dang_nhap.tokens.refresh_token)
 
     async def test_user_bi_vo_hieu_hoa_thi_khong_lam_moi_duoc(self) -> None:
@@ -863,7 +865,7 @@ class TestLamMoiToken:
 
         user.deactivate(is_last_active_admin=False, now=BAY_GIO)
 
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidRefreshTokenError):
             await bc.lam_moi().execute(dang_nhap.tokens.refresh_token)
 
 
@@ -875,7 +877,7 @@ class TestDangXuat:
 
         await bc.dang_xuat().execute(dang_nhap.tokens.refresh_token, requester=user)
 
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidRefreshTokenError):
             await bc.lam_moi().execute(dang_nhap.tokens.refresh_token)
 
     async def test_dang_xuat_hai_lan_khong_gay_loi(self) -> None:
@@ -921,7 +923,7 @@ class TestDoiMatKhau:
         bc = _BoiCanh()
         user = _tao_user(bc)
 
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidCurrentPasswordError):
             await bc.doi_mat_khau().execute(user, "SaiRoi123", "MatKhauMoi456")
 
     @pytest.mark.parametrize(
@@ -943,7 +945,7 @@ class TestDoiMatKhau:
 
         await bc.doi_mat_khau().execute(user, MAT_KHAU, "MatKhauMoi456")
 
-        with pytest.raises(Exception):
+        with pytest.raises(InvalidRefreshTokenError):
             await bc.lam_moi().execute(phien_cu.tokens.refresh_token)
 ```
 
