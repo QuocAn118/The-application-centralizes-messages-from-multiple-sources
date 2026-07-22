@@ -960,14 +960,14 @@ async def test_unit_of_work_commit_thi_du_lieu_duoc_luu(
 async def test_unit_of_work_tu_rollback_khi_co_ngoai_le(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
-    class LoiGiaLap(Exception):
+    class LoiGiaLapError(Exception):
         pass
 
-    with pytest.raises(LoiGiaLap):
+    with pytest.raises(LoiGiaLapError):
         async with SqlAlchemyUnitOfWork(session_factory) as uow:
             await uow.session.execute(text("CREATE TEMP TABLE thu_nghiem_2 (gia_tri int)"))
             await uow.session.execute(text("INSERT INTO thu_nghiem_2 VALUES (1)"))
-            raise LoiGiaLap
+            raise LoiGiaLapError
 
     async with SqlAlchemyUnitOfWork(session_factory) as uow:
         ket_qua = await uow.session.execute(
@@ -1263,9 +1263,9 @@ import asyncio
 from logging.config import fileConfig
 
 from alembic import context
+from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
-from sqlalchemy import pool
 
 from src.shared.infrastructure.config import get_settings
 from src.shared.infrastructure.database import Base
