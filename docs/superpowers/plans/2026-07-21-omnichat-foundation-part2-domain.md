@@ -229,12 +229,21 @@ class PasswordHash:
 
 ```bash
 cd backend
-mkdir -p src/modules/identity/domain/value_objects tests/unit/identity
+mkdir -p src/modules/identity/domain/value_objects \
+         src/modules/identity/application \
+         src/modules/identity/infrastructure \
+         src/modules/identity/presentation \
+         tests/unit/identity
 touch src/modules/__init__.py src/modules/identity/__init__.py \
       src/modules/identity/domain/__init__.py \
       src/modules/identity/domain/value_objects/__init__.py \
+      src/modules/identity/application/__init__.py \
+      src/modules/identity/infrastructure/__init__.py \
+      src/modules/identity/presentation/__init__.py \
       tests/unit/identity/__init__.py
 ```
+
+Ba thư mục `application/`, `infrastructure/` và `presentation/` được tạo rỗng ngay từ đây dù mãi Task 13, 9 và 16 mới có nội dung. Lý do: contract của `import-linter` tham chiếu cả bốn layer, và công cụ này báo lỗi cấu hình nếu một module trong contract chưa tồn tại. Tạo sẵn khiến kiểm tra kiến trúc chạy được từ Task 4 thay vì phải đợi tới Task 16 — vi phạm dependency rule bị bắt ngay lúc phát sinh.
 
 - [ ] **Step 7: Chạy test để xác nhận thành công**
 
@@ -242,7 +251,7 @@ touch src/modules/__init__.py src/modules/identity/__init__.py \
 uv run pytest tests/unit/identity/test_value_objects.py -v
 ```
 
-Expected: `19 passed`.
+Expected: `21 passed` (các test dùng `parametrize` nở ra nhiều trường hợp).
 
 - [ ] **Step 8: Kiểm tra chất lượng mã**
 
@@ -252,7 +261,7 @@ uv run ruff check .
 uv run lint-imports
 ```
 
-Expected: toàn bộ xanh.
+Expected: mypy và ruff xanh. `lint-imports` in `Contracts: 3 kept, 0 broken.` — đây là lần đầu tiên nó chạy được, nhờ ba thư mục layer rỗng tạo ở Step 6.
 
 - [ ] **Step 9: Commit**
 
