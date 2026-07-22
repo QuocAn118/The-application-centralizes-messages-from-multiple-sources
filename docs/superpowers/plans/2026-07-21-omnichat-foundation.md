@@ -411,6 +411,7 @@ git commit -m "chore: scaffold backend project with uv and quality tooling"
 - Test: `backend/tests/unit/shared/test_entity.py`
 - Test: `backend/tests/unit/shared/test_exceptions.py`
 - Test: `backend/tests/unit/shared/test_identifiers.py`
+- Test: `backend/tests/unit/shared/test_clock.py`
 
 **Interfaces:**
 - Consumes: cấu trúc project từ Task 1.
@@ -472,6 +473,22 @@ def test_entity_dung_duoc_lam_khoa_cua_set() -> None:
     assert len({a, b}) == 1
 
 
+def test_hai_loai_entity_khac_nhau_cung_id_van_khac_nhau() -> None:
+    """Hai bảng khác nhau có thể tình cờ trùng id — chúng không phải một thứ."""
+
+    @dataclass(eq=False, kw_only=True)
+    class _LoaiKhac(Entity):
+        ten: str
+
+    ma_dinh_danh = new_id()
+
+    assert _EntityGiaLap(id=ma_dinh_danh, ten="X") != _LoaiKhac(id=ma_dinh_danh, ten="X")
+
+
+def test_so_sanh_voi_kieu_khong_phai_entity_tra_ve_false() -> None:
+    assert _EntityGiaLap(id=new_id(), ten="A") != "khong-phai-entity"
+
+
 def test_value_object_bang_nhau_khi_cung_gia_tri() -> None:
     assert _ValueObjectGiaLap(gia_tri="x") == _ValueObjectGiaLap(gia_tri="x")
 
@@ -517,6 +534,52 @@ def test_cac_loi_ung_dung_deu_ke_thua_application_error(
     lop_loi: type[ApplicationError],
 ) -> None:
     assert issubclass(lop_loi, ApplicationError)
+
+
+@pytest.mark.parametrize(
+    "lop_loi",
+    [NotFoundError, ConflictError, PermissionDeniedError, AuthenticationError],
+)
+def test_loi_ung_dung_giu_lai_ma_loi_va_thong_diep(
+    lop_loi: type[ApplicationError],
+) -> None:
+    """Tầng presentation đọc ``.code`` để ánh xạ sang mã HTTP — nếu thuộc tính
+    này không được gán, toàn bộ xử lý lỗi của API sẽ hỏng."""
+    loi = lop_loi("Thong diep thu", code="MA_THU")
+
+    assert loi.message == "Thong diep thu"
+    assert loi.code == "MA_THU"
+    assert str(loi) == "Thong diep thu"
+```
+
+File `backend/tests/unit/shared/test_clock.py`:
+
+```python
+from datetime import UTC, datetime
+
+from src.shared.infrastructure.clock import SystemClock
+
+
+def test_tra_ve_thoi_diem_co_kem_mui_gio() -> None:
+    """Thời điểm không kèm múi giờ sẽ làm hỏng mọi phép so sánh với cột
+    ``timestamptz`` đọc từ cơ sở dữ liệu."""
+    bay_gio = SystemClock().now()
+
+    assert bay_gio.tzinfo is not None
+    assert bay_gio.utcoffset() == UTC.utcoffset(None)
+
+
+def test_thoi_gian_khong_lui_ve_qua_khu() -> None:
+    truoc = SystemClock().now()
+    sau = SystemClock().now()
+
+    assert sau >= truoc
+
+
+def test_gan_voi_thoi_gian_he_thong() -> None:
+    lech = abs((SystemClock().now() - datetime.now(UTC)).total_seconds())
+
+    assert lech < 5
 ```
 
 File `backend/tests/unit/shared/test_identifiers.py`:
@@ -739,7 +802,15 @@ touch src/shared/__init__.py src/shared/domain/__init__.py \
 uv run pytest tests/unit/shared -v
 ```
 
-Expected: `8 passed`.
+Expected: `23 passed` (một số test dùng `parametrize` nên nở ra nhiều trường hợp).
+
+Kiểm tra độ phủ của shared kernel — đây là nền 18 task sau kế thừa:
+
+```bash
+uv run pytest tests/unit/shared --cov=src.shared --cov-report=term-missing
+```
+
+Expected: ≥ 90%.
 
 - [ ] **Step 11: Kiểm tra type và dependency rule**
 
