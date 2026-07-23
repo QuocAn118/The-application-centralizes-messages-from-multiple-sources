@@ -62,7 +62,14 @@ ignore_errors = true
 
 [tool.coverage.run]
 source = ["src"]
-omit = ["src/main.py"]
+omit = [
+    "src/main.py",
+    # Interface repository và port chỉ là Protocol với thân ``...`` — không có
+    # logic để test và không bao giờ được khởi tạo, nên đo coverage chúng vô
+    # nghĩa và kéo tụt con số một cách giả tạo.
+    "src/modules/*/domain/repositories/*.py",
+    "src/modules/*/application/ports.py",
+]
 
 [tool.importlinter]
 root_package = "src"
