@@ -2121,6 +2121,29 @@ class TestAccessToken:
         with pytest.raises(InvalidTokenError):
             self._dich_vu().decode_access_token(rac)
 
+    def test_token_dung_chu_ky_nhung_sai_cau_truc_bi_tu_choi(self) -> None:
+        """Token ký đúng khoá nhưng ``sub`` không phải UUID hợp lệ. Đây là
+        đường phòng thủ cuối: kẻ có được khoá bí mật, hoặc một dịch vụ lệch
+        phiên bản, có thể sinh token ký đúng nhưng payload sai cấu trúc — phải
+        trả về ``InvalidTokenError`` chứ không để lỗi 500 lọt ra ngoài."""
+        import jwt
+
+        het_han = int((BAY_GIO + timedelta(minutes=15)).timestamp())
+        token = jwt.encode(
+            {
+                "sub": "khong-phai-uuid",
+                "role": "STAFF",
+                "dept": None,
+                "iat": int(BAY_GIO.timestamp()),
+                "exp": het_han,
+            },
+            KHOA_BI_MAT,
+            algorithm="HS256",
+        )
+
+        with pytest.raises(InvalidTokenError):
+            self._dich_vu().decode_access_token(token)
+
     def test_thoi_diem_het_han_dung_bang_15_phut(self) -> None:
         dich_vu = self._dich_vu()
 
