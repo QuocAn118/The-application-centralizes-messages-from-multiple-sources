@@ -385,6 +385,23 @@ class TestDoiTenPhongBan:
             phong.rename("   ", now=SAU_DO)
 
 
+class TestCapNhatMoTaPhongBan:
+    def test_cap_nhat_mo_ta_va_moc_thoi_gian(self) -> None:
+        phong = _tao_phong_ban()
+
+        phong.update_description("Phòng phụ trách sản phẩm A", now=SAU_DO)
+
+        assert phong.description == "Phòng phụ trách sản phẩm A"
+        assert phong.updated_at == SAU_DO
+
+    def test_xoa_mo_ta_bang_none(self) -> None:
+        phong = Department.create(name="Kinh doanh", description="Cũ", now=BAY_GIO)
+
+        phong.update_description(None, now=SAU_DO)
+
+        assert phong.description is None
+
+
 class TestVoHieuHoaPhongBan:
     def test_vo_hieu_hoa_duoc_khi_khong_con_nhan_vien(self) -> None:
         phong = _tao_phong_ban()
@@ -2152,7 +2169,7 @@ touch src/modules/identity/domain/repositories/__init__.py
 uv run pytest tests/unit -v
 ```
 
-Expected: toàn bộ xanh, `77 passed`.
+Expected: toàn bộ test unit xanh (con số tích luỹ tăng dần qua các task).
 
 - [ ] **Step 8: Kiểm tra chất lượng mã và dependency rule**
 
