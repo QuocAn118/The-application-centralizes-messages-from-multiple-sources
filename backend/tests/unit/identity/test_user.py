@@ -280,8 +280,59 @@ class TestQuyenQuanLy:
 
         assert manager.can_manage(admin) is False
 
+    def test_manager_khong_quan_ly_duoc_manager_khac_cung_phong(self) -> None:
+        """Quản lý chỉ quản được Nhân viên. Không có quyền lên nhau, kể cả cùng
+        phòng ban — thiếu test này thì lỗi ``other.role is not Role.ADMIN`` sẽ
+        lọt qua và biến can_manage thành lỗ hổng leo thang quyền."""
+        manager_a = _tao_user(role=Role.MANAGER, department_id=PHONG_A, email="ma@congty.vn")
+        manager_b = _tao_user(role=Role.MANAGER, department_id=PHONG_A, email="mb@congty.vn")
+
+        assert manager_a.can_manage(manager_b) is False
+
     def test_staff_khong_quan_ly_duoc_ai(self) -> None:
         staff = _tao_user(role=Role.STAFF, department_id=PHONG_A)
         khac = _tao_user(role=Role.STAFF, department_id=PHONG_A, email="b@congty.vn")
 
         assert staff.can_manage(khac) is False
+
+
+class TestChanChuyenTuAdmin:
+    def test_khong_ha_duoc_admin_xuong_staff(self) -> None:
+        """Chỉ chuyển đổi Staff ↔ Manager. Guard tự-chặn của Admin (nhánh
+        ``self.role is Role.ADMIN``) chỉ được kiểm chứng bởi test này."""
+        admin = _tao_user(role=Role.ADMIN, department_id=None, email="admin@congty.vn")
+
+        with pytest.raises(CannotChangeToAdminError):
+            admin.change_role(
+                new_role=Role.STAFF,
+                department_id=PHONG_A,
+                department_has_active_manager=False,
+                now=SAU_DO,
+            )
+
+
+class TestCapNhatHoSo:
+    def test_cap_nhat_ho_ten_va_so_dien_thoai(self) -> None:
+        user = _tao_user()
+
+        user.update_profile(full_name="Tên Mới", phone="0912345678", now=SAU_DO)
+
+        assert user.full_name == "Tên Mới"
+        assert user.phone == "0912345678"
+        assert user.updated_at == SAU_DO
+
+    def test_tham_so_none_giu_nguyen_gia_tri_cu(self) -> None:
+        """``None`` nghĩa là không đổi trường đó — không phải xoá trắng nó."""
+        user = _tao_user()
+        ho_ten_cu = user.full_name
+
+        user.update_profile(full_name=None, phone="0900000000", now=SAU_DO)
+
+        assert user.full_name == ho_ten_cu
+        assert user.phone == "0900000000"
+
+    def test_tu_choi_ho_ten_rong(self) -> None:
+        user = _tao_user()
+
+        with pytest.raises(EmptyFullNameError):
+            user.update_profile(full_name="   ", phone=None, now=SAU_DO)
