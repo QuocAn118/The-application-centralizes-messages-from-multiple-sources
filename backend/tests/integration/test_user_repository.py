@@ -8,12 +8,14 @@ from src.modules.identity.domain.entities.user import User
 from src.modules.identity.domain.value_objects.email import Email
 from src.modules.identity.domain.value_objects.password_hash import PasswordHash
 from src.modules.identity.domain.value_objects.role import Role
+from src.modules.identity.infrastructure.models.user_model import UserModel
 from src.modules.identity.infrastructure.repositories.department_repository import (
     SqlAlchemyDepartmentRepository,
 )
 from src.modules.identity.infrastructure.repositories.user_repository import (
     SqlAlchemyUserRepository,
 )
+from src.shared.domain.identifiers import new_id
 
 pytestmark = pytest.mark.integration
 
@@ -60,16 +62,32 @@ class TestLuuVaDoc:
     ) -> None:
         repo = SqlAlchemyUserRepository(db_session)
         phong = await _tao_phong(db_session, "Phòng 2")
-        await repo.add(_user("hoathuong@congty.vn", Role.STAFF, phong.id))
+        # Không đi qua repo.add / mapper: ghi trực tiếp giá trị chữ HOA vào cột.
+        db_session.add(
+            UserModel(
+                id=new_id(),
+                email="HoaThuong@CongTy.VN",
+                password_hash="$2b$12$hash",
+                full_name="Nguyễn Văn A",
+                phone=None,
+                role=Role.STAFF.value,
+                department_id=phong.id,
+                is_active=True,
+                must_change_password=True,
+                last_login_at=None,
+                created_at=BAY_GIO,
+                updated_at=BAY_GIO,
+            )
+        )
         await db_session.flush()
 
-        assert await repo.get_by_email(Email("HoaThuong@CongTy.VN")) is not None
+        # Value object chuẩn hoá khoá tra cứu về "hoathuong@congty.vn"; chỉ khi
+        # truy vấn dùng lower(email) thì mới khớp được với bản ghi chữ HOA.
+        assert await repo.get_by_email(Email("hoathuong@congty.vn")) is not None
 
     async def test_khong_tim_thay_thi_tra_ve_none(
         self, db_session: AsyncSession
     ) -> None:
-        from src.shared.domain.identifiers import new_id
-
         repo = SqlAlchemyUserRepository(db_session)
 
         assert await repo.get_by_id(new_id()) is None
