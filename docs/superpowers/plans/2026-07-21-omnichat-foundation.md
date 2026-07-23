@@ -205,6 +205,11 @@ target-version = "py313"
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
 
+[tool.ruff.lint.per-file-ignores]
+# File migration do Alembic autogenerate — không áp style thủ công lên chúng.
+# Sửa tay theo ruff sẽ khiến lần autogenerate sau lại sinh khác và gây nhiễu diff.
+"migrations/*" = ["E501", "I001", "UP007", "UP035"]
+
 [tool.mypy]
 python_version = "3.13"
 strict = true

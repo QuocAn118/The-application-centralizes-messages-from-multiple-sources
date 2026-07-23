@@ -15,7 +15,8 @@ Giai đoạn này nối tầng domain với PostgreSQL. Mọi test ở đây là
 - Create: `backend/src/modules/identity/infrastructure/models/user_model.py`
 - Create: `backend/src/modules/identity/infrastructure/models/refresh_token_model.py`
 - Create: `backend/src/modules/identity/infrastructure/models/audit_log_model.py`
-- Modify: `backend/migrations/env.py` — thêm import ORM model
+- Modify: `backend/migrations/env.py` — thêm import ORM model (kèm `# noqa: F401`)
+- Modify: `backend/pyproject.toml` — thêm `per-file-ignores` cho `migrations/versions/*` (xem Step 14b)
 - Create: `backend/migrations/versions/<hash>_tao_bang_identity.py` (sinh tự động)
 - Test: `backend/tests/integration/test_schema.py`
 
@@ -256,21 +257,24 @@ class TestXoaTheoQuanHe:
         """Nhật ký phải sống sót — đó là mục đích tồn tại của nó."""
         phong = await _them_phong_ban(db_session, "Phong Audit")
         user_id = await _them_user(db_session, "audit@congty.vn", "STAFF", phong)
+        # ``actor_id`` là cột uuid còn ``resource_id`` là cột varchar. Dùng cùng
+        # một tham số cho cả hai khiến psycopg3 không suy được kiểu và ném
+        # AmbiguousParameter, nên phải tách thành ``:uid`` và ``:rid`` riêng.
         await db_session.execute(
             text(
                 "INSERT INTO audit_logs (id, actor_id, action, resource_type, "
                 "resource_id, changes, ip_address, user_agent, created_at) "
-                "VALUES (gen_random_uuid(), :uid, 'user.created', 'user', :uid, "
+                "VALUES (gen_random_uuid(), :uid, 'user.created', 'user', :rid, "
                 "NULL, NULL, NULL, :bg)"
             ),
-            {"uid": user_id, "bg": BAY_GIO},
+            {"uid": user_id, "rid": str(user_id), "bg": BAY_GIO},
         )
 
         await db_session.execute(text("DELETE FROM users WHERE id = :uid"), {"uid": user_id})
 
         con_lai = await db_session.execute(
-            text("SELECT actor_id FROM audit_logs WHERE resource_id = :uid"),
-            {"uid": user_id},
+            text("SELECT actor_id FROM audit_logs WHERE resource_id = :rid"),
+            {"rid": str(user_id)},
         )
         assert con_lai.scalar_one() is None
 ```
@@ -293,7 +297,7 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import Boolean, DateTime, Index, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID as PgUUID
+from sqlalchemy.dialects.postgresql import UUID as PgUUID  # noqa: N811
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.shared.infrastructure.database import Base
@@ -343,7 +347,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID as PgUUID
+from sqlalchemy.dialects.postgresql import UUID as PgUUID  # noqa: N811
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.shared.infrastructure.database import Base
@@ -414,7 +418,7 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import DateTime, ForeignKey, Index, String, func
-from sqlalchemy.dialects.postgresql import UUID as PgUUID
+from sqlalchemy.dialects.postgresql import UUID as PgUUID  # noqa: N811
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.shared.infrastructure.database import Base
@@ -468,7 +472,7 @@ from uuid import UUID
 
 from sqlalchemy import DateTime, ForeignKey, Index, String, func
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PgUUID
+from sqlalchemy.dialects.postgresql import UUID as PgUUID  # noqa: N811
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.shared.infrastructure.database import Base
@@ -514,14 +518,14 @@ Sửa `backend/migrations/env.py`, thêm ngay sau dòng `from src.shared.infrast
 ```python
 # Import để Base.metadata biết tới các bảng. Không import thì autogenerate
 # sẽ sinh ra migration rỗng.
-from src.modules.identity.infrastructure.models.audit_log_model import AuditLogModel  # noqa: F401,E402
-from src.modules.identity.infrastructure.models.department_model import (  # noqa: F401,E402
+from src.modules.identity.infrastructure.models.audit_log_model import AuditLogModel  # noqa: F401
+from src.modules.identity.infrastructure.models.department_model import (  # noqa: F401
     DepartmentModel,
 )
-from src.modules.identity.infrastructure.models.refresh_token_model import (  # noqa: F401,E402
+from src.modules.identity.infrastructure.models.refresh_token_model import (  # noqa: F401
     RefreshTokenModel,
 )
-from src.modules.identity.infrastructure.models.user_model import UserModel  # noqa: F401,E402
+from src.modules.identity.infrastructure.models.user_model import UserModel  # noqa: F401
 ```
 
 - [ ] **Step 8: Tạo các file `__init__.py`**
@@ -608,10 +612,25 @@ DATABASE_URL="postgresql+psycopg://postgres@localhost:5432/omnichat_test" uv run
 
 Expected: cả hai lệnh chạy không lỗi. Migration không đảo ngược được là migration chưa hoàn chỉnh.
 
+- [ ] **Step 14b: Kiểm tra chất lượng mã**
+
+```bash
+uv run ruff check .
+uv run mypy src
+uv run lint-imports
+```
+
+Expected: toàn bộ xanh, `Contracts: 3 kept, 0 broken.`
+
+Hai điểm ruff cần lưu ý ở task này, đã được xử lý sẵn trong code phía trên:
+- Bốn model import `UUID as PgUUID` kèm `# noqa: N811`. Alias này cố ý để phân biệt kiểu UUID của PostgreSQL với `uuid.UUID` của stdlib; ruff coi tên viết hoa import thành tên khác là vi phạm N811, nên phải bỏ qua có chủ đích.
+- File migration tự sinh trong `migrations/versions/` được `pyproject.toml` miễn các quy tắc style thủ công (`E501`, `I001`, `UP007`, `UP035`) qua `per-file-ignores`. Sửa tay theo ruff sẽ khiến lần autogenerate sau sinh khác đi và gây nhiễu diff. `migrations/env.py` **không** nằm trong miễn trừ này vì là file viết tay; nó chỉ mang `# noqa: F401` trên các import model (import để autogenerate nhìn thấy bảng, không dùng trực tiếp).
+
 - [ ] **Step 15: Commit**
 
 ```bash
 git add backend/src/modules/identity/infrastructure backend/migrations \
+        backend/migrations/env.py backend/pyproject.toml \
         backend/tests/integration/test_schema.py
 git commit -m "feat: add identity orm models and initial migration"
 ```
