@@ -8,6 +8,16 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+# Import để Base.metadata biết tới các bảng. Không import thì autogenerate
+# sẽ sinh ra migration rỗng.
+from src.modules.identity.infrastructure.models.audit_log_model import AuditLogModel  # noqa: F401
+from src.modules.identity.infrastructure.models.department_model import (  # noqa: F401
+    DepartmentModel,
+)
+from src.modules.identity.infrastructure.models.refresh_token_model import (  # noqa: F401
+    RefreshTokenModel,
+)
+from src.modules.identity.infrastructure.models.user_model import UserModel  # noqa: F401
 from src.shared.infrastructure.config import get_settings
 from src.shared.infrastructure.database import Base
 from src.shared.infrastructure.event_loop import cau_hinh_event_loop
