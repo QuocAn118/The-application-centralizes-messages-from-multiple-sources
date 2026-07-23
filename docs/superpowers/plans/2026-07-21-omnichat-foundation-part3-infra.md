@@ -1508,9 +1508,12 @@ Expected: FAIL với `ModuleNotFoundError` cho `repositories`.
 
 - [ ] **Step 4: Viết `user_repository.py`**
 
+**Lưu ý về kiểu của `_ap_dung_bo_loc`:** hàm lọc dùng chung này nhận cả câu `list` (kiểu `Select[tuple[UserModel]]`) lẫn câu `count` (kiểu `Select[tuple[int]]`). Khai báo cứng một kiểu trả về sẽ khiến mypy strict suy `scalar_one()` của câu count ra `UserModel` thay vì `int`, gây lỗi `no-any-return` và `call-overload`. Giải pháp là dùng `TypeVar` chặn theo `Select[Any]`, để hàm giữ nguyên kiểu Select truyền vào cho từng lời gọi. Cách này chính xác hơn `# type: ignore`, và loại bỏ luôn nhu cầu chú thích bỏ qua ở câu count.
+
 ```python
 """Repository người dùng dùng SQLAlchemy."""
 
+from typing import Any, TypeVar
 from uuid import UUID
 
 from sqlalchemy import Select, func, select
@@ -1521,6 +1524,9 @@ from src.modules.identity.domain.value_objects.email import Email
 from src.modules.identity.domain.value_objects.role import Role
 from src.modules.identity.infrastructure.mappers.user_mapper import UserMapper
 from src.modules.identity.infrastructure.models.user_model import UserModel
+
+
+_SelectT = TypeVar("_SelectT", bound=Select[Any])
 
 
 class SqlAlchemyUserRepository:
@@ -1562,12 +1568,12 @@ class SqlAlchemyUserRepository:
 
     def _ap_dung_bo_loc(
         self,
-        cau_truy_van: Select[tuple[UserModel]],
+        cau_truy_van: _SelectT,
         department_id: UUID | None,
         role: Role | None,
         is_active: bool | None,
         search: str | None,
-    ) -> Select[tuple[UserModel]]:
+    ) -> _SelectT:
         if department_id is not None:
             cau_truy_van = cau_truy_van.where(UserModel.department_id == department_id)
         if role is not None:
@@ -1606,7 +1612,7 @@ class SqlAlchemyUserRepository:
         search: str | None = None,
     ) -> int:
         cau_truy_van = self._ap_dung_bo_loc(
-            select(func.count()).select_from(UserModel),  # type: ignore[arg-type]
+            select(func.count()).select_from(UserModel),
             department_id,
             role,
             is_active,
@@ -1807,6 +1813,7 @@ class SqlAlchemyRefreshTokenRepository:
 """Repository nhật ký kiểm toán dùng SQLAlchemy."""
 
 from datetime import datetime
+from typing import Any, TypeVar
 from uuid import UUID
 
 from sqlalchemy import Select, func, select
@@ -1815,6 +1822,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.identity.domain.entities.audit_log import AuditAction, AuditLog
 from src.modules.identity.infrastructure.mappers.audit_log_mapper import AuditLogMapper
 from src.modules.identity.infrastructure.models.audit_log_model import AuditLogModel
+
+
+_SelectT = TypeVar("_SelectT", bound=Select[Any])
 
 
 class SqlAlchemyAuditLogRepository:
@@ -1828,13 +1838,13 @@ class SqlAlchemyAuditLogRepository:
 
     def _ap_dung_bo_loc(
         self,
-        cau_truy_van: Select[tuple[AuditLogModel]],
+        cau_truy_van: _SelectT,
         actor_id: UUID | None,
         action: AuditAction | None,
         resource_type: str | None,
         from_time: datetime | None,
         to_time: datetime | None,
-    ) -> Select[tuple[AuditLogModel]]:
+    ) -> _SelectT:
         if actor_id is not None:
             cau_truy_van = cau_truy_van.where(AuditLogModel.actor_id == actor_id)
         if action is not None:
@@ -1877,7 +1887,7 @@ class SqlAlchemyAuditLogRepository:
         to_time: datetime | None = None,
     ) -> int:
         cau_truy_van = self._ap_dung_bo_loc(
-            select(func.count()).select_from(AuditLogModel),  # type: ignore[arg-type]
+            select(func.count()).select_from(AuditLogModel),
             actor_id,
             action,
             resource_type,
