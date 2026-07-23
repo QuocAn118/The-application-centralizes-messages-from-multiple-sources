@@ -425,7 +425,7 @@ Expected: FAIL với `ModuleNotFoundError: No module named 'src.modules.identity
 ```python
 """Entity phòng ban."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 
 from src.shared.domain.entity import AggregateRoot
@@ -869,7 +869,7 @@ Expected: FAIL với `ModuleNotFoundError` cho `src.modules.identity.domain.enti
 ```python
 """Entity người dùng."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
@@ -1335,7 +1335,7 @@ Expected: FAIL với `ModuleNotFoundError`.
 ```python
 """Entity refresh token."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
@@ -1418,7 +1418,7 @@ Quy tắc tương tự áp dụng cho `User`, `Department` và `AuditLog`.
 ```python
 """Entity bản ghi nhật ký kiểm toán."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
