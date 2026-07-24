@@ -23,10 +23,15 @@ from src.shared.application.exceptions import (
     PermissionDeniedError,
 )
 from src.shared.domain.exceptions import DomainError
+from src.shared.infrastructure.clock import SystemClock
 from src.shared.infrastructure.config import get_settings
 from src.shared.infrastructure.database import create_engine_and_session_factory
 from src.shared.infrastructure.event_loop import cau_hinh_event_loop
 from src.shared.infrastructure.logging import cau_hinh_logging, request_id_var
+from src.shared.infrastructure.rate_limiter import (
+    InMemoryRateLimiter,
+    RateLimitExceededError,
+)
 
 # Uvicorn không tự chọn event loop tương thích với psycopg trên Windows, nên
 # phải cấu hình ngay khi module được nạp — trước khi uvicorn dựng loop.
@@ -43,6 +48,7 @@ _MA_HTTP: list[tuple[type[Exception], int]] = [
     (PermissionDeniedError, 403),
     (NotFoundError, 404),
     (ConflictError, 409),
+    (RateLimitExceededError, 429),
     (DomainError, 422),
     (ApplicationError, 400),
 ]
@@ -81,6 +87,14 @@ def create_app() -> FastAPI:
         version="0.1.0",
         description="Nền tảng tập trung tin nhắn đa kênh",
         lifespan=lifespan,
+    )
+
+    # Khởi tạo ngay tại đây, không đợi ``lifespan``: bộ đếm phải tồn tại kể cả
+    # khi ứng dụng được dựng mà không chạy lifespan (ví dụ trong test đầu-cuối).
+    app.state.login_rate_limiter = InMemoryRateLimiter(
+        max_attempts=settings.login_rate_limit_attempts,
+        window_seconds=settings.login_rate_limit_window_seconds,
+        clock=SystemClock(),
     )
 
     @app.middleware("http")
