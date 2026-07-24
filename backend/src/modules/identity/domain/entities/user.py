@@ -212,9 +212,7 @@ class User(AggregateRoot):
         self.is_active = True
         self.updated_at = now
 
-    def set_password(
-        self, password_hash: PasswordHash, must_change: bool, now: datetime
-    ) -> None:
+    def set_password(self, password_hash: PasswordHash, must_change: bool, now: datetime) -> None:
         """Đặt mật khẩu mới.
 
         ``must_change=True`` khi Admin cấp mật khẩu tạm; ``False`` khi chính
@@ -227,9 +225,7 @@ class User(AggregateRoot):
     def record_login(self, now: datetime) -> None:
         self.last_login_at = now
 
-    def update_profile(
-        self, full_name: str | None, phone: str | None, now: datetime
-    ) -> None:
+    def update_profile(self, full_name: str | None, phone: str | None, now: datetime) -> None:
         """Cập nhật thông tin hồ sơ. Tham số ``None`` nghĩa là giữ nguyên."""
         if full_name is not None:
             self.full_name = self._chuan_hoa_ho_ten(full_name)

@@ -11,9 +11,7 @@ from tests.unit.identity.fakes import FakeClock
 BAY_GIO = datetime(2026, 7, 21, 10, 0, tzinfo=UTC)
 
 
-def _tao(
-    max_attempts: int = 3, window_seconds: int = 300
-) -> tuple[InMemoryRateLimiter, FakeClock]:
+def _tao(max_attempts: int = 3, window_seconds: int = 300) -> tuple[InMemoryRateLimiter, FakeClock]:
     dong_ho = FakeClock(BAY_GIO)
     return InMemoryRateLimiter(max_attempts, window_seconds, dong_ho), dong_ho
 

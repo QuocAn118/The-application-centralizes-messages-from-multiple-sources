@@ -83,9 +83,7 @@ class FakeUserRepository:
         if search:
             tu_khoa = search.lower()
             ket_qua = [
-                u
-                for u in ket_qua
-                if tu_khoa in u.full_name.lower() or tu_khoa in u.email.value
+                u for u in ket_qua if tu_khoa in u.full_name.lower() or tu_khoa in u.email.value
             ]
         return sorted(ket_qua, key=lambda u: u.created_at)
 
@@ -111,11 +109,7 @@ class FakeUserRepository:
 
     async def count_active_in_department(self, department_id: UUID) -> int:
         return len(
-            [
-                u
-                for u in self._users.values()
-                if u.department_id == department_id and u.is_active
-            ]
+            [u for u in self._users.values() if u.department_id == department_id and u.is_active]
         )
 
     async def has_active_manager(
@@ -130,18 +124,14 @@ class FakeUserRepository:
         )
 
     async def count_active_admins(self) -> int:
-        return len(
-            [u for u in self._users.values() if u.role is Role.ADMIN and u.is_active]
-        )
+        return len([u for u in self._users.values() if u.role is Role.ADMIN and u.is_active])
 
 
 class FakeDepartmentRepository:
     """Lưu phòng ban trong một dict."""
 
     def __init__(self, departments: list[Department] | None = None) -> None:
-        self._departments: dict[UUID, Department] = {
-            d.id: d for d in (departments or [])
-        }
+        self._departments: dict[UUID, Department] = {d.id: d for d in (departments or [])}
 
     async def get_by_id(self, department_id: UUID) -> Department | None:
         return self._departments.get(department_id)

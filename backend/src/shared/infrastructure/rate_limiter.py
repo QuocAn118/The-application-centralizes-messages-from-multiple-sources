@@ -12,8 +12,7 @@ class RateLimitExceededError(ApplicationError):
 
     def __init__(self, retry_after_seconds: int) -> None:
         super().__init__(
-            f"Bạn đã thử quá nhiều lần. Vui lòng thử lại sau "
-            f"{retry_after_seconds} giây.",
+            f"Bạn đã thử quá nhiều lần. Vui lòng thử lại sau {retry_after_seconds} giây.",
             code="RATE_LIMIT_EXCEEDED",
         )
         self.retry_after_seconds = retry_after_seconds
@@ -29,9 +28,7 @@ class InMemoryRateLimiter:
     Xem mục 9 của spec.
     """
 
-    def __init__(
-        self, max_attempts: int, window_seconds: int, clock: IClock
-    ) -> None:
+    def __init__(self, max_attempts: int, window_seconds: int, clock: IClock) -> None:
         self._max_attempts = max_attempts
         self._window = timedelta(seconds=window_seconds)
         self._clock = clock
@@ -44,9 +41,7 @@ class InMemoryRateLimiter:
         """
         moc = bay_gio - self._window
         khoa_can_xoa = [
-            khoa
-            for khoa, danh_sach in self._lan_goi.items()
-            if not any(t > moc for t in danh_sach)
+            khoa for khoa, danh_sach in self._lan_goi.items() if not any(t > moc for t in danh_sach)
         ]
         for khoa in khoa_can_xoa:
             del self._lan_goi[khoa]

@@ -27,9 +27,7 @@ async def _tao_admin(engine: AsyncEngine) -> None:
 
 
 async def _token(client: AsyncClient, email: str, mat_khau: str = MAT_KHAU) -> str:
-    phan_hoi = await client.post(
-        "/api/v1/auth/login", json={"email": email, "password": mat_khau}
-    )
+    phan_hoi = await client.post("/api/v1/auth/login", json={"email": email, "password": mat_khau})
     assert phan_hoi.status_code == 200, phan_hoi.text
     return phan_hoi.json()["access_token"]
 
@@ -215,9 +213,7 @@ class TestPhanQuyen:
         )
         manager_token = await _token(client, "ma@congty.vn", "MatKhauTam123")
 
-        danh_sach = await client.get(
-            "/api/v1/users", headers=_bearer(manager_token)
-        )
+        danh_sach = await client.get("/api/v1/users", headers=_bearer(manager_token))
 
         emails = {u["email"] for u in danh_sach.json()["items"]}
         assert "sb@congty.vn" not in emails
@@ -270,9 +266,7 @@ class TestVongDoiTaiKhoan:
         )
         user_id = tao.json()["id"]
 
-        await client.post(
-            f"/api/v1/users/{user_id}/deactivate", headers=_bearer(admin_token)
-        )
+        await client.post(f"/api/v1/users/{user_id}/deactivate", headers=_bearer(admin_token))
 
         dang_nhap = await client.post(
             "/api/v1/auth/login",
@@ -293,9 +287,7 @@ class TestVongDoiTaiKhoan:
         )
 
         assert phan_hoi.status_code == 422
-        assert (
-            phan_hoi.json()["error"]["code"] == "LAST_ADMIN_CANNOT_BE_DEACTIVATED"
-        )
+        assert phan_hoi.json()["error"]["code"] == "LAST_ADMIN_CANNOT_BE_DEACTIVATED"
 
     async def test_khong_dong_duoc_phong_ban_con_nhan_vien(
         self, client: AsyncClient, engine: AsyncEngine

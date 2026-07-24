@@ -77,9 +77,7 @@ async def get_current_user(
     hiệu hoá mất quyền ngay ở lần gọi tiếp theo, dù access token còn hạn.
     """
     if credentials is None:
-        raise AuthenticationError(
-            "Thiếu thông tin xác thực.", code="MISSING_CREDENTIALS"
-        )
+        raise AuthenticationError("Thiếu thông tin xác thực.", code="MISSING_CREDENTIALS")
 
     try:
         payload = token_service.decode_access_token(credentials.credentials)
@@ -88,9 +86,7 @@ async def get_current_user(
 
     user = await SqlAlchemyUserRepository(session).get_by_id(payload.user_id)
     if user is None or not user.is_active:
-        raise AuthenticationError(
-            "Tài khoản không còn hiệu lực.", code="INACTIVE_ACCOUNT"
-        )
+        raise AuthenticationError("Tài khoản không còn hiệu lực.", code="INACTIVE_ACCOUNT")
     return user
 
 

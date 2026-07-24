@@ -26,9 +26,7 @@ class InvalidCredentialsError(ApplicationError):
     """
 
     def __init__(self) -> None:
-        super().__init__(
-            "Email hoặc mật khẩu không đúng.", code="INVALID_CREDENTIALS"
-        )
+        super().__init__("Email hoặc mật khẩu không đúng.", code="INVALID_CREDENTIALS")
 
 
 class InactiveAccountError(ApplicationError):
@@ -97,9 +95,7 @@ class LoginUser:
 
         user = await self._user_repo.get_by_email(dia_chi)
 
-        if user is None or not self._hasher.verify(
-            password, user.password_hash.value
-        ):
+        if user is None or not self._hasher.verify(password, user.password_hash.value):
             await self._ghi_that_bai(email, ip_address, user_agent)
             raise InvalidCredentialsError
 

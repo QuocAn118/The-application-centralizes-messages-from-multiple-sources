@@ -196,9 +196,7 @@ class TestKichHoatLai:
         user = _tao_user()
         user.deactivate(is_last_active_admin=False, now=SAU_DO)
 
-        user.reactivate(
-            department_is_active=True, department_has_active_manager=False, now=SAU_DO
-        )
+        user.reactivate(department_is_active=True, department_has_active_manager=False, now=SAU_DO)
 
         assert user.is_active is True
 
@@ -224,9 +222,7 @@ class TestKichHoatLai:
         admin = _tao_user(role=Role.ADMIN, department_id=None)
         admin.deactivate(is_last_active_admin=False, now=SAU_DO)
 
-        admin.reactivate(
-            department_is_active=False, department_has_active_manager=True, now=SAU_DO
-        )
+        admin.reactivate(department_is_active=False, department_has_active_manager=True, now=SAU_DO)
 
         assert admin.is_active is True
 

@@ -36,9 +36,7 @@ class JwtTokenService:
         self._access_token_expire = timedelta(minutes=access_token_expire_minutes)
         self._clock = clock
 
-    def create_access_token(
-        self, user_id: UUID, role: Role, department_id: UUID | None
-    ) -> str:
+    def create_access_token(self, user_id: UUID, role: Role, department_id: UUID | None) -> str:
         bay_gio = self._clock.now()
         het_han = bay_gio + self._access_token_expire
         noi_dung = {

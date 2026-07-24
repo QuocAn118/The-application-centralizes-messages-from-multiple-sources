@@ -40,9 +40,7 @@ class ResetUserPassword:
         self._hasher = hasher
         self._clock = clock
 
-    async def execute(
-        self, requester: User, user_id: UUID, new_password: str
-    ) -> None:
+    async def execute(self, requester: User, user_id: UUID, new_password: str) -> None:
         if requester.role is not Role.ADMIN:
             raise PermissionDeniedError(
                 "Chỉ quản trị viên được đặt lại mật khẩu.", code="ADMIN_REQUIRED"

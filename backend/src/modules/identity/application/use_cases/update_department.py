@@ -46,9 +46,7 @@ class UpdateDepartment:
 
         phong = await self._department_repo.get_by_id(department_id)
         if phong is None:
-            raise NotFoundError(
-                "Không tìm thấy phòng ban.", code="DEPARTMENT_NOT_FOUND"
-            )
+            raise NotFoundError("Không tìm thấy phòng ban.", code="DEPARTMENT_NOT_FOUND")
 
         bay_gio = self._clock.now()
         ten_cu = phong.name

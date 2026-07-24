@@ -168,9 +168,7 @@ class TestDangNhap:
 
         tho = ket_qua.tokens.refresh_token
         assert await bc.token_repo.get_by_hash(tho) is None
-        assert await bc.token_repo.get_by_hash(
-            bc.token_service.hash_refresh_token(tho)
-        ) is not None
+        assert await bc.token_repo.get_by_hash(bc.token_service.hash_refresh_token(tho)) is not None
 
     async def test_bao_lai_yeu_cau_doi_mat_khau(self) -> None:
         bc = _BoiCanh()
@@ -309,10 +307,7 @@ class TestLamMoiToken:
         with pytest.raises(InvalidRefreshTokenError):
             await bc.lam_moi().execute(cu)
 
-        assert any(
-            e.action is AuditAction.AUTH_TOKEN_REUSE_DETECTED
-            for e in bc.audit_repo.entries
-        )
+        assert any(e.action is AuditAction.AUTH_TOKEN_REUSE_DETECTED for e in bc.audit_repo.entries)
 
     async def test_phat_hien_tai_su_dung_chot_giao_dich_truoc_khi_nem_loi(
         self,
@@ -385,9 +380,7 @@ class TestDangXuat:
         ke_xau = _tao_user(bc, email="kexau@congty.vn")
         cua_nan_nhan = await bc.dang_nhap().execute("nannhan@congty.vn", MAT_KHAU)
 
-        await bc.dang_xuat().execute(
-            cua_nan_nhan.tokens.refresh_token, requester=ke_xau
-        )
+        await bc.dang_xuat().execute(cua_nan_nhan.tokens.refresh_token, requester=ke_xau)
 
         moi = await bc.lam_moi().execute(cua_nan_nhan.tokens.refresh_token)
         assert moi.access_token

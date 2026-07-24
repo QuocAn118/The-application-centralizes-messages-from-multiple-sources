@@ -47,8 +47,6 @@ class BcryptPasswordHasher:
         trong cơ sở dữ liệu không làm sập luồng đăng nhập.
         """
         try:
-            return bcrypt.checkpw(
-                self._rut_gon(plain_password), hashed.encode("utf-8")
-            )
+            return bcrypt.checkpw(self._rut_gon(plain_password), hashed.encode("utf-8"))
         except (ValueError, TypeError):
             return False

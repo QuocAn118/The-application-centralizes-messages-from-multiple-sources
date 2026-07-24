@@ -91,19 +91,13 @@ class _BoiCanh:
         return UpdateUser(self.user_repo, self.audit_repo, self.clock)
 
     def vo_hieu_hoa(self) -> DeactivateUser:
-        return DeactivateUser(
-            self.user_repo, self.token_repo, self.audit_repo, self.clock
-        )
+        return DeactivateUser(self.user_repo, self.token_repo, self.audit_repo, self.clock)
 
     def kich_hoat_lai(self) -> ReactivateUser:
-        return ReactivateUser(
-            self.user_repo, self.department_repo, self.audit_repo, self.clock
-        )
+        return ReactivateUser(self.user_repo, self.department_repo, self.audit_repo, self.clock)
 
     def doi_vai_tro(self) -> ChangeUserRole:
-        return ChangeUserRole(
-            self.user_repo, self.department_repo, self.audit_repo, self.clock
-        )
+        return ChangeUserRole(self.user_repo, self.department_repo, self.audit_repo, self.clock)
 
     def chuyen_phong(self) -> AssignUserToDepartment:
         return AssignUserToDepartment(
@@ -283,9 +277,7 @@ class TestSuaThongTin:
         admin = bc.them(Role.ADMIN)
         staff = bc.them(Role.STAFF, bc.phong_a.id)
 
-        ket_qua = await bc.sua().execute(
-            requester=admin, user_id=staff.id, full_name="Tên Mới"
-        )
+        ket_qua = await bc.sua().execute(requester=admin, user_id=staff.id, full_name="Tên Mới")
 
         assert ket_qua.full_name == "Tên Mới"
 
@@ -294,9 +286,7 @@ class TestSuaThongTin:
         manager = bc.them(Role.MANAGER, bc.phong_a.id)
         staff = bc.them(Role.STAFF, bc.phong_a.id)
 
-        ket_qua = await bc.sua().execute(
-            requester=manager, user_id=staff.id, phone="0912345678"
-        )
+        ket_qua = await bc.sua().execute(requester=manager, user_id=staff.id, phone="0912345678")
 
         assert ket_qua.phone == "0912345678"
 
@@ -306,17 +296,13 @@ class TestSuaThongTin:
         staff_khac = bc.them(Role.STAFF, bc.phong_b.id)
 
         with pytest.raises(PermissionDeniedError):
-            await bc.sua().execute(
-                requester=manager, user_id=staff_khac.id, full_name="Tên Mới"
-            )
+            await bc.sua().execute(requester=manager, user_id=staff_khac.id, full_name="Tên Mới")
 
     async def test_staff_sua_duoc_thong_tin_cua_chinh_minh(self) -> None:
         bc = _BoiCanh()
         staff = bc.them(Role.STAFF, bc.phong_a.id)
 
-        ket_qua = await bc.sua().execute(
-            requester=staff, user_id=staff.id, full_name="Tên Tự Đổi"
-        )
+        ket_qua = await bc.sua().execute(requester=staff, user_id=staff.id, full_name="Tên Tự Đổi")
 
         assert ket_qua.full_name == "Tên Tự Đổi"
 
@@ -326,18 +312,14 @@ class TestSuaThongTin:
         khac = bc.them(Role.STAFF, bc.phong_a.id)
 
         with pytest.raises(PermissionDeniedError):
-            await bc.sua().execute(
-                requester=staff, user_id=khac.id, full_name="Tên Mới"
-            )
+            await bc.sua().execute(requester=staff, user_id=khac.id, full_name="Tên Mới")
 
     async def test_khong_tim_thay_nguoi_dung(self) -> None:
         bc = _BoiCanh()
         admin = bc.them(Role.ADMIN)
 
         with pytest.raises(NotFoundError):
-            await bc.sua().execute(
-                requester=admin, user_id=new_id(), full_name="Tên Mới"
-            )
+            await bc.sua().execute(requester=admin, user_id=new_id(), full_name="Tên Mới")
 
 
 class TestVoHieuHoaVaKichHoatLai:
@@ -645,9 +627,7 @@ class TestDanhSachVaXem:
         manager = bc.them(Role.MANAGER, bc.phong_a.id)
         bc.them(Role.STAFF, bc.phong_b.id)
 
-        trang = await bc.danh_sach().execute(
-            requester=manager, department_id=bc.phong_b.id
-        )
+        trang = await bc.danh_sach().execute(requester=manager, department_id=bc.phong_b.id)
 
         assert all(u.department_id == bc.phong_a.id for u in trang.items)
 

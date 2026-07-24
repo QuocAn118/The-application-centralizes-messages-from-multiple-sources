@@ -29,9 +29,7 @@ async def _tao_admin(engine: AsyncEngine, email: str = "admin@congty.vn") -> Non
 
 
 class TestDangNhap:
-    async def test_dang_nhap_thanh_cong(
-        self, client: AsyncClient, engine: AsyncEngine
-    ) -> None:
+    async def test_dang_nhap_thanh_cong(self, client: AsyncClient, engine: AsyncEngine) -> None:
         await _tao_admin(engine)
 
         phan_hoi = await client.post(
@@ -46,9 +44,7 @@ class TestDangNhap:
         assert noi_dung["token_type"] == "bearer"
         assert noi_dung["expires_in"] == 15 * 60
 
-    async def test_mat_khau_sai_tra_ve_400(
-        self, client: AsyncClient, engine: AsyncEngine
-    ) -> None:
+    async def test_mat_khau_sai_tra_ve_400(self, client: AsyncClient, engine: AsyncEngine) -> None:
         await _tao_admin(engine)
 
         phan_hoi = await client.post(
@@ -106,9 +102,7 @@ class TestThongTinCuaToi:
         )
         token = dang_nhap.json()["access_token"]
 
-        phan_hoi = await client.get(
-            "/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"}
-        )
+        phan_hoi = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
 
         assert phan_hoi.status_code == 200
         assert phan_hoi.json()["email"] == "admin@congty.vn"
@@ -124,9 +118,7 @@ class TestThongTinCuaToi:
         )
         token = dang_nhap.json()["access_token"]
 
-        phan_hoi = await client.get(
-            "/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"}
-        )
+        phan_hoi = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
 
         assert "password_hash" not in phan_hoi.json()
 
@@ -142,9 +134,7 @@ class TestLamMoiToken:
         )
         cu = dang_nhap.json()["refresh_token"]
 
-        phan_hoi = await client.post(
-            "/api/v1/auth/refresh", json={"refresh_token": cu}
-        )
+        phan_hoi = await client.post("/api/v1/auth/refresh", json={"refresh_token": cu})
 
         assert phan_hoi.status_code == 200
         assert phan_hoi.json()["refresh_token"] != cu
@@ -160,9 +150,7 @@ class TestLamMoiToken:
         cu = dang_nhap.json()["refresh_token"]
         await client.post("/api/v1/auth/refresh", json={"refresh_token": cu})
 
-        phan_hoi = await client.post(
-            "/api/v1/auth/refresh", json={"refresh_token": cu}
-        )
+        phan_hoi = await client.post("/api/v1/auth/refresh", json={"refresh_token": cu})
 
         assert phan_hoi.status_code == 401
 
@@ -176,23 +164,17 @@ class TestLamMoiToken:
             json={"email": "admin@congty.vn", "password": MAT_KHAU},
         )
         cu = dang_nhap.json()["refresh_token"]
-        lam_moi = await client.post(
-            "/api/v1/auth/refresh", json={"refresh_token": cu}
-        )
+        lam_moi = await client.post("/api/v1/auth/refresh", json={"refresh_token": cu})
         moi = lam_moi.json()["refresh_token"]
 
         await client.post("/api/v1/auth/refresh", json={"refresh_token": cu})
 
-        phan_hoi = await client.post(
-            "/api/v1/auth/refresh", json={"refresh_token": moi}
-        )
+        phan_hoi = await client.post("/api/v1/auth/refresh", json={"refresh_token": moi})
         assert phan_hoi.status_code == 401
 
 
 class TestDangXuat:
-    async def test_dang_xuat_thu_hoi_token(
-        self, client: AsyncClient, engine: AsyncEngine
-    ) -> None:
+    async def test_dang_xuat_thu_hoi_token(self, client: AsyncClient, engine: AsyncEngine) -> None:
         await _tao_admin(engine)
         dang_nhap = await client.post(
             "/api/v1/auth/login",
@@ -208,16 +190,12 @@ class TestDangXuat:
         )
 
         assert phan_hoi.status_code == 204
-        lam_moi = await client.post(
-            "/api/v1/auth/refresh", json={"refresh_token": refresh}
-        )
+        lam_moi = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})
         assert lam_moi.status_code == 401
 
 
 class TestDoiMatKhau:
-    async def test_doi_mat_khau_thanh_cong(
-        self, client: AsyncClient, engine: AsyncEngine
-    ) -> None:
+    async def test_doi_mat_khau_thanh_cong(self, client: AsyncClient, engine: AsyncEngine) -> None:
         await _tao_admin(engine)
         dang_nhap = await client.post(
             "/api/v1/auth/login",
@@ -273,7 +251,5 @@ class TestDoiMatKhau:
             headers={"Authorization": f"Bearer {access}"},
         )
 
-        lam_moi = await client.post(
-            "/api/v1/auth/refresh", json={"refresh_token": refresh}
-        )
+        lam_moi = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})
         assert lam_moi.status_code == 401

@@ -11,9 +11,7 @@ class TestKiemTraSucKhoe:
         assert phan_hoi.status_code == 200
         assert phan_hoi.json() == {"status": "ok"}
 
-    async def test_health_ready_kiem_tra_co_so_du_lieu(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_health_ready_kiem_tra_co_so_du_lieu(self, client: AsyncClient) -> None:
         phan_hoi = await client.get("/health/ready")
 
         assert phan_hoi.status_code == 200
@@ -35,12 +33,8 @@ class TestMaDinhDanhRequest:
 
         assert phan_hoi.headers.get("X-Request-ID")
 
-    async def test_giu_nguyen_request_id_do_client_gui(
-        self, client: AsyncClient
-    ) -> None:
-        phan_hoi = await client.get(
-            "/health", headers={"X-Request-ID": "ma-tu-client-123"}
-        )
+    async def test_giu_nguyen_request_id_do_client_gui(self, client: AsyncClient) -> None:
+        phan_hoi = await client.get("/health", headers={"X-Request-ID": "ma-tu-client-123"})
 
         assert phan_hoi.headers["X-Request-ID"] == "ma-tu-client-123"
 
@@ -51,9 +45,7 @@ class TestDinhDangLoi:
 
         assert phan_hoi.status_code == 404
 
-    async def test_thieu_token_tra_ve_401_dung_dinh_dang(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_thieu_token_tra_ve_401_dung_dinh_dang(self, client: AsyncClient) -> None:
         phan_hoi = await client.get("/api/v1/auth/me")
 
         assert phan_hoi.status_code == 401

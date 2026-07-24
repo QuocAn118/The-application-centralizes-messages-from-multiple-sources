@@ -13,6 +13,7 @@ from src.modules.identity.infrastructure.models.audit_log_model import AuditLogM
 
 _SelectT = TypeVar("_SelectT", bound=Select[Any])
 
+
 class SqlAlchemyAuditLogRepository:
     """Ghi và tra cứu nhật ký kiểm toán trong PostgreSQL."""
 
@@ -36,9 +37,7 @@ class SqlAlchemyAuditLogRepository:
         if action is not None:
             cau_truy_van = cau_truy_van.where(AuditLogModel.action == action.value)
         if resource_type is not None:
-            cau_truy_van = cau_truy_van.where(
-                AuditLogModel.resource_type == resource_type
-            )
+            cau_truy_van = cau_truy_van.where(AuditLogModel.resource_type == resource_type)
         if from_time is not None:
             cau_truy_van = cau_truy_van.where(AuditLogModel.created_at >= from_time)
         if to_time is not None:

@@ -14,6 +14,7 @@ from src.modules.identity.infrastructure.models.user_model import UserModel
 
 _SelectT = TypeVar("_SelectT", bound=Select[Any])
 
+
 class SqlAlchemyUserRepository:
     """Truy xuất người dùng từ PostgreSQL."""
 
@@ -21,9 +22,7 @@ class SqlAlchemyUserRepository:
         self._session = session
 
     async def _lay_model(self, user_id: UUID) -> UserModel | None:
-        ket_qua = await self._session.execute(
-            select(UserModel).where(UserModel.id == user_id)
-        )
+        ket_qua = await self._session.execute(select(UserModel).where(UserModel.id == user_id))
         return ket_qua.scalar_one_or_none()
 
     async def get_by_id(self, user_id: UUID) -> User | None:
@@ -68,8 +67,7 @@ class SqlAlchemyUserRepository:
         if search:
             mau = f"%{search.lower()}%"
             cau_truy_van = cau_truy_van.where(
-                func.lower(UserModel.full_name).like(mau)
-                | func.lower(UserModel.email).like(mau)
+                func.lower(UserModel.full_name).like(mau) | func.lower(UserModel.email).like(mau)
             )
         return cau_truy_van
 

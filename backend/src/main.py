@@ -134,9 +134,7 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(RequestValidationError)
-    async def xu_ly_loi_du_lieu(
-        request: Request, exc: RequestValidationError
-    ) -> JSONResponse:
+    async def xu_ly_loi_du_lieu(request: Request, exc: RequestValidationError) -> JSONResponse:
         return JSONResponse(
             status_code=422,
             content={
@@ -150,9 +148,7 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(Exception)
-    async def xu_ly_loi_khong_luong_truoc(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
+    async def xu_ly_loi_khong_luong_truoc(request: Request, exc: Exception) -> JSONResponse:
         """Không để lộ chi tiết lỗi hệ thống ra ngoài.
 
         Nội dung lỗi được ghi vào log kèm ``request_id`` để tra cứu; client chỉ
@@ -188,9 +184,7 @@ def create_app() -> FastAPI:
                 status_code=503,
                 content={"status": "khong_san_sang", "database": "loi"},
             )
-        return JSONResponse(
-            status_code=200, content={"status": "ok", "database": "ok"}
-        )
+        return JSONResponse(status_code=200, content={"status": "ok", "database": "ok"})
 
     from src.modules.identity.presentation.routers.auth_router import (
         router as auth_router,
