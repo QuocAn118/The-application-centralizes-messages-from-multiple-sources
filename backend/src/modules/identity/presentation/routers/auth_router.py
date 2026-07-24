@@ -39,8 +39,19 @@ from src.modules.identity.presentation.schemas.auth_schemas import (
 )
 from src.shared.infrastructure.clock import SystemClock
 from src.shared.infrastructure.config import Settings, get_settings
+from src.shared.infrastructure.rate_limiter import InMemoryRateLimiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _lay_rate_limiter(request: Request) -> InMemoryRateLimiter:
+    """Lấy bộ giới hạn dùng chung cho toàn ứng dụng.
+
+    Đặt trong ``app.state`` để mọi request chia sẻ cùng một bộ đếm; tạo mới
+    theo từng request sẽ khiến giới hạn không có tác dụng.
+    """
+    limiter: InMemoryRateLimiter = request.app.state.login_rate_limiter
+    return limiter
 
 
 def _dia_chi_goi(request: Request) -> str | None:
@@ -66,6 +77,14 @@ async def dang_nhap(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> TokenResponse:
     """Đăng nhập bằng email và mật khẩu."""
+    limiter = _lay_rate_limiter(request)
+    ip = _dia_chi_goi(request)
+    # Giới hạn theo cả email và địa chỉ IP: theo email để bảo vệ một tài khoản
+    # cụ thể, theo IP để chặn việc dò hàng loạt tài khoản khác nhau.
+    limiter.check(f"email:{du_lieu.email.lower()}")
+    if ip:
+        limiter.check(f"ip:{ip}")
+
     use_case = LoginUser(
         user_repo=SqlAlchemyUserRepository(session),
         refresh_token_repo=SqlAlchemyRefreshTokenRepository(session),
@@ -78,9 +97,16 @@ async def dang_nhap(
     ket_qua = await use_case.execute(
         email=du_lieu.email,
         password=du_lieu.password,
-        ip_address=_dia_chi_goi(request),
+        ip_address=ip,
         user_agent=request.headers.get("User-Agent"),
     )
+
+    # Đăng nhập thành công thì xoá bộ đếm: người gõ nhầm vài lần rồi vào được
+    # không nên bị phạt ở lần sau.
+    limiter.reset(f"email:{du_lieu.email.lower()}")
+    if ip:
+        limiter.reset(f"ip:{ip}")
+
     return TokenResponse(
         access_token=ket_qua.tokens.access_token,
         refresh_token=ket_qua.tokens.refresh_token,
