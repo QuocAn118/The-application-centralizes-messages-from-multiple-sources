@@ -249,6 +249,18 @@ class TestDangNhap:
         noi_dung = str(bc.audit_repo.entries[-1].changes)
         assert "MatKhauBiLo999" not in noi_dung
 
+    async def test_email_sai_dinh_dang_cho_cung_mot_loi_khong_no(self) -> None:
+        """Email sai cú pháp phải trả về ``InvalidCredentialsError`` như mọi
+        thất bại khác, không được để ``InvalidEmailError`` lọt ra thành lỗi 500
+        — và phải được ghi nhật ký thất bại như các lần thử khác."""
+        bc = _BoiCanh()
+        _tao_user(bc)
+
+        with pytest.raises(InvalidCredentialsError):
+            await bc.dang_nhap().execute("khong-phai-email", MAT_KHAU)
+
+        assert bc.audit_repo.entries[-1].action is AuditAction.AUTH_LOGIN_FAILED
+
 
 class TestLamMoiToken:
     async def test_lam_moi_tra_ve_cap_token_moi(self) -> None:
