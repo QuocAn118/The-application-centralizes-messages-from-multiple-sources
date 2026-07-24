@@ -30,7 +30,18 @@ class AccessTokenPayload:
     user_id: UUID
     role: Role
     department_id: UUID | None
+    issued_at: datetime
     expires_at: datetime
+
+    @property
+    def lifetime_seconds(self) -> int:
+        """Tuổi thọ token tính bằng giây, đúng bằng ``exp - iat``.
+
+        Lấy hiệu của hai mốc nằm trong chính token (đều là số giây nguyên) nên
+        không bị lệch vì đọc lại đồng hồ ở thời điểm khác — đó là lý do
+        ``expires_in`` phải tính từ đây chứ không phải ``exp - now``.
+        """
+        return int((self.expires_at - self.issued_at).total_seconds())
 
 
 class IPasswordHasher(Protocol):

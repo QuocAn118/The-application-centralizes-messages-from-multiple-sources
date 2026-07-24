@@ -31,6 +31,20 @@ class FakeClock:
         self._now += timedelta(**khoang_thoi_gian)
 
 
+class FakeTransaction:
+    """Chốt giao dịch giả lập.
+
+    Đếm số lần ``commit`` để test khẳng định use case đã chốt giao dịch đúng
+    lúc — ví dụ ngay khi phát hiện token bị đánh cắp, trước khi ném lỗi.
+    """
+
+    def __init__(self) -> None:
+        self.commit_count = 0
+
+    async def commit(self) -> None:
+        self.commit_count += 1
+
+
 class FakeUserRepository:
     """Lưu người dùng trong một dict."""
 
