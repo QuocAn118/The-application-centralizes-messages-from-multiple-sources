@@ -139,13 +139,12 @@ class LoginUser:
         )
 
         payload = self._token_service.decode_access_token(access_token)
-        con_lai = int((payload.expires_at - bay_gio).total_seconds())
 
         return LoginResult(
             tokens=TokenPair(
                 access_token=access_token,
                 refresh_token=tho,
-                expires_in=con_lai,
+                expires_in=payload.lifetime_seconds,
             ),
             user=user,
             must_change_password=user.must_change_password,

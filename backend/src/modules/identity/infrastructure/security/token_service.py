@@ -71,11 +71,13 @@ class JwtTokenService:
 
         try:
             ma_phong = noi_dung["dept"]
+            phat_hanh = datetime.fromtimestamp(noi_dung["iat"], tz=UTC)
             het_han = datetime.fromtimestamp(noi_dung["exp"], tz=UTC)
             payload = AccessTokenPayload(
                 user_id=UUID(noi_dung["sub"]),
                 role=Role(noi_dung["role"]),
                 department_id=UUID(ma_phong) if ma_phong else None,
+                issued_at=phat_hanh,
                 expires_at=het_han,
             )
         except (KeyError, ValueError) as loi:

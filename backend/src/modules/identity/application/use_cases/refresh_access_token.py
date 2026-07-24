@@ -14,7 +14,7 @@ from src.modules.identity.domain.repositories.refresh_token_repository import (
 )
 from src.modules.identity.domain.repositories.user_repository import IUserRepository
 from src.shared.application.exceptions import AuthenticationError
-from src.shared.application.ports import IClock
+from src.shared.application.ports import IClock, ITransaction
 
 
 class InvalidRefreshTokenError(AuthenticationError):
@@ -43,6 +43,7 @@ class RefreshAccessToken:
         audit_repo: IAuditLogRepository,
         token_service: ITokenService,
         clock: IClock,
+        transaction: ITransaction,
         refresh_token_expire_days: int,
     ) -> None:
         self._user_repo = user_repo
@@ -50,6 +51,7 @@ class RefreshAccessToken:
         self._audit_repo = audit_repo
         self._token_service = token_service
         self._clock = clock
+        self._transaction = transaction
         self._refresh_token_expire = timedelta(days=refresh_token_expire_days)
 
     async def execute(
@@ -80,6 +82,10 @@ class RefreshAccessToken:
                     user_agent=user_agent,
                 )
             )
+            # Chốt giao dịch trước khi ném lỗi: nếu không, lớp HTTP sẽ rollback
+            # theo lỗi và xoá luôn việc thu hồi chuỗi, khiến kẻ tấn công vẫn
+            # dùng được token đã lộ.
+            await self._transaction.commit()
             raise InvalidRefreshTokenError
 
         if not token_cu.is_valid(now=bay_gio):
@@ -111,5 +117,5 @@ class RefreshAccessToken:
         return TokenPair(
             access_token=access_token,
             refresh_token=tho_moi,
-            expires_in=int((payload.expires_at - bay_gio).total_seconds()),
+            expires_in=payload.lifetime_seconds,
         )

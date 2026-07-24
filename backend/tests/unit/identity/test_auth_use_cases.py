@@ -31,6 +31,7 @@ from tests.unit.identity.fakes import (
     FakeAuditLogRepository,
     FakeClock,
     FakeRefreshTokenRepository,
+    FakeTransaction,
     FakeUserRepository,
 )
 
@@ -50,6 +51,7 @@ class _BoiCanh:
         self.user_repo = FakeUserRepository(users or [])
         self.token_repo = FakeRefreshTokenRepository()
         self.audit_repo = FakeAuditLogRepository()
+        self.transaction = FakeTransaction()
 
     def dang_nhap(self) -> LoginUser:
         return LoginUser(
@@ -69,6 +71,7 @@ class _BoiCanh:
             audit_repo=self.audit_repo,
             token_service=self.token_service,
             clock=self.clock,
+            transaction=self.transaction,
             refresh_token_expire_days=7,
         )
 
@@ -310,6 +313,25 @@ class TestLamMoiToken:
             e.action is AuditAction.AUTH_TOKEN_REUSE_DETECTED
             for e in bc.audit_repo.entries
         )
+
+    async def test_phat_hien_tai_su_dung_chot_giao_dich_truoc_khi_nem_loi(
+        self,
+    ) -> None:
+        """Việc thu hồi chuỗi phải được commit dù request kết thúc bằng lỗi.
+
+        Nếu không chốt giao dịch ở đây, lớp HTTP sẽ rollback theo lỗi và xoá
+        luôn hành động thu hồi — kẻ tấn công vẫn dùng được token đã lộ.
+        """
+        bc = _BoiCanh()
+        _tao_user(bc)
+        dang_nhap = await bc.dang_nhap().execute("nhanvien@congty.vn", MAT_KHAU)
+        cu = dang_nhap.tokens.refresh_token
+        await bc.lam_moi().execute(cu)
+
+        with pytest.raises(InvalidRefreshTokenError):
+            await bc.lam_moi().execute(cu)
+
+        assert bc.transaction.commit_count == 1
 
     async def test_token_khong_ton_tai_bi_tu_choi(self) -> None:
         bc = _BoiCanh()
