@@ -38,9 +38,7 @@ class UpdateUser:
     ) -> User:
         user = await self._user_repo.get_by_id(user_id)
         if user is None:
-            raise NotFoundError(
-                "Không tìm thấy người dùng.", code="USER_NOT_FOUND"
-            )
+            raise NotFoundError("Không tìm thấy người dùng.", code="USER_NOT_FOUND")
 
         la_chinh_minh = requester.id == user.id
         if not la_chinh_minh and not requester.can_manage(user):

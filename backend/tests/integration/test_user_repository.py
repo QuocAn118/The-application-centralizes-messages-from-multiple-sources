@@ -29,9 +29,7 @@ async def _tao_phong(session: AsyncSession, ten: str) -> Department:
     return phong
 
 
-def _user(
-    email: str, role: Role, department_id, full_name: str = "Nguyễn Văn A"
-) -> User:
+def _user(email: str, role: Role, department_id, full_name: str = "Nguyễn Văn A") -> User:
     return User.create(
         email=Email(email),
         password_hash=PasswordHash("$2b$12$hash"),
@@ -85,9 +83,7 @@ class TestLuuVaDoc:
         # truy vấn dùng lower(email) thì mới khớp được với bản ghi chữ HOA.
         assert await repo.get_by_email(Email("hoathuong@congty.vn")) is not None
 
-    async def test_khong_tim_thay_thi_tra_ve_none(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_khong_tim_thay_thi_tra_ve_none(self, db_session: AsyncSession) -> None:
         repo = SqlAlchemyUserRepository(db_session)
 
         assert await repo.get_by_id(new_id()) is None
@@ -111,9 +107,7 @@ class TestLuuVaDoc:
 
 
 class TestDemVaKiemTra:
-    async def test_dem_nhan_vien_dang_hoat_dong_trong_phong(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_dem_nhan_vien_dang_hoat_dong_trong_phong(self, db_session: AsyncSession) -> None:
         repo = SqlAlchemyUserRepository(db_session)
         phong = await _tao_phong(db_session, "Phòng Đếm")
         dang_lam = _user("a@congty.vn", Role.STAFF, phong.id)
@@ -125,9 +119,7 @@ class TestDemVaKiemTra:
 
         assert await repo.count_active_in_department(phong.id) == 1
 
-    async def test_phat_hien_phong_da_co_quan_ly(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_phat_hien_phong_da_co_quan_ly(self, db_session: AsyncSession) -> None:
         repo = SqlAlchemyUserRepository(db_session)
         phong = await _tao_phong(db_session, "Phòng Quản Lý")
         manager = _user("m@congty.vn", Role.MANAGER, phong.id)
@@ -149,9 +141,7 @@ class TestDemVaKiemTra:
 
         assert await repo.has_active_manager(phong.id) is False
 
-    async def test_dem_quan_tri_vien_dang_hoat_dong(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_dem_quan_tri_vien_dang_hoat_dong(self, db_session: AsyncSession) -> None:
         repo = SqlAlchemyUserRepository(db_session)
         truoc = await repo.count_active_admins()
         await repo.add(_user("ad@congty.vn", Role.ADMIN, None))
@@ -191,18 +181,14 @@ class TestLocVaPhanTrang:
     ) -> None:
         repo = SqlAlchemyUserRepository(db_session)
         phong = await _tao_phong(db_session, "Phòng Tìm Kiếm")
-        await repo.add(
-            _user("timkiem@congty.vn", Role.STAFF, phong.id, full_name="Trần Thị Bích")
-        )
+        await repo.add(_user("timkiem@congty.vn", Role.STAFF, phong.id, full_name="Trần Thị Bích"))
         await db_session.flush()
 
         assert len(await repo.list_users(department_id=phong.id, search="trần")) == 1
         assert len(await repo.list_users(department_id=phong.id, search="TIMKIEM")) == 1
         assert len(await repo.list_users(department_id=phong.id, search="xyz")) == 0
 
-    async def test_phan_trang_tra_ve_dung_so_luong(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_phan_trang_tra_ve_dung_so_luong(self, db_session: AsyncSession) -> None:
         repo = SqlAlchemyUserRepository(db_session)
         phong = await _tao_phong(db_session, "Phòng Phân Trang")
         for i in range(5):
@@ -216,9 +202,7 @@ class TestLocVaPhanTrang:
         assert len(trang_hai) == 2
         assert {u.id for u in trang_dau} & {u.id for u in trang_hai} == set()
 
-    async def test_dem_khop_voi_bo_loc_cua_danh_sach(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_dem_khop_voi_bo_loc_cua_danh_sach(self, db_session: AsyncSession) -> None:
         repo = SqlAlchemyUserRepository(db_session)
         phong = await _tao_phong(db_session, "Phòng Đếm Lọc")
         for i in range(3):

@@ -78,9 +78,7 @@ class ChangeUserRole:
                 resource_type="user",
                 resource_id=str(user.id),
                 now=bay_gio,
-                changes={
-                    "role": {"truoc": vai_tro_cu.value, "sau": new_role.value}
-                },
+                changes={"role": {"truoc": vai_tro_cu.value, "sau": new_role.value}},
             )
         )
         return user

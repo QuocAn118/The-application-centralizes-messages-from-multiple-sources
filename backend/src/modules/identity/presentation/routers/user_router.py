@@ -110,9 +110,7 @@ async def tao_nguoi_dung(
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-async def xem_nguoi_dung(
-    user_id: UUID, nguoi_goi: CurrentUser, session: DbSession
-) -> UserResponse:
+async def xem_nguoi_dung(user_id: UUID, nguoi_goi: CurrentUser, session: DbSession) -> UserResponse:
     user = await GetUser(SqlAlchemyUserRepository(session)).execute(
         requester=nguoi_goi, user_id=user_id
     )
@@ -141,33 +139,25 @@ async def sua_nguoi_dung(
 
 
 @router.post("/{user_id}/deactivate", response_model=UserResponse)
-async def vo_hieu_hoa(
-    user_id: UUID, nguoi_goi: CurrentUser, session: DbSession
-) -> UserResponse:
+async def vo_hieu_hoa(user_id: UUID, nguoi_goi: CurrentUser, session: DbSession) -> UserResponse:
     use_case = DeactivateUser(
         user_repo=SqlAlchemyUserRepository(session),
         refresh_token_repo=SqlAlchemyRefreshTokenRepository(session),
         audit_repo=SqlAlchemyAuditLogRepository(session),
         clock=SystemClock(),
     )
-    return UserResponse.from_entity(
-        await use_case.execute(requester=nguoi_goi, user_id=user_id)
-    )
+    return UserResponse.from_entity(await use_case.execute(requester=nguoi_goi, user_id=user_id))
 
 
 @router.post("/{user_id}/reactivate", response_model=UserResponse)
-async def kich_hoat_lai(
-    user_id: UUID, nguoi_goi: CurrentUser, session: DbSession
-) -> UserResponse:
+async def kich_hoat_lai(user_id: UUID, nguoi_goi: CurrentUser, session: DbSession) -> UserResponse:
     use_case = ReactivateUser(
         user_repo=SqlAlchemyUserRepository(session),
         department_repo=SqlAlchemyDepartmentRepository(session),
         audit_repo=SqlAlchemyAuditLogRepository(session),
         clock=SystemClock(),
     )
-    return UserResponse.from_entity(
-        await use_case.execute(requester=nguoi_goi, user_id=user_id)
-    )
+    return UserResponse.from_entity(await use_case.execute(requester=nguoi_goi, user_id=user_id))
 
 
 @router.patch("/{user_id}/role", response_model=UserResponse)
@@ -228,7 +218,5 @@ async def dat_lai_mat_khau(
         hasher=hasher,
         clock=SystemClock(),
     )
-    await use_case.execute(
-        requester=nguoi_goi, user_id=user_id, new_password=du_lieu.new_password
-    )
+    await use_case.execute(requester=nguoi_goi, user_id=user_id, new_password=du_lieu.new_password)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

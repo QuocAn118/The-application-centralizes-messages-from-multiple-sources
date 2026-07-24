@@ -61,9 +61,7 @@ class IPasswordHasher(Protocol):
 class ITokenService(Protocol):
     """Cấp phát và kiểm tra token."""
 
-    def create_access_token(
-        self, user_id: UUID, role: Role, department_id: UUID | None
-    ) -> str: ...
+    def create_access_token(self, user_id: UUID, role: Role, department_id: UUID | None) -> str: ...
 
     def decode_access_token(self, token: str) -> AccessTokenPayload:
         """Giải mã và kiểm tra token.

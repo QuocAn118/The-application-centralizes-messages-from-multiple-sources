@@ -31,9 +31,7 @@ class AssignUserToDepartment:
         self._audit_repo = audit_repo
         self._clock = clock
 
-    async def execute(
-        self, requester: User, user_id: UUID, department_id: UUID | None
-    ) -> User:
+    async def execute(self, requester: User, user_id: UUID, department_id: UUID | None) -> User:
         if requester.role is not Role.ADMIN:
             raise PermissionDeniedError(
                 "Chỉ quản trị viên được chuyển phòng ban.", code="ADMIN_REQUIRED"

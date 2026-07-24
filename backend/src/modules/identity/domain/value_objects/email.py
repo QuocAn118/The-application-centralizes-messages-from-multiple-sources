@@ -28,8 +28,7 @@ class EmailTooLongError(DomainError):
 
     def __init__(self, do_dai: int) -> None:
         super().__init__(
-            f"Địa chỉ email dài {do_dai} ký tự, vượt quá giới hạn "
-            f"{DO_DAI_EMAIL_TOI_DA} ký tự.",
+            f"Địa chỉ email dài {do_dai} ký tự, vượt quá giới hạn {DO_DAI_EMAIL_TOI_DA} ký tự.",
             code="EMAIL_TOO_LONG",
         )
 

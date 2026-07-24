@@ -124,9 +124,7 @@ class TestSuaPhongBan:
         admin = bc.them_user(Role.ADMIN)
         phong = bc.them_phong("Tên Cũ")
 
-        ket_qua = await bc.sua().execute(
-            requester=admin, department_id=phong.id, name="Tên Mới"
-        )
+        ket_qua = await bc.sua().execute(requester=admin, department_id=phong.id, name="Tên Mới")
 
         assert ket_qua.name == "Tên Mới"
 
@@ -137,9 +135,7 @@ class TestSuaPhongBan:
         phong = bc.them_phong("Phòng B")
 
         with pytest.raises(DepartmentNameAlreadyExistsError):
-            await bc.sua().execute(
-                requester=admin, department_id=phong.id, name="Đã Có"
-            )
+            await bc.sua().execute(requester=admin, department_id=phong.id, name="Đã Có")
 
     async def test_giu_nguyen_ten_cua_chinh_no_thi_khong_bao_trung(self) -> None:
         bc = _BoiCanh()
@@ -161,18 +157,14 @@ class TestSuaPhongBan:
         manager = bc.them_user(Role.MANAGER, phong.id)
 
         with pytest.raises(PermissionDeniedError):
-            await bc.sua().execute(
-                requester=manager, department_id=phong.id, name="Tên Mới"
-            )
+            await bc.sua().execute(requester=manager, department_id=phong.id, name="Tên Mới")
 
     async def test_sua_phong_khong_ton_tai_bi_tu_choi(self) -> None:
         bc = _BoiCanh()
         admin = bc.them_user(Role.ADMIN)
 
         with pytest.raises(NotFoundError):
-            await bc.sua().execute(
-                requester=admin, department_id=new_id(), name="Tên Mới"
-            )
+            await bc.sua().execute(requester=admin, department_id=new_id(), name="Tên Mới")
 
 
 class TestDongPhongBan:
@@ -298,8 +290,6 @@ class TestNhatKy:
                 )
             )
 
-        trang = await bc.nhat_ky().execute(
-            requester=admin, action=AuditAction.USER_CREATED
-        )
+        trang = await bc.nhat_ky().execute(requester=admin, action=AuditAction.USER_CREATED)
 
         assert trang.total == 1

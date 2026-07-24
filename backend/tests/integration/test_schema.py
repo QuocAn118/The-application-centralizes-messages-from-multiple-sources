@@ -54,9 +54,7 @@ async def _them_user(
 
 
 class TestBangTonTai:
-    @pytest.mark.parametrize(
-        "ten_bang", ["departments", "users", "refresh_tokens", "audit_logs"]
-    )
+    @pytest.mark.parametrize("ten_bang", ["departments", "users", "refresh_tokens", "audit_logs"])
     async def test_bang_da_duoc_tao(self, db_session: AsyncSession, ten_bang: str) -> None:
         ket_qua = await db_session.execute(
             text("SELECT to_regclass(:ten) IS NOT NULL"), {"ten": f"public.{ten_bang}"}
@@ -73,9 +71,7 @@ class TestRangBuocEmail:
         with pytest.raises(IntegrityError):
             await _them_user(db_session, "trung@congty.vn", "STAFF", phong)
 
-    async def test_email_khac_kieu_chu_van_bi_coi_la_trung(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_email_khac_kieu_chu_van_bi_coi_la_trung(self, db_session: AsyncSession) -> None:
         """Index đặt trên lower(email) nên hoa thường không tạo ra bản ghi mới."""
         phong = await _them_phong_ban(db_session, "Phong Email 2")
         await _them_user(db_session, "hoathuong@congty.vn", "STAFF", phong)
@@ -83,9 +79,7 @@ class TestRangBuocEmail:
         with pytest.raises(IntegrityError):
             await _them_user(db_session, "HoaThuong@CongTy.VN", "STAFF", phong)
 
-    async def test_user_da_vo_hieu_hoa_van_giu_email(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_user_da_vo_hieu_hoa_van_giu_email(self, db_session: AsyncSession) -> None:
         """Email duy nhất vĩnh viễn — kể cả khi tài khoản đã bị vô hiệu hoá."""
         phong = await _them_phong_ban(db_session, "Phong Email 3")
         await _them_user(db_session, "nghiviec@congty.vn", "STAFF", phong, is_active=False)
@@ -106,9 +100,7 @@ class TestRangBuocMotManagerMoiPhong:
         with pytest.raises(IntegrityError):
             await _them_user(db_session, "m2@congty.vn", "MANAGER", phong)
 
-    async def test_manager_da_vo_hieu_hoa_khong_chiem_cho(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_manager_da_vo_hieu_hoa_khong_chiem_cho(self, db_session: AsyncSession) -> None:
         phong = await _them_phong_ban(db_session, "Phong Manager 2")
         await _them_user(db_session, "cu@congty.vn", "MANAGER", phong, is_active=False)
 
@@ -116,9 +108,7 @@ class TestRangBuocMotManagerMoiPhong:
 
         assert ma_moi is not None
 
-    async def test_nhieu_staff_cung_phong_van_duoc(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_nhieu_staff_cung_phong_van_duoc(self, db_session: AsyncSession) -> None:
         phong = await _them_phong_ban(db_session, "Phong Staff")
         await _them_user(db_session, "s1@congty.vn", "STAFF", phong)
 
@@ -139,26 +129,20 @@ class TestRangBuocMotManagerMoiPhong:
 
 
 class TestRangBuocVaiTro:
-    async def test_vai_tro_khong_hop_le_bi_tu_choi(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_vai_tro_khong_hop_le_bi_tu_choi(self, db_session: AsyncSession) -> None:
         phong = await _them_phong_ban(db_session, "Phong Vai Tro")
 
         with pytest.raises(IntegrityError):
             await _them_user(db_session, "sai@congty.vn", "SUPERUSER", phong)
 
-    async def test_admin_luu_duoc_voi_phong_ban_rong(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_admin_luu_duoc_voi_phong_ban_rong(self, db_session: AsyncSession) -> None:
         ma = await _them_user(db_session, "admin@congty.vn", "ADMIN", None)
 
         assert ma is not None
 
 
 class TestRangBuocTenPhongBan:
-    async def test_ten_phong_ban_trung_bi_tu_choi(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_ten_phong_ban_trung_bi_tu_choi(self, db_session: AsyncSession) -> None:
         await _them_phong_ban(db_session, "Trung Ten")
 
         with pytest.raises(IntegrityError):
@@ -191,9 +175,7 @@ class TestKieuDuLieuThoiGian:
 
 
 class TestXoaTheoQuanHe:
-    async def test_xoa_user_thi_refresh_token_cung_bi_xoa(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_xoa_user_thi_refresh_token_cung_bi_xoa(self, db_session: AsyncSession) -> None:
         phong = await _them_phong_ban(db_session, "Phong Cascade")
         user_id = await _them_user(db_session, "cascade@congty.vn", "STAFF", phong)
         await db_session.execute(
@@ -213,9 +195,7 @@ class TestXoaTheoQuanHe:
         )
         assert con_lai.scalar_one() == 0
 
-    async def test_xoa_user_khong_lam_mat_nhat_ky(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_xoa_user_khong_lam_mat_nhat_ky(self, db_session: AsyncSession) -> None:
         """Nhật ký phải sống sót — đó là mục đích tồn tại của nó."""
         phong = await _them_phong_ban(db_session, "Phong Audit")
         user_id = await _them_user(db_session, "audit@congty.vn", "STAFF", phong)

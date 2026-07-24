@@ -30,9 +30,7 @@ class EmailAlreadyExistsError(ConflictError):
     """Email đã được dùng cho một tài khoản khác."""
 
     def __init__(self, email: str) -> None:
-        super().__init__(
-            f"Email {email} đã được sử dụng.", code="EMAIL_ALREADY_EXISTS"
-        )
+        super().__init__(f"Email {email} đã được sử dụng.", code="EMAIL_ALREADY_EXISTS")
 
 
 class CreateUser:

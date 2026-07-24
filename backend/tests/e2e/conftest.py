@@ -28,9 +28,7 @@ async def app_test(engine: AsyncEngine):  # type: ignore[no-untyped-def]
 
 @pytest.fixture
 async def client(app_test) -> AsyncIterator[AsyncClient]:  # type: ignore[no-untyped-def]
-    async with AsyncClient(
-        transport=ASGITransport(app=app_test), base_url="http://test"
-    ) as ac:
+    async with AsyncClient(transport=ASGITransport(app=app_test), base_url="http://test") as ac:
         yield ac
 
 
@@ -44,8 +42,5 @@ async def don_du_lieu(engine: AsyncEngine) -> AsyncIterator[None]:
     yield
     async with engine.begin() as conn:
         await conn.execute(
-            text(
-                "TRUNCATE audit_logs, refresh_tokens, users, departments "
-                "RESTART IDENTITY CASCADE"
-            )
+            text("TRUNCATE audit_logs, refresh_tokens, users, departments RESTART IDENTITY CASCADE")
         )

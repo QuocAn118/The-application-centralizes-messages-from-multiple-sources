@@ -12,9 +12,7 @@ def test_tren_windows_chon_selector_event_loop() -> None:
     cơ sở dữ liệu cũng sẽ đỏ theo."""
     cau_hinh_event_loop()
 
-    assert isinstance(
-        asyncio.get_event_loop_policy(), asyncio.WindowsSelectorEventLoopPolicy
-    )
+    assert isinstance(asyncio.get_event_loop_policy(), asyncio.WindowsSelectorEventLoopPolicy)
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="Chỉ áp dụng cho Linux/macOS")

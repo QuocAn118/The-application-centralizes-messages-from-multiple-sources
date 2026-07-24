@@ -45,9 +45,7 @@ class DeactivateDepartment:
 
         phong = await self._department_repo.get_by_id(department_id)
         if phong is None:
-            raise NotFoundError(
-                "Không tìm thấy phòng ban.", code="DEPARTMENT_NOT_FOUND"
-            )
+            raise NotFoundError("Không tìm thấy phòng ban.", code="DEPARTMENT_NOT_FOUND")
 
         so_nhan_vien = await self._user_repo.count_active_in_department(department_id)
 

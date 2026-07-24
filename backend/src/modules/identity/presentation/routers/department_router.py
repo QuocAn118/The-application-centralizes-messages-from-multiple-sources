@@ -105,9 +105,7 @@ async def sua_phong_ban(
     return DepartmentResponse.from_entity(phong)
 
 
-@router.post(
-    "/departments/{department_id}/deactivate", response_model=DepartmentResponse
-)
+@router.post("/departments/{department_id}/deactivate", response_model=DepartmentResponse)
 async def vo_hieu_hoa_phong_ban(
     department_id: UUID, nguoi_goi: CurrentUser, session: DbSession
 ) -> DepartmentResponse:

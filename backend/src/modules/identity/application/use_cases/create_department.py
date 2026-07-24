@@ -18,9 +18,7 @@ class DepartmentNameAlreadyExistsError(ConflictError):
     """Tên phòng ban đã tồn tại trong các phòng đang hoạt động."""
 
     def __init__(self, ten: str) -> None:
-        super().__init__(
-            f"Phòng ban {ten!r} đã tồn tại.", code="DEPARTMENT_NAME_EXISTS"
-        )
+        super().__init__(f"Phòng ban {ten!r} đã tồn tại.", code="DEPARTMENT_NAME_EXISTS")
 
 
 class CreateDepartment:

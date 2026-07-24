@@ -36,12 +36,8 @@ class UserModel(Base):
         nullable=True,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    must_change_password: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=True
-    )
-    last_login_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -61,9 +57,7 @@ class UserModel(Base):
             unique=True,
             postgresql_where=text("role = 'MANAGER' AND is_active"),
         ),
-        CheckConstraint(
-            "role IN ('STAFF', 'MANAGER', 'ADMIN')", name="ck_user_role_hop_le"
-        ),
+        CheckConstraint("role IN ('STAFF', 'MANAGER', 'ADMIN')", name="ck_user_role_hop_le"),
         # Staff và Manager bắt buộc thuộc phòng ban; Admin bắt buộc không.
         CheckConstraint(
             "(role = 'ADMIN' AND department_id IS NULL) "
