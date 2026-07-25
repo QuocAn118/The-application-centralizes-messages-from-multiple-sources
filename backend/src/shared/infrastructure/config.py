@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     login_rate_limit_attempts: int = 5
     login_rate_limit_window_seconds: int = 300
 
+    # Inbox: khoá Fernet mã hoá credential kênh + nơi lưu tệp đính kèm.
+    channel_cipher_key: str = ""
+    attachment_storage_dir: str = "var/attachments"
+
     app_env: str = "development"
     log_level: str = "INFO"
 
