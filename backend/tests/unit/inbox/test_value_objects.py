@@ -1,3 +1,5 @@
+from dataclasses import FrozenInstanceError
+
 import pytest
 
 from src.modules.inbox.domain.value_objects.message_content import (
@@ -34,7 +36,7 @@ class TestAttachmentRef:
     def test_la_bat_bien(self) -> None:
         ref = AttachmentRef(kind=AttachmentKind.FILE, url="https://x/y.pdf")
 
-        with pytest.raises(Exception):  # noqa: B017  FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             ref.url = "khac"  # type: ignore[misc]
 
 

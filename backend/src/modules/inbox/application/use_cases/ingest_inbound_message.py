@@ -83,7 +83,7 @@ class IngestInboundMessage:
 
         message = Message.inbound(
             conversation_id=conversation.id,
-            text=event.content.text,
+            content=event.content,
             external_message_id=event.external_message_id,
             now=now,
         )

@@ -136,6 +136,16 @@ class TestTinDenVaMoLai:
 
         assert ht.status is ConversationStatus.CHO_PHAN
 
+    def test_tin_den_tre_khong_keo_moc_thoi_gian_lui(self) -> None:
+        """Webhook đến trễ (now cũ hơn last_message_at) không được kéo mốc lùi."""
+        ht = _tao_dang_mo()
+        ht.register_incoming(now=SAU_5_PHUT)
+
+        truoc_do = datetime(2026, 7, 24, 9, 0, tzinfo=UTC)
+        ht.register_incoming(now=truoc_do)
+
+        assert ht.last_message_at == SAU_5_PHUT
+
     def test_mo_lai_giu_nguyen_nguoi_da_gan(self) -> None:
         """Đóng rồi mở lại vẫn thuộc người cũ — không bắt nhận lại từ đầu."""
         ht = _tao_dang_mo()

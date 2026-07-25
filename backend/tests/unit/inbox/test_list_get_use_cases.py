@@ -9,6 +9,7 @@ from src.modules.inbox.domain.entities.channel import Channel
 from src.modules.inbox.domain.entities.conversation import Conversation
 from src.modules.inbox.domain.entities.customer import Customer
 from src.modules.inbox.domain.entities.message import Message
+from src.modules.inbox.domain.value_objects.message_content import MessageContent
 from src.modules.inbox.domain.value_objects.platform import Platform
 from src.shared.application.exceptions import NotFoundError, PermissionDeniedError
 from src.shared.domain.identifiers import new_id
@@ -131,7 +132,10 @@ class TestGetConversation:
     async def test_xem_hoi_thoai_kem_tin(self) -> None:
         kho = _KhoDuLieu()
         msg = Message.inbound(
-            conversation_id=kho.ht_a.id, text="hello", external_message_id="m1", now=BAY_GIO
+            conversation_id=kho.ht_a.id,
+            content=MessageContent(text="hello"),
+            external_message_id="m1",
+            now=BAY_GIO,
         )
         await kho.message_repo.add(msg, [])
         admin = InboxActor(user_id=new_id(), role=ActorRole.ADMIN, department_id=None)

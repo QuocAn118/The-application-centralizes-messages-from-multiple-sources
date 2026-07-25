@@ -9,10 +9,19 @@ from src.modules.inbox.domain.entities.message import (
     MessageDirection,
     OutboundNeedsSenderError,
 )
-from src.modules.inbox.domain.value_objects.message_content import AttachmentKind
+from src.modules.inbox.domain.value_objects.message_content import (
+    AttachmentKind,
+    AttachmentRef,
+    EmptyMessageContentError,
+    MessageContent,
+)
 from src.shared.domain.identifiers import new_id
 
 BAY_GIO = datetime(2026, 7, 24, 10, 0, tzinfo=UTC)
+
+
+def _anh() -> AttachmentRef:
+    return AttachmentRef(kind=AttachmentKind.IMAGE, url="https://x/a.jpg")
 
 
 class TestMessageInbound:
@@ -20,7 +29,7 @@ class TestMessageInbound:
         ht = new_id()
         tin = Message.inbound(
             conversation_id=ht,
-            text="Xin chào",
+            content=MessageContent(text="Xin chào"),
             external_message_id="zalo_msg_1",
             now=BAY_GIO,
         )
@@ -36,7 +45,7 @@ class TestMessageInbound:
         with pytest.raises(InboundNeedsExternalIdError):
             Message.inbound(
                 conversation_id=new_id(),
-                text="Xin chào",
+                content=MessageContent(text="Xin chào"),
                 external_message_id="",
                 now=BAY_GIO,
             )
@@ -44,12 +53,22 @@ class TestMessageInbound:
     def test_tin_den_chi_co_attachment_khong_can_text(self) -> None:
         tin = Message.inbound(
             conversation_id=new_id(),
-            text=None,
+            content=MessageContent(attachments=(_anh(),)),
             external_message_id="msg_2",
             now=BAY_GIO,
         )
 
         assert tin.text is None
+
+    def test_khong_tao_duoc_tin_rong(self) -> None:
+        """Bất biến 'tin không rỗng' được giữ ở domain: rỗng thì MessageContent nổ."""
+        with pytest.raises(EmptyMessageContentError):
+            Message.inbound(
+                conversation_id=new_id(),
+                content=MessageContent(text="   "),
+                external_message_id="msg_3",
+                now=BAY_GIO,
+            )
 
 
 class TestMessageOutbound:
@@ -58,7 +77,7 @@ class TestMessageOutbound:
         nv = new_id()
         tin = Message.outbound(
             conversation_id=ht,
-            text="Cảm ơn bạn",
+            content=MessageContent(text="Cảm ơn bạn"),
             sender_user_id=nv,
             now=BAY_GIO,
         )
@@ -72,7 +91,7 @@ class TestMessageOutbound:
         with pytest.raises(OutboundNeedsSenderError):
             Message.outbound(
                 conversation_id=new_id(),
-                text="Cảm ơn",
+                content=MessageContent(text="Cảm ơn"),
                 sender_user_id=None,  # type: ignore[arg-type]
                 now=BAY_GIO,
             )

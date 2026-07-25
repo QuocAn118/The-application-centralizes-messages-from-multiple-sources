@@ -116,7 +116,7 @@ class ReplyToConversation:
         now = self._clock.now()
         message = Message.outbound(
             conversation_id=conversation.id,
-            text=content.text,
+            content=content,
             sender_user_id=actor.user_id,
             now=now,
         )

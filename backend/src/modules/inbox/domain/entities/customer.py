@@ -45,6 +45,14 @@ class Customer(AggregateRoot):
             raise EmptyExternalIdError
         return ma
 
+    @staticmethod
+    def _chuan_hoa_tuy_chon(gia_tri: str | None) -> str | None:
+        """Rỗng hoặc toàn khoảng trắng coi như không có (``None``)."""
+        if gia_tri is None:
+            return None
+        da_cat = gia_tri.strip()
+        return da_cat or None
+
     @classmethod
     def register(
         cls,
@@ -60,8 +68,8 @@ class Customer(AggregateRoot):
             channel_id=channel_id,
             platform=platform,
             external_id=cls._chuan_hoa_ma(external_id),
-            display_name=display_name,
-            avatar_url=avatar_url,
+            display_name=cls._chuan_hoa_tuy_chon(display_name),
+            avatar_url=cls._chuan_hoa_tuy_chon(avatar_url),
             created_at=now,
             updated_at=now,
         )
@@ -69,9 +77,15 @@ class Customer(AggregateRoot):
     def update_profile(
         self, display_name: str | None, avatar_url: str | None, now: datetime
     ) -> None:
-        """Cập nhật hồ sơ khi biết thêm thông tin. ``None`` nghĩa là giữ nguyên."""
-        if display_name is not None:
-            self.display_name = display_name
-        if avatar_url is not None:
-            self.avatar_url = avatar_url
+        """Cập nhật hồ sơ khi biết thêm thông tin.
+
+        ``None`` — hoặc chuỗi rỗng/toàn khoảng trắng — nghĩa là giữ nguyên: nhiều
+        webhook trả ``name=""``, không được để nó xoá tên khách đang có.
+        """
+        ten = self._chuan_hoa_tuy_chon(display_name)
+        if ten is not None:
+            self.display_name = ten
+        anh = self._chuan_hoa_tuy_chon(avatar_url)
+        if anh is not None:
+            self.avatar_url = anh
         self.updated_at = now
