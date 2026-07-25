@@ -4,6 +4,7 @@ Fake phản ánh hành vi thật của repository/adapter; khi hợp đồng đ�
 làm test đỏ — đúng thứ ta muốn. Mock thì không.
 """
 
+from datetime import datetime
 from uuid import UUID
 
 from src.modules.inbox.domain.entities.attachment import Attachment
@@ -25,6 +26,23 @@ from src.modules.inbox.domain.value_objects.message_content import (
     MessageContent,
 )
 from src.modules.inbox.domain.value_objects.platform import Platform
+
+
+class FakeClock:
+    """Đồng hồ cố định để test kiểm soát thời gian.
+
+    ``tick`` cho phép nhích thời gian giữa các bước, ví dụ để phân biệt thời
+    điểm tin đến với thời điểm trả lời.
+    """
+
+    def __init__(self, now: datetime) -> None:
+        self._now = now
+
+    def now(self) -> datetime:
+        return self._now
+
+    def set(self, now: datetime) -> None:
+        self._now = now
 
 
 class FakeChannelRepository:
