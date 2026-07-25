@@ -58,11 +58,15 @@ class IChannelAdapter(Protocol):
 
     async def send_message(
         self,
-        encrypted_credential: str,
+        access_token: str,
         external_customer_id: str,
         content: MessageContent,
     ) -> SentMessageRef:
-        """Gửi một tin tới khách qua nền tảng."""
+        """Gửi một tin tới khách qua nền tảng.
+
+        ``access_token`` là token **đã giải mã** (use case giải mã trước khi gọi);
+        adapter không bao giờ thấy bản mã hoá.
+        """
         ...
 
     async def download_attachment(self, ref: AttachmentRef) -> bytes:

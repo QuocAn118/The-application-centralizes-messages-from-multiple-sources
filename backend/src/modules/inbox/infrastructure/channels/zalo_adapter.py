@@ -20,17 +20,12 @@ from src.modules.inbox.domain.value_objects.message_content import (
     MessageContent,
 )
 from src.modules.inbox.domain.value_objects.platform import Platform
+from src.modules.inbox.infrastructure.channels.errors import WebhookSignatureError
+
+__all__ = ["WebhookSignatureError", "ZaloAdapter"]
 
 _ZALO_SEND_URL = "https://openapi.zalo.me/v3.0/oa/message/cs"
 _SIGNATURE_HEADER = "x-zevent-signature"
-
-
-class WebhookSignatureError(ValueError):
-    """Chữ ký webhook không hợp lệ — payload không đáng tin, phải từ chối.
-
-    Cố ý là ``ValueError`` rỗng thông tin: router bắt để trả 403 mà không lộ lý
-    do cụ thể (RB-3).
-    """
 
 
 class ZaloAdapter:
@@ -134,14 +129,15 @@ class ZaloAdapter:
 
     async def send_message(
         self,
-        encrypted_credential: str,
+        access_token: str,
         external_customer_id: str,
         content: MessageContent,
     ) -> SentMessageRef:
-        """Gửi tin qua Zalo Open API.
+        """Gửi tin qua Zalo Open API (token đã giải mã, use case lo việc đó).
 
-        ``encrypted_credential`` ở đây là access token đã giải mã (use case giải
-        mã trước khi gọi). #1 gửi phần text; media để iteration sau.
+        Dùng endpoint ``/message/cs`` (chăm sóc khách hàng): hợp lệ để trả lời
+        trong cửa sổ tương tác sau tin cuối của khách — đúng luồng inbox #1. #1
+        gửi phần text; media để iteration sau.
         """
         body = {
             "recipient": {"user_id": external_customer_id},
@@ -150,7 +146,7 @@ class ZaloAdapter:
         async with self._client_factory() as client:
             resp = await client.post(
                 _ZALO_SEND_URL,
-                headers={"access_token": encrypted_credential},
+                headers={"access_token": access_token},
                 json=body,
             )
             resp.raise_for_status()
@@ -161,6 +157,8 @@ class ZaloAdapter:
     # -- Tải media -----------------------------------------------------------
 
     async def download_attachment(self, ref: AttachmentRef) -> bytes:
+        # NỢ: URL media Zalo có thể cần access_token để tải (ảnh không public).
+        # #1 tải trực tiếp; nếu gặp 401/403 thật thì truyền token vào đây.
         async with self._client_factory() as client:
             resp = await client.get(ref.url)
             resp.raise_for_status()

@@ -208,6 +208,8 @@ class FakeChannelAdapter:
         self._platform = platform
         self._events = events or []
         self.sent: list[tuple[str, MessageContent]] = []
+        # Token adapter thực sự nhận — test khẳng định nó đã được giải mã.
+        self.sent_tokens: list[str] = []
         self.reject_signature = False
 
     @property
@@ -221,10 +223,11 @@ class FakeChannelAdapter:
 
     async def send_message(
         self,
-        encrypted_credential: str,
+        access_token: str,
         external_customer_id: str,
         content: MessageContent,
     ) -> SentMessageRef:
+        self.sent_tokens.append(access_token)
         self.sent.append((external_customer_id, content))
         return SentMessageRef(external_message_id="sent_1")
 

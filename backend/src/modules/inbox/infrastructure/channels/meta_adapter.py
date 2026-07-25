@@ -20,9 +20,7 @@ from src.modules.inbox.domain.value_objects.message_content import (
     MessageContent,
 )
 from src.modules.inbox.domain.value_objects.platform import Platform
-
-# Từ webhook Meta không ký, dùng lại lỗi chung của Zalo adapter để router bắt 403.
-from src.modules.inbox.infrastructure.channels.zalo_adapter import WebhookSignatureError
+from src.modules.inbox.infrastructure.channels.errors import WebhookSignatureError
 
 _GRAPH_SEND_URL = "https://graph.facebook.com/v21.0/me/messages"
 _SIGNATURE_HEADER = "x-hub-signature-256"
@@ -124,11 +122,11 @@ class MetaAdapter:
 
     async def send_message(
         self,
-        encrypted_credential: str,
+        access_token: str,
         external_customer_id: str,
         content: MessageContent,
     ) -> SentMessageRef:
-        """Gửi tin qua Graph API. ``encrypted_credential`` là access token đã giải mã."""
+        """Gửi tin qua Graph API (token đã giải mã, use case lo việc đó)."""
         body = {
             "recipient": {"id": external_customer_id},
             "message": {"text": content.text or ""},
@@ -136,7 +134,7 @@ class MetaAdapter:
         async with self._client_factory() as client:
             resp = await client.post(
                 _GRAPH_SEND_URL,
-                params={"access_token": encrypted_credential},
+                params={"access_token": access_token},
                 json=body,
             )
             resp.raise_for_status()
@@ -147,6 +145,8 @@ class MetaAdapter:
     # -- Tải media -----------------------------------------------------------
 
     async def download_attachment(self, ref: AttachmentRef) -> bytes:
+        # NỢ: URL media Meta thường có chữ ký trong query và tải trực tiếp được;
+        # nếu gặp URL cần access_token thì truyền vào đây.
         async with self._client_factory() as client:
             resp = await client.get(ref.url)
             resp.raise_for_status()

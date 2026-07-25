@@ -116,6 +116,17 @@ class TestGuiThanhCong:
 
         assert view.sender_user_id == nv.user_id
 
+    async def test_adapter_nhan_token_da_giai_ma_khong_phai_ban_ma_hoa(self) -> None:
+        # Kênh lưu "enc::token"; adapter phải nhận "token" (đã giải mã), không
+        # phải chuỗi mã hoá — nếu không, gửi thật sẽ hỏng auth.
+        bc = _BoiCanh()
+        await bc.seed()
+
+        await bc.use_case.execute(_nhan_vien(), bc.conversation.id, MessageContent(text="hi"))
+
+        assert bc.adapter.sent_tokens == ["token"]
+        assert "enc::" not in bc.adapter.sent_tokens[0]
+
 
 class TestDinhKemDi:
     async def test_anh_gui_di_duoc_luu_lai(self) -> None:

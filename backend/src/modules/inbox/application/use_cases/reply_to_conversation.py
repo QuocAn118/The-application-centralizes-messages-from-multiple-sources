@@ -105,10 +105,11 @@ class ReplyToConversation:
         if customer is None:  # pragma: no cover - dữ liệu luôn nhất quán
             raise NotFoundError("Không tìm thấy khách của hội thoại.", code="CUSTOMER_NOT_FOUND")
 
-        # Adapter cần credential thô để gọi API; chỉ giải mã tại đây, không lưu lại.
+        # Adapter cần token thô để gọi API; giải mã tại đây, không lưu lại bản thô.
         adapter = self._adapters.for_platform(channel.platform)
+        access_token = self._cipher.decrypt(channel.encrypted_credential)
         await adapter.send_message(
-            encrypted_credential=channel.encrypted_credential,
+            access_token=access_token,
             external_customer_id=customer.external_id,
             content=content,
         )
