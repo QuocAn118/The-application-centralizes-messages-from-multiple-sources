@@ -126,5 +126,7 @@ class Conversation(AggregateRoot):
         """Ghi nhận có tin đến. Nếu đang đóng thì mở lại; giữ nguyên người đã gán."""
         if self.status is ConversationStatus.DA_DONG:
             self.status = ConversationStatus.DANG_MO
-        self.last_message_at = now
+        # Webhook đến trễ hoặc lệch đồng hồ không được kéo mốc lùi về quá khứ —
+        # nếu không, sort inbox theo last_message_at sẽ sai thứ tự.
+        self.last_message_at = max(self.last_message_at, now)
         self.updated_at = now

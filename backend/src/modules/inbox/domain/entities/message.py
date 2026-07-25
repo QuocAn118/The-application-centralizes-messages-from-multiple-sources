@@ -5,6 +5,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
+from src.modules.inbox.domain.value_objects.message_content import MessageContent
 from src.shared.domain.entity import AggregateRoot
 from src.shared.domain.exceptions import BusinessRuleViolationError
 
@@ -57,17 +58,22 @@ class Message(AggregateRoot):
     def inbound(
         cls,
         conversation_id: UUID,
-        text: str | None,
+        content: MessageContent,
         external_message_id: str,
         now: datetime,
     ) -> "Message":
-        """Tin từ khách gửi vào."""
+        """Tin từ khách gửi vào.
+
+        Nhận nguyên ``MessageContent`` (đã tự chặn nội dung rỗng) nên bất biến
+        'tin phải có text hoặc đính kèm' được giữ ở một chỗ; entity chỉ trích
+        ``text`` ra lưu, các đính kèm là ``Attachment`` riêng trỏ về tin này.
+        """
         if not external_message_id.strip():
             raise InboundNeedsExternalIdError
         return cls(
             conversation_id=conversation_id,
             direction=MessageDirection.INBOUND,
-            text=text,
+            text=content.text,
             external_message_id=external_message_id,
             sender_user_id=None,
             created_at=now,
@@ -77,7 +83,7 @@ class Message(AggregateRoot):
     def outbound(
         cls,
         conversation_id: UUID,
-        text: str | None,
+        content: MessageContent,
         sender_user_id: UUID,
         now: datetime,
     ) -> "Message":
@@ -87,7 +93,7 @@ class Message(AggregateRoot):
         return cls(
             conversation_id=conversation_id,
             direction=MessageDirection.OUTBOUND,
-            text=text,
+            text=content.text,
             external_message_id=None,
             sender_user_id=sender_user_id,
             created_at=now,

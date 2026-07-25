@@ -151,3 +151,43 @@ class TestCustomer:
         khach.update_profile(display_name="Trần B", avatar_url=None, now=BAY_GIO)
 
         assert khach.display_name == "Trần B"
+
+    def test_ten_rong_khong_ghi_de_ten_cu(self) -> None:
+        """Webhook trả name='' không được xoá tên khách đang có."""
+        khach = Customer.register(
+            channel_id=new_id(),
+            platform=Platform.FACEBOOK,
+            external_id="fb_1",
+            display_name="Trần B",
+            now=BAY_GIO,
+        )
+
+        khach.update_profile(display_name="   ", avatar_url=None, now=BAY_GIO)
+
+        assert khach.display_name == "Trần B"
+
+    def test_register_ten_rong_thanh_none(self) -> None:
+        khach = Customer.register(
+            channel_id=new_id(),
+            platform=Platform.ZALO,
+            external_id="z_1",
+            display_name="   ",
+            now=BAY_GIO,
+        )
+
+        assert khach.display_name is None
+
+    def test_cap_nhat_anh_dai_dien(self) -> None:
+        khach = Customer.register(
+            channel_id=new_id(),
+            platform=Platform.ZALO,
+            external_id="z_2",
+            display_name="A",
+            now=BAY_GIO,
+        )
+
+        khach.update_profile(
+            display_name=None, avatar_url="https://cdn/a.jpg", now=BAY_GIO
+        )
+
+        assert khach.avatar_url == "https://cdn/a.jpg"
