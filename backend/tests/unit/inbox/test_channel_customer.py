@@ -186,8 +186,6 @@ class TestCustomer:
             now=BAY_GIO,
         )
 
-        khach.update_profile(
-            display_name=None, avatar_url="https://cdn/a.jpg", now=BAY_GIO
-        )
+        khach.update_profile(display_name=None, avatar_url="https://cdn/a.jpg", now=BAY_GIO)
 
         assert khach.avatar_url == "https://cdn/a.jpg"
