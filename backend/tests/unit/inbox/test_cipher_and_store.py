@@ -3,11 +3,11 @@ from pathlib import Path
 import pytest
 from cryptography.fernet import Fernet
 
+from src.modules.inbox.domain.ports import IAttachmentStore, ICredentialCipher
 from src.modules.inbox.infrastructure.attachments.local_store import (
     LocalAttachmentStore,
     _lam_sach_ten,
 )
-from src.modules.inbox.domain.ports import IAttachmentStore, ICredentialCipher
 from src.modules.inbox.infrastructure.security.fernet_cipher import (
     FernetCredentialCipher,
     InvalidCipherKeyError,
