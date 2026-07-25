@@ -1,5 +1,7 @@
 from datetime import UTC, datetime
 
+import pytest
+
 from src.modules.inbox.application.use_cases.ingest_inbound_message import (
     IngestInboundMessage,
 )
@@ -185,3 +187,17 @@ class TestDinhKem:
         assert len(view.attachments) == 1
         assert view.attachments[0].kind is AttachmentKind.IMAGE
         assert bc.store.saved == [b"noi-dung-anh"]
+
+    async def test_lech_so_luong_bytes_no_ngay(self) -> None:
+        bc = _BoiCanh(_kenh())
+        su_kien = _su_kien(
+            text=None,
+            attachments=[
+                AttachmentRef(kind=AttachmentKind.IMAGE, url="https://cdn/1.jpg"),
+                AttachmentRef(kind=AttachmentKind.IMAGE, url="https://cdn/2.jpg"),
+            ],
+        )
+
+        # Khai 2 ảnh nhưng router chỉ tải được 1 -> lỗi, không âm thầm mất ảnh.
+        with pytest.raises(ValueError):
+            await bc.use_case.execute(su_kien, [b"chi-mot-anh"])

@@ -4,17 +4,23 @@ import pytest
 
 from src.modules.inbox.application.actor import ActorRole, InboxActor
 from src.modules.inbox.application.use_cases.reply_to_conversation import (
+    ChannelInactiveError,
     ReplyToConversation,
 )
 from src.modules.inbox.domain.entities.channel import Channel
-from src.modules.inbox.domain.entities.conversation import Conversation
+from src.modules.inbox.domain.entities.conversation import Conversation, NotOpenError
 from src.modules.inbox.domain.entities.customer import Customer
 from src.modules.inbox.domain.entities.message import MessageDirection
-from src.modules.inbox.domain.value_objects.message_content import MessageContent
+from src.modules.inbox.domain.value_objects.message_content import (
+    AttachmentKind,
+    AttachmentRef,
+    MessageContent,
+)
 from src.modules.inbox.domain.value_objects.platform import Platform
 from src.shared.application.exceptions import NotFoundError, PermissionDeniedError
 from src.shared.domain.identifiers import new_id
 from tests.unit.inbox.fakes import (
+    FakeAttachmentStore,
     FakeChannelAdapter,
     FakeChannelAdapterRegistry,
     FakeChannelRepository,
@@ -31,7 +37,7 @@ PHONG_A = new_id()
 
 
 class _BoiCanh:
-    def __init__(self, department_id=PHONG_A) -> None:
+    def __init__(self, department_id=PHONG_A, is_active=True) -> None:
         self.clock = FakeClock(BAY_GIO)
         self.adapter = FakeChannelAdapter(Platform.ZALO)
         self.channel = Channel.connect(
@@ -42,6 +48,8 @@ class _BoiCanh:
             encrypted_credential="enc::token",
             now=BAY_GIO,
         )
+        if not is_active:
+            self.channel.deactivate(BAY_GIO)
         self.customer = Customer.register(
             channel_id=self.channel.id,
             platform=Platform.ZALO,
@@ -49,6 +57,7 @@ class _BoiCanh:
             display_name="Khach",
             now=BAY_GIO,
         )
+        # department_id set -> hội thoại vào DANG_MO ngay, hợp lệ để trả lời.
         self.conversation = Conversation.start(
             channel_id=self.channel.id,
             customer_id=self.customer.id,
@@ -59,6 +68,7 @@ class _BoiCanh:
         self.customer_repo = FakeCustomerRepository()
         self.conversation_repo = FakeConversationRepository()
         self.message_repo = FakeMessageRepository()
+        self.store = FakeAttachmentStore()
         self.notifier = FakeRealtimeNotifier()
         self.use_case = ReplyToConversation(
             conversation_repo=self.conversation_repo,
@@ -67,6 +77,7 @@ class _BoiCanh:
             message_repo=self.message_repo,
             adapters=FakeChannelAdapterRegistry([self.adapter]),
             cipher=FakeCredentialCipher(),
+            attachment_store=self.store,
             notifier=self.notifier,
             clock=self.clock,
         )
@@ -104,6 +115,74 @@ class TestGuiThanhCong:
         view = await bc.use_case.execute(nv, bc.conversation.id, MessageContent(text="hi"))
 
         assert view.sender_user_id == nv.user_id
+
+
+class TestDinhKemDi:
+    async def test_anh_gui_di_duoc_luu_lai(self) -> None:
+        bc = _BoiCanh()
+        await bc.seed()
+        content = MessageContent(
+            text="anh day",
+            attachments=(
+                AttachmentRef(kind=AttachmentKind.IMAGE, url="", content_type="image/png"),
+            ),
+        )
+
+        view = await bc.use_case.execute(
+            _nhan_vien(), bc.conversation.id, content, raw_attachments=[b"png-bytes"]
+        )
+
+        assert len(view.attachments) == 1
+        assert view.attachments[0].kind is AttachmentKind.IMAGE
+        # Đính kèm gửi đi được lưu lại (RB-4), không bị vứt.
+        assert bc.store.saved == [b"png-bytes"]
+
+    async def test_lech_so_luong_dinh_kem_no_ngay(self) -> None:
+        bc = _BoiCanh()
+        await bc.seed()
+        content = MessageContent(
+            text=None,
+            attachments=(AttachmentRef(kind=AttachmentKind.IMAGE, url=""),),
+        )
+
+        # content khai 1 ảnh nhưng router không đưa bytes -> lỗi, không mất âm thầm.
+        with pytest.raises(ValueError):
+            await bc.use_case.execute(_nhan_vien(), bc.conversation.id, content, raw_attachments=[])
+
+
+class TestTrangThai:
+    async def test_khong_tra_loi_hoi_thoai_cho_phan(self) -> None:
+        # Kênh không gắn phòng -> hội thoại CHO_PHAN; Manager xem được nhưng
+        # không được trả lời khi chưa phân phòng.
+        bc = _BoiCanh(department_id=None)
+        await bc.seed()
+        manager = InboxActor(user_id=new_id(), role=ActorRole.MANAGER, department_id=PHONG_A)
+
+        with pytest.raises(NotOpenError):
+            await bc.use_case.execute(manager, bc.conversation.id, MessageContent(text="x"))
+
+        assert bc.adapter.sent == []
+        assert len(bc.message_repo.messages) == 0
+
+    async def test_khong_tra_loi_hoi_thoai_da_dong(self) -> None:
+        bc = _BoiCanh()
+        await bc.seed()
+        bc.conversation.close(BAY_GIO)
+        await bc.conversation_repo.update(bc.conversation)
+
+        with pytest.raises(NotOpenError):
+            await bc.use_case.execute(_nhan_vien(), bc.conversation.id, MessageContent(text="x"))
+
+
+class TestKenhNgat:
+    async def test_khong_gui_qua_kenh_da_ngat(self) -> None:
+        bc = _BoiCanh(is_active=False)
+        await bc.seed()
+
+        with pytest.raises(ChannelInactiveError):
+            await bc.use_case.execute(_nhan_vien(), bc.conversation.id, MessageContent(text="x"))
+
+        assert bc.adapter.sent == []
 
 
 class TestPhanQuyen:

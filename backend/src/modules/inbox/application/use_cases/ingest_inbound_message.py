@@ -141,7 +141,9 @@ class IngestInboundMessage:
         now: datetime,
     ) -> list[Attachment]:
         stored: list[Attachment] = []
-        for ref, data in zip(event.content.attachments, raw_attachments, strict=False):
+        # strict=True: router phải tải đủ mọi attachment; lệch số lượng là lỗi
+        # lập trình, phải nổ ngay chứ không âm thầm mất ảnh (xem RB-4).
+        for ref, data in zip(event.content.attachments, raw_attachments, strict=True):
             info = await self._attachment_store.save(data, _ten_goi_y(ref), ref.content_type)
             stored.append(
                 Attachment.stored(
