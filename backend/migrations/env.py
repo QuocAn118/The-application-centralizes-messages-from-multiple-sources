@@ -18,6 +18,17 @@ from src.modules.identity.infrastructure.models.refresh_token_model import (  # 
     RefreshTokenModel,
 )
 from src.modules.identity.infrastructure.models.user_model import UserModel  # noqa: F401
+from src.modules.inbox.infrastructure.models.attachment_model import (  # noqa: F401
+    AttachmentModel,
+)
+from src.modules.inbox.infrastructure.models.channel_model import ChannelModel  # noqa: F401
+from src.modules.inbox.infrastructure.models.conversation_model import (  # noqa: F401
+    ConversationModel,
+)
+from src.modules.inbox.infrastructure.models.customer_model import (  # noqa: F401
+    CustomerModel,
+)
+from src.modules.inbox.infrastructure.models.message_model import MessageModel  # noqa: F401
 from src.shared.infrastructure.config import get_settings
 from src.shared.infrastructure.database import Base
 from src.shared.infrastructure.event_loop import cau_hinh_event_loop
