@@ -73,6 +73,7 @@ omit = [
     # nghĩa và kéo tụt con số một cách giả tạo.
     "src/modules/*/domain/repositories/*.py",
     "src/modules/*/application/ports.py",
+    "src/modules/*/domain/ports.py",
 ]
 
 [tool.importlinter]
@@ -84,11 +85,17 @@ include_external_packages = true
 [[tool.importlinter.contracts]]
 name = "Domain khong duoc phu thuoc tang ngoai"
 type = "forbidden"
-source_modules = ["src.shared.domain", "src.modules.identity.domain"]
+source_modules = [
+    "src.shared.domain",
+    "src.modules.identity.domain",
+    "src.modules.inbox.domain",
+]
 forbidden_modules = [
     "src.shared.infrastructure",
     "src.modules.identity.infrastructure",
     "src.modules.identity.presentation",
+    "src.modules.inbox.infrastructure",
+    "src.modules.inbox.presentation",
     "sqlalchemy",
     "fastapi",
     "pydantic",
@@ -97,17 +104,23 @@ forbidden_modules = [
 [[tool.importlinter.contracts]]
 name = "Application khong duoc phu thuoc infrastructure va presentation"
 type = "forbidden"
-source_modules = ["src.shared.application", "src.modules.identity.application"]
+source_modules = [
+    "src.shared.application",
+    "src.modules.identity.application",
+    "src.modules.inbox.application",
+]
 forbidden_modules = [
     "src.shared.infrastructure",
     "src.modules.identity.infrastructure",
     "src.modules.identity.presentation",
+    "src.modules.inbox.infrastructure",
+    "src.modules.inbox.presentation",
     "sqlalchemy",
     "fastapi",
 ]
 
 [[tool.importlinter.contracts]]
-name = "Cac layer tuan thu thu tu mot chieu"
+name = "Cac layer identity tuan thu thu tu mot chieu"
 type = "layers"
 layers = [
     "src.modules.identity.presentation",
@@ -115,3 +128,26 @@ layers = [
     "src.modules.identity.application",
     "src.modules.identity.domain",
 ]
+
+[[tool.importlinter.contracts]]
+name = "Cac layer inbox tuan thu thu tu mot chieu"
+type = "layers"
+layers = [
+    "src.modules.inbox.presentation",
+    "src.modules.inbox.infrastructure",
+    "src.modules.inbox.application",
+    "src.modules.inbox.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "inbox va identity doc lap - chi noi qua UUID va port"
+type = "forbidden"
+# inbox domain/application/presentation KHONG duoc cham identity. Chi
+# inbox.infrastructure (implementation cua IWorkforceDirectory) moi duoc phep,
+# nen khong liet ke o day.
+source_modules = [
+    "src.modules.inbox.domain",
+    "src.modules.inbox.application",
+    "src.modules.inbox.presentation",
+]
+forbidden_modules = ["src.modules.identity"]
