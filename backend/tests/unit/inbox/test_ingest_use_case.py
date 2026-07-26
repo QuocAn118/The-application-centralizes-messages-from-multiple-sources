@@ -1,7 +1,5 @@
 from datetime import UTC, datetime
 
-import pytest
-
 from src.modules.inbox.application.use_cases.ingest_inbound_message import (
     IngestInboundMessage,
 )
@@ -26,6 +24,22 @@ from tests.unit.inbox.fakes import (
 )
 
 BAY_GIO = datetime(2026, 7, 24, 10, 0, tzinfo=UTC)
+
+
+async def _khong_tai(ref: AttachmentRef) -> bytes:
+    """Hàm tải giả cho tin không đính kèm — không bao giờ được gọi."""
+    raise AssertionError("Không nên tải khi không có đính kèm.")
+
+
+def _tai_co_dinh(data: bytes):  # type: ignore[no-untyped-def]
+    """Trả một hàm tải luôn trả cùng nội dung, đếm số lần gọi."""
+
+    async def _tai(ref: AttachmentRef) -> bytes:
+        _tai.so_lan += 1  # type: ignore[attr-defined]
+        return data
+
+    _tai.so_lan = 0  # type: ignore[attr-defined]
+    return _tai
 
 
 class _BoiCanh:
@@ -80,7 +94,7 @@ class TestTaoMoi:
     async def test_tin_moi_tao_khach_hoi_thoai_va_message(self) -> None:
         bc = _BoiCanh(_kenh())
 
-        view = await bc.use_case.execute(_su_kien(), [])
+        view = await bc.use_case.execute(_su_kien(), _khong_tai)
 
         assert view is not None
         assert view.text == "xin chao"
@@ -93,7 +107,7 @@ class TestTaoMoi:
     async def test_kenh_khong_gan_phong_thi_hoi_thoai_cho_phan(self) -> None:
         bc = _BoiCanh(_kenh(department_id=None))
 
-        await bc.use_case.execute(_su_kien(), [])
+        await bc.use_case.execute(_su_kien(), _khong_tai)
 
         khach = await bc.customer_repo.get_by_external(bc.channel.id, "cust_9")
         assert khach is not None
@@ -105,7 +119,7 @@ class TestTaoMoi:
         phong = new_id()
         bc = _BoiCanh(_kenh(department_id=phong))
 
-        await bc.use_case.execute(_su_kien(), [])
+        await bc.use_case.execute(_su_kien(), _khong_tai)
 
         khach = await bc.customer_repo.get_by_external(bc.channel.id, "cust_9")
         assert khach is not None
@@ -117,7 +131,7 @@ class TestTaoMoi:
     async def test_gui_tin_hieu_realtime_co_tin_moi(self) -> None:
         bc = _BoiCanh(_kenh())
 
-        await bc.use_case.execute(_su_kien(), [])
+        await bc.use_case.execute(_su_kien(), _khong_tai)
 
         assert len(bc.notifier.signals) == 1
         _, _, loai = bc.notifier.signals[0]
@@ -128,8 +142,8 @@ class TestIdempotency:
     async def test_event_trung_khong_tao_ban_trung(self) -> None:
         bc = _BoiCanh(_kenh())
 
-        first = await bc.use_case.execute(_su_kien(external_message_id="dup"), [])
-        second = await bc.use_case.execute(_su_kien(external_message_id="dup"), [])
+        first = await bc.use_case.execute(_su_kien(external_message_id="dup"), _khong_tai)
+        second = await bc.use_case.execute(_su_kien(external_message_id="dup"), _khong_tai)
 
         assert first is not None
         assert second is None
@@ -148,7 +162,7 @@ class TestKenhKhongTonTai:
             content=MessageContent(text="hi"),
         )
 
-        ket_qua = await bc.use_case.execute(su_kien_la, [])
+        ket_qua = await bc.use_case.execute(su_kien_la, _khong_tai)
 
         assert ket_qua is None
         assert len(bc.message_repo.messages) == 0
@@ -158,8 +172,8 @@ class TestNoiTinVaoHoiThoaiCu:
     async def test_tin_thu_hai_noi_vao_hoi_thoai_dang_mo(self) -> None:
         bc = _BoiCanh(_kenh())
 
-        await bc.use_case.execute(_su_kien(external_message_id="m1"), [])
-        await bc.use_case.execute(_su_kien(external_message_id="m2"), [])
+        await bc.use_case.execute(_su_kien(external_message_id="m1"), _khong_tai)
+        await bc.use_case.execute(_su_kien(external_message_id="m2"), _khong_tai)
 
         khach = await bc.customer_repo.get_by_external(bc.channel.id, "cust_9")
         assert khach is not None
@@ -181,23 +195,28 @@ class TestDinhKem:
             ],
         )
 
-        view = await bc.use_case.execute(su_kien, [b"noi-dung-anh"])
+        tai = _tai_co_dinh(b"noi-dung-anh")
+        view = await bc.use_case.execute(su_kien, tai)
 
         assert view is not None
         assert len(view.attachments) == 1
         assert view.attachments[0].kind is AttachmentKind.IMAGE
         assert bc.store.saved == [b"noi-dung-anh"]
+        assert tai.so_lan == 1  # type: ignore[attr-defined]
 
-    async def test_lech_so_luong_bytes_no_ngay(self) -> None:
+    async def test_event_trung_khong_tai_media(self) -> None:
+        # Idempotency chặn TRƯỚC khi tải: webhook lặp lại không kéo tải media
+        # (chống lãng phí + DoS). Hàm tải không được gọi ở lần trùng.
         bc = _BoiCanh(_kenh())
         su_kien = _su_kien(
+            external_message_id="dup_img",
             text=None,
-            attachments=[
-                AttachmentRef(kind=AttachmentKind.IMAGE, url="https://cdn/1.jpg"),
-                AttachmentRef(kind=AttachmentKind.IMAGE, url="https://cdn/2.jpg"),
-            ],
+            attachments=[AttachmentRef(kind=AttachmentKind.IMAGE, url="https://cdn/1.jpg")],
         )
 
-        # Khai 2 ảnh nhưng router chỉ tải được 1 -> lỗi, không âm thầm mất ảnh.
-        with pytest.raises(ValueError):
-            await bc.use_case.execute(su_kien, [b"chi-mot-anh"])
+        tai = _tai_co_dinh(b"anh")
+        await bc.use_case.execute(su_kien, tai)
+        second = await bc.use_case.execute(su_kien, tai)
+
+        assert second is None
+        assert tai.so_lan == 1  # type: ignore[attr-defined]  # chỉ tải lần đầu

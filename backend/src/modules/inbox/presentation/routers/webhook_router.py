@@ -15,7 +15,6 @@ from fastapi.responses import PlainTextResponse
 from src.modules.inbox.application.use_cases.ingest_inbound_message import (
     IngestInboundMessage,
 )
-from src.modules.inbox.domain.ports import IChannelAdapter, InboundEvent
 from src.modules.inbox.domain.value_objects.platform import Platform
 from src.modules.inbox.infrastructure.channels.errors import WebhookSignatureError
 from src.modules.inbox.infrastructure.repositories.channel_repository import (
@@ -88,17 +87,19 @@ async def nhan_webhook(
     )
 
     for event in events:
-        raw_attachments = await _tai_dinh_kem(adapter, event)
-        await use_case.execute(event, raw_attachments)
+        # Mỗi event là một giao dịch độc lập: commit ngay khi xong để event lỗi
+        # phía sau (ví dụ ảnh hỏng) không rollback các event đã ghi. Webhook Meta
+        # gộp nhiều tin nên không được để một tin hỏng chặn cả lô. Idempotency ở
+        # use case bỏ qua event đã xử lý *trước khi* tải media (chống lãng phí).
+        try:
+            await use_case.execute(event, adapter.download_attachment)
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            logger.exception(
+                "Bỏ qua một event webhook lỗi",
+                extra={"external_message_id": event.external_message_id},
+            )
 
     # Luôn 200: nền tảng coi 2xx là "đã nhận", kể cả event trùng đã idempotent.
     return Response(status_code=200)
-
-
-async def _tai_dinh_kem(adapter: IChannelAdapter, event: InboundEvent) -> list[bytes]:
-    """Tải mọi tệp đính kèm của một sự kiện, giữ đúng thứ tự.
-
-    Một tệp tải lỗi làm hỏng cả tin — nhưng ở #1 chấp nhận: thà 500 để nền tảng
-    gửi lại còn hơn lưu tin thiếu ảnh âm thầm (RB-4).
-    """
-    return [await adapter.download_attachment(ref) for ref in event.content.attachments]

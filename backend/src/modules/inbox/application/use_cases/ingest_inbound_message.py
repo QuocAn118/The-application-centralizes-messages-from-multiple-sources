@@ -1,11 +1,12 @@
 """Use case: đưa một tin đến (đã chuẩn hoá từ webhook) vào inbox.
 
 Đây là nơi luồng nhận tin hợp lại: tra kênh, tìm/tạo khách, tìm/mở hội thoại,
-chống trùng, lưu tệp đính kèm đã tải về, lưu tin, rồi báo realtime. Adapter đã
-xác minh chữ ký và chuẩn hoá payload thành ``InboundEvent`` trước khi tới đây —
-use case này không biết gì về định dạng riêng của Zalo hay Meta.
+chống trùng, tải tệp đính kèm về, lưu tin, rồi báo realtime. Adapter đã xác minh
+chữ ký và chuẩn hoá payload thành ``InboundEvent`` trước khi tới đây — use case
+này không biết gì về định dạng riêng của Zalo hay Meta.
 """
 
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 from uuid import UUID
 
@@ -59,13 +60,16 @@ class IngestInboundMessage:
         self._clock = clock
 
     async def execute(
-        self, event: InboundEvent, raw_attachments: list[bytes]
+        self,
+        event: InboundEvent,
+        download: "Callable[[AttachmentRef], Awaitable[bytes]]",
     ) -> MessageView | None:
         """Xử lý một sự kiện đến.
 
-        ``raw_attachments`` là nội dung tệp đã tải sẵn (theo thứ tự trùng với
-        ``event.content.attachments``) — router tải qua adapter rồi đưa vào để
-        use case không tự chạm mạng. Trả ``None`` nếu tin đã được xử lý trước đó.
+        ``download`` là hàm tải nội dung một tệp đính kèm (thường bọc
+        ``adapter.download_attachment``). Use case chỉ gọi nó **sau khi** đã qua
+        kiểm trùng — nên webhook lặp lại không kéo tải media vô ích (chống lãng
+        phí và DoS media). Trả ``None`` nếu tin đã xử lý trước đó.
         """
         if await self._message_repo.exists_external(event.external_message_id):
             return None
@@ -87,7 +91,7 @@ class IngestInboundMessage:
             external_message_id=event.external_message_id,
             now=now,
         )
-        attachments = await self._luu_dinh_kem(event, raw_attachments, message.id, now)
+        attachments = await self._luu_dinh_kem(event, download, message.id, now)
         await self._message_repo.add(message, attachments)
 
         await self._notifier.notify_conversation_changed(
@@ -136,14 +140,15 @@ class IngestInboundMessage:
     async def _luu_dinh_kem(
         self,
         event: InboundEvent,
-        raw_attachments: list[bytes],
+        download: "Callable[[AttachmentRef], Awaitable[bytes]]",
         message_id: UUID,
         now: datetime,
     ) -> list[Attachment]:
+        # Tải từng tệp qua ``download`` rồi lưu; tải lỗi ném ra ngoài để tin
+        # không được ghi thiếu ảnh (RB-4) — router quyết định xử lý lỗi thế nào.
         stored: list[Attachment] = []
-        # strict=True: router phải tải đủ mọi attachment; lệch số lượng là lỗi
-        # lập trình, phải nổ ngay chứ không âm thầm mất ảnh (xem RB-4).
-        for ref, data in zip(event.content.attachments, raw_attachments, strict=True):
+        for ref in event.content.attachments:
+            data = await download(ref)
             info = await self._attachment_store.save(data, _ten_goi_y(ref), ref.content_type)
             stored.append(
                 Attachment.stored(
