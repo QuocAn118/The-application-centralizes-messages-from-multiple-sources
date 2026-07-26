@@ -24,7 +24,7 @@ from src.shared.application.exceptions import (
 )
 from src.shared.domain.exceptions import DomainError
 from src.shared.infrastructure.clock import SystemClock
-from src.shared.infrastructure.config import get_settings
+from src.shared.infrastructure.config import Settings, get_settings
 from src.shared.infrastructure.database import create_engine_and_session_factory
 from src.shared.infrastructure.event_loop import cau_hinh_event_loop
 from src.shared.infrastructure.logging import cau_hinh_logging, request_id_var
@@ -200,7 +200,74 @@ def create_app() -> FastAPI:
     app.include_router(user_router, prefix="/api/v1")
     app.include_router(department_router, prefix="/api/v1")
 
+    _wire_inbox(app, settings)
+
     return app
+
+
+def _wire_inbox(app: FastAPI, settings: Settings) -> None:
+    """Ghép nối module inbox: adapter, cipher, store, notifier, router.
+
+    Đặt riêng để composition root gọn; đây là chỗ *duy nhất* biết cả identity
+    (token_service) lẫn hạ tầng inbox — hợp lệ vì main.py là composition root,
+    không thuộc ``src.modules.inbox.presentation`` (contract chỉ cấm tầng đó).
+    """
+    from cryptography.fernet import Fernet
+
+    from src.modules.identity.presentation.dependencies import get_token_service
+    from src.modules.inbox.domain.value_objects.platform import Platform
+    from src.modules.inbox.infrastructure.attachments.local_store import (
+        LocalAttachmentStore,
+    )
+    from src.modules.inbox.infrastructure.channels.meta_adapter import MetaAdapter
+    from src.modules.inbox.infrastructure.channels.registry import ChannelAdapterRegistry
+    from src.modules.inbox.infrastructure.channels.zalo_adapter import ZaloAdapter
+    from src.modules.inbox.infrastructure.directory.workforce_directory import (
+        IdentityWorkforceDirectory,
+    )
+    from src.modules.inbox.infrastructure.realtime.ws_notifier import WebSocketNotifier
+    from src.modules.inbox.infrastructure.security.fernet_cipher import (
+        FernetCredentialCipher,
+    )
+    from src.modules.inbox.presentation.routers.channel_router import (
+        router as channel_router,
+    )
+    from src.modules.inbox.presentation.routers.inbox_router import router as inbox_router
+    from src.modules.inbox.presentation.routers.webhook_router import (
+        router as webhook_router,
+    )
+    from src.modules.inbox.presentation.routers.ws_router import router as ws_router
+
+    # Token service để inbox dựng InboxActor từ JWT mà không import identity.
+    app.state.token_service = get_token_service(settings)
+
+    cipher_key = settings.channel_cipher_key
+    if not cipher_key:
+        # Dev: chưa cấu hình khoá thật -> sinh khoá tạm để app chạy được, cảnh báo.
+        cipher_key = Fernet.generate_key().decode()
+        logger.warning(
+            "CHANNEL_CIPHER_KEY chưa đặt — dùng khoá tạm; credential sẽ không giải "
+            "mã lại được sau khi khởi động lại. Đặt khoá thật trước khi dùng thật."
+        )
+    app.state.inbox_cipher = FernetCredentialCipher(cipher_key)
+    app.state.inbox_attachment_store = LocalAttachmentStore(settings.attachment_storage_dir)
+    app.state.inbox_notifier = WebSocketNotifier()
+    # Factory để inbox.presentation lấy IWorkforceDirectory mà không import
+    # implementation (chỗ chạm identity) — giữ contract inbox.presentation ⊥ identity.
+    app.state.inbox_directory_factory = IdentityWorkforceDirectory
+    app.state.inbox_webhook_verify_token = settings.webhook_verify_token or None
+    app.state.inbox_adapter_registry = ChannelAdapterRegistry(
+        [
+            ZaloAdapter(settings.zalo_app_id, settings.zalo_oa_secret_key),
+            MetaAdapter(Platform.FACEBOOK, settings.meta_app_secret),
+            MetaAdapter(Platform.INSTAGRAM, settings.meta_app_secret),
+        ]
+    )
+
+    app.include_router(webhook_router, prefix="/api/v1")
+    app.include_router(inbox_router, prefix="/api/v1")
+    app.include_router(channel_router, prefix="/api/v1")
+    app.include_router(ws_router)
 
 
 app = create_app()

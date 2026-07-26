@@ -42,5 +42,8 @@ async def don_du_lieu(engine: AsyncEngine) -> AsyncIterator[None]:
     yield
     async with engine.begin() as conn:
         await conn.execute(
-            text("TRUNCATE audit_logs, refresh_tokens, users, departments RESTART IDENTITY CASCADE")
+            text(
+                "TRUNCATE attachments, messages, conversations, customers, channels, "
+                "audit_logs, refresh_tokens, users, departments RESTART IDENTITY CASCADE"
+            )
         )

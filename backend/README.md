@@ -83,6 +83,39 @@ presentation → application → domain
 `domain/` chỉ import thư viện chuẩn. `import-linter` kiểm tra quy tắc này trong
 CI — nếu vi phạm, pipeline sẽ đỏ.
 
+Hai module song song: `identity` (người dùng, phòng ban, xác thực) và `inbox`
+(kênh, hội thoại, tin nhắn đa nền tảng). `import-linter` bắt buộc **`inbox`
+không phụ thuộc `identity`**: inbox tham chiếu User/Department qua UUID thuần và
+port `IWorkforceDirectory`; chỉ `inbox/infrastructure/directory` được chạm
+identity, và `main.py` (composition root) tiêm nó vào qua `app.state`.
+
+## Module Inbox (đa kênh)
+
+Gom tin nhắn Zalo OA / Facebook / Instagram vào một inbox; nhân viên đọc, trả
+lời, xử lý theo phòng ban.
+
+- **Webhook**: `POST /api/v1/webhooks/{platform}` (`ZALO`/`FACEBOOK`/
+  `INSTAGRAM`). Adapter verify chữ ký (`X-ZEvent-Signature` cho Zalo,
+  `X-Hub-Signature-256` cho Meta) trên **body thô**; sai chữ ký → 403 không lộ
+  lý do. Idempotent theo `external_message_id`; trùng vẫn trả 200.
+- **REST**: `GET /inbox`, `GET /inbox/{id}`, `POST /inbox/{id}/{reply|assign|
+  take|close}`. Phân quyền theo phòng ở tầng use case (Staff: phòng mình;
+  Manager: +chờ-phân; Admin: tất cả).
+- **Channel CRUD** (Admin): `GET/POST /channels`, `PATCH /channels/{id}`,
+  `POST /channels/{id}/deactivate`. Credential mã hoá Fernet trước khi lưu,
+  **không bao giờ ra response**.
+- **Realtime**: WebSocket `/ws/inbox?token=<access_token>` chỉ đẩy *tín hiệu*
+  `{conversation_id, change}`, lọc theo phạm vi quyền; client tự gọi REST lấy
+  nội dung.
+
+Biến môi trường thêm (xem `.env.example`): `CHANNEL_CIPHER_KEY` (Fernet),
+`ATTACHMENT_STORAGE_DIR`, `ZALO_APP_ID`, `ZALO_OA_SECRET_KEY`, `META_APP_SECRET`,
+`WEBHOOK_VERIFY_TOKEN`.
+
+Nợ đã biết ở #1: media chỉ text+ảnh/file, tải về lưu đĩa local (`var/`, không
+commit); gửi đi mới hỗ trợ text; xử lý webhook đồng bộ; không gộp danh tính khách
+đa kênh.
+
 ## Ghi chú khi phát triển trên Windows
 
 psycopg không chạy được trên `ProactorEventLoop` — event loop mặc định của
