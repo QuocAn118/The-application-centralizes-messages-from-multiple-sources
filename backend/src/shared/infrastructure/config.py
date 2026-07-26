@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     channel_cipher_key: str = ""
     attachment_storage_dir: str = "var/attachments"
 
+    # Inbox: bí mật cấp ứng dụng để verify chữ ký webhook (không phải token kênh).
+    zalo_app_id: str = ""
+    zalo_oa_secret_key: str = ""
+    meta_app_secret: str = ""
+    # Token dùng khi Meta/Zalo verify webhook (GET hub.challenge). Rỗng = bỏ qua.
+    webhook_verify_token: str = ""
+
     app_env: str = "development"
     log_level: str = "INFO"
 
