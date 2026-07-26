@@ -127,6 +127,16 @@ class TestShiftAssignment:
         with pytest.raises(PastShiftDateError):
             _phan_ca(new_id(), date(2026, 7, 31), time(8, 0), time(12, 0))
 
+    def test_phan_ca_gio_nguoc_bi_tu_choi(self) -> None:
+        # Bất biến khung giờ hợp lệ phải đúng ở chính buổi phân ca, không chỉ ở
+        # mẫu ca — một buổi "âm thời lượng" làm overlaps hành xử sai.
+        with pytest.raises(InvalidShiftWindowError):
+            _phan_ca(new_id(), date(2026, 8, 5), time(12, 0), time(8, 0))
+
+    def test_phan_ca_gio_bang_nhau_bi_tu_choi(self) -> None:
+        with pytest.raises(InvalidShiftWindowError):
+            _phan_ca(new_id(), date(2026, 8, 5), time(8, 0), time(8, 0))
+
     def test_huy_phan_ca(self) -> None:
         pc = _phan_ca(new_id(), date(2026, 8, 5), time(8, 0), time(12, 0))
         pc.cancel(BAY_GIO)
