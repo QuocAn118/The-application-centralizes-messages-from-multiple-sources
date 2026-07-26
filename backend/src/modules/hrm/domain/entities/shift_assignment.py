@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time
 from uuid import UUID
 
+from src.modules.hrm.domain.entities.shift import InvalidShiftWindowError
 from src.shared.domain.entity import AggregateRoot
 from src.shared.domain.exceptions import BusinessRuleViolationError
 
@@ -59,7 +60,15 @@ class ShiftAssignment(AggregateRoot):
         end_time: time,
         now: datetime,
     ) -> "ShiftAssignment":
-        """Phân một buổi ca cho nhân viên. Từ chối nếu ngày đã qua."""
+        """Phân một buổi ca cho nhân viên. Từ chối nếu ngày đã qua hoặc giờ ngược.
+
+        Khung giờ được kiểm ngay tại đây thay vì tin tưởng người gọi: một buổi
+        phân ca "âm thời lượng" sẽ khiến ``overlaps`` hành xử sai. Bất biến
+        "giờ kết thúc sau giờ bắt đầu" phải đúng ở chính buổi phân ca, không chỉ
+        ở mẫu ca nguồn.
+        """
+        if end_time <= start_time:
+            raise InvalidShiftWindowError
         if work_date < now.date():
             raise PastShiftDateError
         return cls(
@@ -89,6 +98,10 @@ class ShiftAssignment(AggregateRoot):
         Chỉ tính các buổi còn hiệu lực và của cùng một nhân viên: nền tảng chống
         một người bị xếp hai ca giẫm giờ. Hai khoảng ``[a_start, a_end)`` và
         ``[b_start, b_end)`` chồng nhau khi ``a_start < b_end`` và ``b_start < a_end``.
+
+        Hợp đồng: chỉ gọi với một buổi *khác* (khác ``id``). Một buổi luôn "chồng"
+        với chính nó, nên người gọi (use case kiểm chồng ca) phải so buổi mới với
+        các buổi đã tồn tại, không so một buổi với chính nó.
         """
         if not (self.is_active and other.is_active):
             return False
