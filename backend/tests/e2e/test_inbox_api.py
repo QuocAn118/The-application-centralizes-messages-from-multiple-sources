@@ -80,6 +80,23 @@ async def client_inbox(app_inbox):  # type: ignore[no-untyped-def]
         yield ac
 
 
+def _mock_client_tai_loi() -> httpx.AsyncClient:
+    """Client giả: gửi tin OK nhưng TẢI media luôn lỗi (mô phỏng ảnh hỏng)."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(200, json={"message_id": "x"})
+        return httpx.Response(500)  # download lỗi
+
+    return httpx.AsyncClient(transport=httpx.MockTransport(handler))
+
+
+def _ky_meta(raw: bytes) -> str:
+    import hmac
+
+    return "sha256=" + hmac.new(META_APP_SECRET.encode(), raw, hashlib.sha256).hexdigest()
+
+
 def _ky_zalo(raw: bytes) -> str:
     ts = str(json.loads(raw)["timestamp"])
     chuoi = ZALO_APP_ID.encode() + raw + ts.encode() + ZALO_OA_SECRET.encode()
@@ -388,3 +405,69 @@ async def test_staff_khong_tao_duoc_kenh(client_inbox: AsyncClient, engine: Asyn
         headers=_bearer(staff),
     )
     assert r.status_code == 403
+
+
+async def test_batch_meta_mot_event_loi_khong_chan_event_khac(
+    app_test, engine: AsyncEngine
+) -> None:
+    """Webhook Meta gộp 2 event: event 1 có ảnh tải LỖI bị bỏ qua, event 2 vẫn vào inbox."""
+    # App riêng với client tải-lỗi.
+    app_test.state.inbox_adapter_registry = ChannelAdapterRegistry(
+        [MetaAdapter(Platform.FACEBOOK, META_APP_SECRET, client_factory=_mock_client_tai_loi)]
+    )
+    async with AsyncClient(transport=ASGITransport(app=app_test), base_url="http://test") as client:
+        await _tao_admin(engine)
+        admin = await _dang_nhap_admin(client)
+        await client.post(
+            "/api/v1/channels",
+            json={
+                "platform": "FACEBOOK",
+                "external_channel_id": "page_1",
+                "name": "Page",
+                "credential": "t",
+            },
+            headers=_bearer(admin),
+        )
+
+        raw = json.dumps(
+            {
+                "object": "page",
+                "entry": [
+                    {
+                        "messaging": [
+                            {
+                                "sender": {"id": "u1"},
+                                "recipient": {"id": "page_1"},
+                                "message": {
+                                    "mid": "co_anh",
+                                    "attachments": [
+                                        {"type": "image", "payload": {"url": "https://x/a.jpg"}}
+                                    ],
+                                },
+                            },
+                            {
+                                "sender": {"id": "u2"},
+                                "recipient": {"id": "page_1"},
+                                "message": {"mid": "chi_text", "text": "toi can ho tro"},
+                            },
+                        ]
+                    }
+                ],
+            }
+        ).encode()
+        wh = await client.post(
+            "/api/v1/webhooks/FACEBOOK",
+            content=raw,
+            headers={"X-Hub-Signature-256": _ky_meta(raw)},
+        )
+        assert wh.status_code == 200  # vẫn 200 dù một event lỗi
+
+        # Event text (u2) vào inbox; event ảnh-lỗi (u1) bị bỏ qua.
+        inbox = await client.get("/api/v1/inbox", headers=_bearer(admin))
+        items = inbox.json()["items"]
+        assert len(items) == 1
+        conv = await client.get(
+            f"/api/v1/inbox/{items[0]['conversation_id']}", headers=_bearer(admin)
+        )
+        textos = [m["text"] for m in conv.json()["messages"]]
+        assert "toi can ho tro" in textos

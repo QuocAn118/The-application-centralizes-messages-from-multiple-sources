@@ -243,7 +243,14 @@ def _wire_inbox(app: FastAPI, settings: Settings) -> None:
 
     cipher_key = settings.channel_cipher_key
     if not cipher_key:
-        # Dev: chưa cấu hình khoá thật -> sinh khoá tạm để app chạy được, cảnh báo.
+        if settings.app_env != "development":
+            # Production/staging: thiếu khoá là lỗi cấu hình nghiêm trọng — sinh
+            # khoá tạm sẽ làm mất khả năng giải mã credential sau restart. Fail fast.
+            raise RuntimeError(
+                "CHANNEL_CIPHER_KEY bắt buộc khi app_env != development. "
+                "Sinh khoá bằng Fernet.generate_key() và đặt vào .env."
+            )
+        # Dev: sinh khoá tạm để app chạy được, cảnh báo.
         cipher_key = Fernet.generate_key().decode()
         logger.warning(
             "CHANNEL_CIPHER_KEY chưa đặt — dùng khoá tạm; credential sẽ không giải "
