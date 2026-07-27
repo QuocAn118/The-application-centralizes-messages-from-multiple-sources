@@ -6,18 +6,11 @@ chỉ biết các hợp đồng này. Đây là ranh giới giữ module hrm đ�
 """
 
 from dataclasses import dataclass
-from datetime import datetime
 from decimal import Decimal
 from typing import Protocol
 from uuid import UUID
 
 from src.modules.hrm.domain.value_objects.kpi import KpiMetricType, KpiPeriod
-
-
-class IClock(Protocol):
-    """Nguồn thời gian hiện tại — để test bơm mốc cố định thay vì đọc đồng hồ thật."""
-
-    def now(self) -> datetime: ...
 
 
 @dataclass(frozen=True)
