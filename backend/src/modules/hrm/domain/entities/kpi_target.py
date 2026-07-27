@@ -31,10 +31,17 @@ class KpiTarget(AggregateRoot):
     Chỉ giữ *mục tiêu* Manager đặt; giá trị **thực đạt** không lưu ở đây mà tính
     khi cần từ nguồn hiệu suất (Inbox) qua port. ``subject_id`` là UUID thuần
     (user hoặc department tuỳ ``subject_type``), không khoá ngoại sang identity.
+
+    ``department_id`` chụp lại phòng của đối tượng lúc đặt: với mục tiêu cấp
+    phòng nó trùng ``subject_id``; với mục tiêu cấp nhân viên nó là phòng của
+    nhân viên. Nhờ vậy Manager liệt kê được *mọi* mục tiêu trong phòng mình —
+    cả cấp phòng lẫn cấp nhân viên — mà không phải hỏi identity xem ai thuộc
+    phòng nào (cùng cách ``LeaveRequest`` chụp ``department_id``).
     """
 
     subject_type: KpiSubjectType
     subject_id: UUID
+    department_id: UUID
     metric_type: KpiMetricType
     period: KpiPeriod
     target_value: Decimal
@@ -51,6 +58,7 @@ class KpiTarget(AggregateRoot):
         cls,
         subject_type: KpiSubjectType,
         subject_id: UUID,
+        department_id: UUID,
         metric_type: KpiMetricType,
         period: KpiPeriod,
         target_value: Decimal,
@@ -61,6 +69,7 @@ class KpiTarget(AggregateRoot):
         return cls(
             subject_type=subject_type,
             subject_id=subject_id,
+            department_id=department_id,
             metric_type=metric_type,
             period=period,
             target_value=target_value,

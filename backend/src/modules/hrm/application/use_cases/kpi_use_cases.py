@@ -36,6 +36,7 @@ def _target_view(t: KpiTarget) -> KpiTargetView:
         id=t.id,
         subject_type=t.subject_type,
         subject_id=t.subject_id,
+        department_id=t.department_id,
         metric_type=t.metric_type,
         period=t.period,
         target_value=t.target_value,
@@ -117,6 +118,7 @@ class SetKpiTarget:
         target = KpiTarget.set_target(
             subject_type=subject_type,
             subject_id=subject_id,
+            department_id=department_id,
             metric_type=metric_type,
             period=period,
             target_value=target_value,
@@ -139,17 +141,19 @@ class ListKpiTargets:
         self, actor: HrmActor, period: KpiPeriod | None = None
     ) -> list[KpiTargetView]:
         if actor.role is ActorRole.STAFF:
-            subject_ids: list[UUID] | None = [actor.user_id]
+            # Staff chỉ thấy mục tiêu áp cho chính mình (một đối tượng).
+            department_ids: list[UUID] | None = None
+            subject_id: UUID | None = actor.user_id
         elif actor.role is ActorRole.MANAGER:
-            # Mục tiêu của phòng mình: cả mục tiêu cấp phòng lẫn cấp nhân viên
-            # trong phòng. Ở tầng fake/DB ta lọc theo subject_id thuộc phòng —
-            # nhưng danh sách nhân viên phòng cần directory; #4 giữ đơn giản:
-            # Manager lọc theo phòng qua department_id chứa trong subject_ids.
-            subject_ids = [actor.department_id] if actor.department_id else []
+            # Manager thấy mọi mục tiêu trong phòng mình — cả cấp phòng lẫn cấp
+            # nhân viên — nhờ department_id chụp sẵn trên từng mục tiêu.
+            department_ids = [actor.department_id] if actor.department_id else []
+            subject_id = None
         else:
-            subject_ids = None
+            department_ids = None
+            subject_id = None
 
-        targets = await self._target_repo.list_for_subjects(subject_ids, period)
+        targets = await self._target_repo.list_in_scope(department_ids, subject_id, period)
         return [_target_view(t) for t in targets]
 
 

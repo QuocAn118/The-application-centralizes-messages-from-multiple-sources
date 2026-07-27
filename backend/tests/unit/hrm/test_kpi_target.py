@@ -22,6 +22,7 @@ def _target(value: Decimal, *, subject_type=KpiSubjectType.USER) -> KpiTarget:
     return KpiTarget.set_target(
         subject_type=subject_type,
         subject_id=new_id(),
+        department_id=new_id(),
         metric_type=KpiMetricType.CONVERSATIONS_CLOSED,
         period=KY,
         target_value=value,
@@ -32,9 +33,11 @@ def _target(value: Decimal, *, subject_type=KpiSubjectType.USER) -> KpiTarget:
 class TestKpiTarget:
     def test_dat_muc_tieu_cho_nhan_vien(self) -> None:
         nv = new_id()
+        phong = new_id()
         t = KpiTarget.set_target(
             subject_type=KpiSubjectType.USER,
             subject_id=nv,
+            department_id=phong,
             metric_type=KpiMetricType.CONVERSATIONS_CLOSED,
             period=KY,
             target_value=Decimal("200"),
@@ -42,6 +45,7 @@ class TestKpiTarget:
         )
 
         assert t.subject_id == nv
+        assert t.department_id == phong
         assert t.subject_type is KpiSubjectType.USER
         assert t.target_value == Decimal("200")
         assert t.period == KY
