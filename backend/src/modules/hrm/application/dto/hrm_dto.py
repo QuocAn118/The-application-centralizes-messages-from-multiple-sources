@@ -64,6 +64,7 @@ class KpiTargetView:
     id: UUID
     subject_type: KpiSubjectType
     subject_id: UUID
+    department_id: UUID
     metric_type: KpiMetricType
     period: KpiPeriod
     target_value: Decimal

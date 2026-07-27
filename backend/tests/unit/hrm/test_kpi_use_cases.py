@@ -80,7 +80,7 @@ class TestSetKpiTarget:
 
         await bc.set.execute(_manager(), KpiSubjectType.USER, nv, DONG, KY, Decimal("250"))
 
-        targets = await bc.repo.list_for_subjects(None)
+        targets = await bc.repo.list_in_scope(None)
         assert len(targets) == 1
         assert targets[0].target_value == Decimal("250")
 
@@ -207,3 +207,20 @@ class TestListKpiTargets:
         views = await bc.list.execute(_staff(nv))
 
         assert {v.subject_id for v in views} == {nv}
+
+    async def test_manager_thay_muc_tieu_cap_nhan_vien_va_cap_phong(self) -> None:
+        # F2: Manager phải thấy CẢ mục tiêu cấp nhân viên trong phòng mình lẫn
+        # mục tiêu cấp phòng — không chỉ mục tiêu có subject_id == department_id.
+        bc = _Boi()
+        nv = bc.them_nhan_vien(PHONG_A)
+        nv_phong_khac = bc.them_nhan_vien(PHONG_B)
+        await bc.set.execute(_manager(), KpiSubjectType.USER, nv, DONG, KY, Decimal("200"))
+        await bc.set.execute(
+            _manager(), KpiSubjectType.DEPARTMENT, PHONG_A, DONG, KY, Decimal("1000")
+        )
+        # Mục tiêu của nhân viên phòng khác không được lọt vào.
+        await bc.set.execute(_admin(), KpiSubjectType.USER, nv_phong_khac, DONG, KY, Decimal("50"))
+
+        views = await bc.list.execute(_manager(PHONG_A))
+
+        assert {v.subject_id for v in views} == {nv, PHONG_A}

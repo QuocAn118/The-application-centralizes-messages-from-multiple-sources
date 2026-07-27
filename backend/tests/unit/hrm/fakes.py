@@ -129,14 +129,17 @@ class FakeKpiTargetRepository:
     async def update(self, target: KpiTarget) -> None:
         self._items[target.id] = target
 
-    async def list_for_subjects(
+    async def list_in_scope(
         self,
-        subject_ids: list[UUID] | None,
+        department_ids: list[UUID] | None,
+        subject_id: UUID | None = None,
         period: KpiPeriod | None = None,
     ) -> list[KpiTarget]:
         ket_qua = list(self._items.values())
-        if subject_ids is not None:
-            ket_qua = [t for t in ket_qua if t.subject_id in subject_ids]
+        if department_ids is not None:
+            ket_qua = [t for t in ket_qua if t.department_id in department_ids]
+        if subject_id is not None:
+            ket_qua = [t for t in ket_qua if t.subject_id == subject_id]
         if period is not None:
             ket_qua = [t for t in ket_qua if t.period == period]
         return sorted(ket_qua, key=lambda t: t.created_at)

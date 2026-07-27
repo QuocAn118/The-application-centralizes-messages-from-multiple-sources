@@ -34,13 +34,17 @@ class IKpiTargetRepository(Protocol):
 
     async def update(self, target: KpiTarget) -> None: ...
 
-    async def list_for_subjects(
+    async def list_in_scope(
         self,
-        subject_ids: list[UUID] | None,
+        department_ids: list[UUID] | None,
+        subject_id: UUID | None = None,
         period: KpiPeriod | None = None,
     ) -> list[KpiTarget]:
-        """Liệt kê mục tiêu theo phạm vi đối tượng (nhân viên/phòng cho phép).
+        """Liệt kê mục tiêu theo phạm vi.
 
-        ``subject_ids=None`` nghĩa là không giới hạn (Admin). Kỳ tuỳ chọn.
+        ``department_ids`` lọc theo phòng của mục tiêu (Manager xem cả mục tiêu
+        cấp phòng lẫn cấp nhân viên trong phòng mình); ``None`` nghĩa là không
+        giới hạn phòng (Admin). ``subject_id`` siết thêm về đúng một đối tượng
+        (Staff chỉ xem mục tiêu áp cho chính mình). Kỳ tuỳ chọn.
         """
         ...
