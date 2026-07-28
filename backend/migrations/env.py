@@ -29,6 +29,14 @@ from src.modules.inbox.infrastructure.models.customer_model import (  # noqa: F4
     CustomerModel,
 )
 from src.modules.inbox.infrastructure.models.message_model import MessageModel  # noqa: F401
+from src.modules.hrm.infrastructure.models.kpi_target_model import (  # noqa: F401
+    KpiTargetModel,
+)
+from src.modules.hrm.infrastructure.models.request_model import RequestModel  # noqa: F401
+from src.modules.hrm.infrastructure.models.shift_assignment_model import (  # noqa: F401
+    ShiftAssignmentModel,
+)
+from src.modules.hrm.infrastructure.models.shift_model import ShiftModel  # noqa: F401
 from src.shared.infrastructure.config import get_settings
 from src.shared.infrastructure.database import Base
 from src.shared.infrastructure.event_loop import cau_hinh_event_loop
