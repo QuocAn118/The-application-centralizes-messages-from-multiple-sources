@@ -123,6 +123,32 @@ Nợ đã biết ở #1: media chỉ text+ảnh/file, tải về lưu đĩa loca
 commit); gửi đi mới hỗ trợ text; xử lý webhook đồng bộ; không gộp danh tính khách
 đa kênh.
 
+## Module HRM (nhân sự vận hành)
+
+Ca làm việc + phân ca, KPI (mục tiêu do Manager đặt, thực đạt tính từ Inbox), và
+đơn từ nội bộ với phê duyệt một cấp. Module `hrm` độc lập — không import
+`identity` lẫn `inbox`; mọi tham chiếu chéo qua UUID + port, wiring ở
+composition root.
+
+- **Ca & phân ca**: `GET/POST /shifts`, `PATCH /shifts/{id}`,
+  `POST /shifts/{id}/deactivate`; `POST /shift-assignments`,
+  `POST /shift-assignments/{id}/cancel`, `GET /shift-assignments`. Chồng ca
+  (cùng nhân viên, cùng ngày, giẫm giờ) → 409; ngày quá khứ/giờ ngược → 422.
+  Manager thao tác phòng mình; Admin mọi phòng; Staff xem ca của mình.
+- **KPI**: `POST /kpi-targets` (đặt/cập nhật), `GET /kpi-targets`,
+  `GET /kpi-progress` (ghép mục tiêu + thực đạt + % hoàn thành). Thực đạt lấy
+  từ Inbox qua port `IPerformanceSource`. Chỉ số "càng thấp càng tốt"
+  (`AVG_RESPONSE_MINUTES`) tính % ngược chiều.
+- **Đơn từ**: `POST /requests`, `GET /requests`, `GET /requests/{id}`,
+  `POST /requests/{id}/{cancel|approve|reject}`. Một cấp: đơn Staff → Manager
+  phòng đó; đơn Manager → Admin; không tự duyệt đơn mình. Đơn đã quyết là bất
+  biến; từ chối bắt buộc kèm lý do.
+
+Nợ đã biết ở #4: KPI `CONVERSATIONS_CLOSED` đếm xấp xỉ theo `updated_at` (inbox
+chưa có `closed_at`); `AVG_RESPONSE_MINUTES` chưa tính (trả `null`); không chấm
+công thực tế; ca không qua nửa đêm; realtime đơn từ chỉ ghi log (client polling
+REST) — realtime đầy đủ và mốc đóng chính xác để #5.
+
 ## Ghi chú khi phát triển trên Windows
 
 psycopg không chạy được trên `ProactorEventLoop` — event loop mặc định của

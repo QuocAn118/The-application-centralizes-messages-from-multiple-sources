@@ -201,6 +201,7 @@ def create_app() -> FastAPI:
     app.include_router(department_router, prefix="/api/v1")
 
     _wire_inbox(app, settings)
+    _wire_hrm(app, settings)
 
     return app
 
@@ -275,6 +276,41 @@ def _wire_inbox(app: FastAPI, settings: Settings) -> None:
     app.include_router(inbox_router, prefix="/api/v1")
     app.include_router(channel_router, prefix="/api/v1")
     app.include_router(ws_router)
+
+
+def _wire_hrm(app: FastAPI, settings: Settings) -> None:
+    """Ghép nối module hrm: token service, hai cầu nối qua factory, notifier, router.
+
+    Đây là chỗ *duy nhất* biết cả identity (token_service, IdentityWorkforceDirectory)
+    lẫn inbox (InboxPerformanceSource) cùng lúc — hợp lệ vì main.py là composition
+    root, không thuộc ``src.modules.hrm.presentation`` (contract chỉ cấm tầng đó).
+    Presentation chỉ nhận factory qua ``app.state`` và type theo port.
+    """
+    from src.modules.hrm.infrastructure.directory.workforce_directory import (
+        IdentityWorkforceDirectory,
+    )
+    from src.modules.hrm.infrastructure.notifier.log_notifier import LogNotifier
+    from src.modules.hrm.infrastructure.performance.inbox_performance_source import (
+        InboxPerformanceSource,
+    )
+    from src.modules.hrm.presentation.routers.kpi_router import router as kpi_router
+    from src.modules.hrm.presentation.routers.request_router import (
+        router as request_router,
+    )
+    from src.modules.hrm.presentation.routers.shift_router import router as shift_router
+    from src.modules.identity.presentation.dependencies import get_token_service
+
+    # token_service có thể đã được _wire_inbox đặt; đặt lại vô hại (cùng giá trị).
+    app.state.token_service = get_token_service(settings)
+    # Factory để hrm.presentation lấy hai cầu nối mà không import implementation
+    # (chỗ chạm identity/inbox) — giữ contract hrm.presentation ⊥ identity, inbox.
+    app.state.hrm_directory_factory = IdentityWorkforceDirectory
+    app.state.hrm_performance_factory = InboxPerformanceSource
+    app.state.hrm_notifier = LogNotifier()
+
+    app.include_router(shift_router, prefix="/api/v1")
+    app.include_router(kpi_router, prefix="/api/v1")
+    app.include_router(request_router, prefix="/api/v1")
 
 
 app = create_app()
