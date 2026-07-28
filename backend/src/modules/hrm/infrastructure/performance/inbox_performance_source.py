@@ -7,7 +7,6 @@ nhận); chỉ file infrastructure này truy vấn dữ liệu inbox để tính
 Đổi nguồn hiệu suất (thêm #2/#5) sau chỉ đụng file này, không đụng use case KPI.
 """
 
-from calendar import monthrange
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -24,11 +23,18 @@ _DA_DONG = "DA_DONG"
 
 
 def _khoang_ky(period: KpiPeriod) -> tuple[datetime, datetime]:
-    """Nửa khoảng [đầu tháng, đầu tháng sau) theo UTC cho một kỳ."""
+    """Nửa khoảng ``[đầu tháng, đầu tháng sau)`` theo UTC cho một kỳ.
+
+    Dùng nửa khoảng với biên phải mở (``<``) thay vì biên cuối tháng cứng: không
+    phụ thuộc độ chính xác của cột thời gian và không đếm nhầm mốc ``00:00:00``
+    đầu tháng sau.
+    """
     dau = datetime(period.year, period.month, 1, tzinfo=UTC)
-    so_ngay = monthrange(period.year, period.month)[1]
-    cuoi = datetime(period.year, period.month, so_ngay, 23, 59, 59, 999999, tzinfo=UTC)
-    return dau, cuoi
+    if period.month == 12:
+        het = datetime(period.year + 1, 1, 1, tzinfo=UTC)
+    else:
+        het = datetime(period.year, period.month + 1, 1, tzinfo=UTC)
+    return dau, het
 
 
 class InboxPerformanceSource:
@@ -59,20 +65,25 @@ class InboxPerformanceSource:
         user_id: UUID | None = None,
         department_id: UUID | None = None,
     ) -> Decimal:
-        """Số hội thoại đã đóng trong kỳ, gán cho một nhân viên hoặc thuộc một phòng.
+        """Số hội thoại đang ``DA_DONG`` được cập nhật lần cuối trong kỳ, gán cho
+        một nhân viên hoặc thuộc một phòng.
 
-        Dùng ``updated_at`` làm mốc đóng: hội thoại chuyển sang ``DA_DONG`` là
-        lần cập nhật cuối. Đây là xấp xỉ đủ dùng cho #4; #5 có thể tính chính
-        xác hơn bằng mốc đóng riêng — ghi nợ.
+        NỢ ĐÃ BIẾT (spec §10): dùng ``updated_at`` làm xấp xỉ "mốc đóng" vì bảng
+        ``conversations`` của inbox không có cột ``closed_at`` riêng, và inbox
+        (#1) đã đóng băng schema. Xấp xỉ này lệch trong hai trường hợp: hội thoại
+        đóng trong kỳ rồi khách nhắn lại (chuyển ``DANG_MO``) sẽ không được đếm;
+        hội thoại đóng kỳ trước nhưng bị cập nhật lại trong kỳ này (vẫn
+        ``DA_DONG``) sẽ bị đếm nhầm sang kỳ này. Tính chính xác cần thêm
+        ``closed_at`` ở inbox — để #5 Analytics làm.
         """
-        dau, cuoi = _khoang_ky(period)
+        dau, het = _khoang_ky(period)
         cau = (
             select(func.count())
             .select_from(ConversationModel)
             .where(
                 ConversationModel.status == _DA_DONG,
                 ConversationModel.updated_at >= dau,
-                ConversationModel.updated_at <= cuoi,
+                ConversationModel.updated_at < het,
             )
         )
         if user_id is not None:
