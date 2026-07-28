@@ -65,9 +65,16 @@ Tài liệu API: http://localhost:8000/docs
 ## Migration
 
 ```bash
-uv run alembic upgrade head                        # áp migration mới nhất
+uv run alembic upgrade head                        # áp migration mới nhất (DB dev)
 uv run alembic revision --autogenerate -m "mô tả"  # sinh migration mới
 uv run alembic downgrade -1                        # lùi một bước
+```
+
+Cơ sở dữ liệu test dùng cùng migration; áp bằng cách trỏ `DATABASE_URL` sang nó:
+
+```bash
+DATABASE_URL="postgresql+psycopg://postgres@localhost:5432/omnichat_test" \
+  uv run alembic upgrade head
 ```
 
 ## Kiến trúc
