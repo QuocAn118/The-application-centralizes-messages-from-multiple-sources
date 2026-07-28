@@ -160,6 +160,32 @@ class TestInboxPerformanceSource:
 
         assert so == Decimal("1")
 
+    async def test_bien_ky_la_nua_khoang(self, db_session: AsyncSession) -> None:
+        # Đóng đúng 00:00:00 ngày 1 tháng sau KHÔNG thuộc kỳ tháng 8 (biên phải mở).
+        source = InboxPerformanceSource(db_session)
+        phong, nv = new_id(), new_id()
+        await _hoi_thoai_dong(db_session, phong, nv, datetime(2026, 9, 1, 0, 0, tzinfo=UTC))
+        # Cuối kỳ hợp lệ: 31/08 23:59 vẫn được đếm.
+        await _hoi_thoai_dong(db_session, phong, nv, datetime(2026, 8, 31, 23, 59, tzinfo=UTC))
+        await db_session.flush()
+
+        so = await source.get_metric_for_user(nv, KpiMetricType.CONVERSATIONS_CLOSED, KY)
+
+        assert so == Decimal("1")
+
+    async def test_ky_thang_12_khong_tran_nam(self, db_session: AsyncSession) -> None:
+        # Kỳ tháng 12/2026: biên phải là 01/01/2027, không lỗi tràn tháng.
+        source = InboxPerformanceSource(db_session)
+        phong, nv = new_id(), new_id()
+        ky_12 = KpiPeriod(year=2026, month=12)
+        await _hoi_thoai_dong(db_session, phong, nv, datetime(2026, 12, 15, tzinfo=UTC))
+        await _hoi_thoai_dong(db_session, phong, nv, datetime(2027, 1, 1, 0, 0, tzinfo=UTC))
+        await db_session.flush()
+
+        so = await source.get_metric_for_user(nv, KpiMetricType.CONVERSATIONS_CLOSED, ky_12)
+
+        assert so == Decimal("1")
+
     async def test_avg_response_chua_lam_tra_none(self, db_session: AsyncSession) -> None:
         source = InboxPerformanceSource(db_session)
 
