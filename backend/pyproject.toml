@@ -91,6 +91,7 @@ source_modules = [
     "src.modules.identity.domain",
     "src.modules.inbox.domain",
     "src.modules.hrm.domain",
+    "src.modules.keyword.domain",
 ]
 forbidden_modules = [
     "src.shared.infrastructure",
@@ -100,6 +101,8 @@ forbidden_modules = [
     "src.modules.inbox.presentation",
     "src.modules.hrm.infrastructure",
     "src.modules.hrm.presentation",
+    "src.modules.keyword.infrastructure",
+    "src.modules.keyword.presentation",
     "sqlalchemy",
     "fastapi",
     "pydantic",
@@ -113,6 +116,7 @@ source_modules = [
     "src.modules.identity.application",
     "src.modules.inbox.application",
     "src.modules.hrm.application",
+    "src.modules.keyword.application",
 ]
 forbidden_modules = [
     "src.shared.infrastructure",
@@ -122,6 +126,8 @@ forbidden_modules = [
     "src.modules.inbox.presentation",
     "src.modules.hrm.infrastructure",
     "src.modules.hrm.presentation",
+    "src.modules.keyword.infrastructure",
+    "src.modules.keyword.presentation",
     "sqlalchemy",
     "fastapi",
 ]
@@ -184,3 +190,41 @@ forbidden_modules = [
     "src.modules.identity",
     "src.modules.inbox",
 ]
+
+[[tool.importlinter.contracts]]
+name = "Cac layer keyword tuan thu thu tu mot chieu"
+type = "layers"
+layers = [
+    "src.modules.keyword.presentation",
+    "src.modules.keyword.infrastructure",
+    "src.modules.keyword.application",
+    "src.modules.keyword.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "keyword doc lap voi identity va inbox - chi noi qua UUID va port"
+type = "forbidden"
+# keyword domain/application/presentation KHONG duoc cham identity lan inbox.
+# Chi keyword.infrastructure (implementation IWorkforceDirectory,
+# IConversationDirectory/Router, IKeywordExtractor) moi duoc phep.
+source_modules = [
+    "src.modules.keyword.domain",
+    "src.modules.keyword.application",
+    "src.modules.keyword.presentation",
+]
+forbidden_modules = [
+    "src.modules.identity",
+    "src.modules.inbox",
+]
+
+[[tool.importlinter.contracts]]
+name = "inbox va hrm KHONG duoc phu thuoc keyword - #2 la ha nguon"
+type = "forbidden"
+# Chieu nguoc: giu #1 (inbox) va #4 (hrm) nguyen ven, khong biet keyword ton
+# tai. keyword la ha nguon, chi keyword moi tham chieu chung (qua port + UUID).
+source_modules = [
+    "src.modules.inbox",
+    "src.modules.hrm",
+    "src.modules.identity",
+]
+forbidden_modules = ["src.modules.keyword"]
