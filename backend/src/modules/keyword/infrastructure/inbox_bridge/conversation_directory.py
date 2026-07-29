@@ -25,6 +25,12 @@ from src.modules.keyword.domain.ports import ConversationSnapshot
 
 # Quét trong khoảng tin gần đầu để tìm đủ tin khách; đủ rộng để bỏ qua vài tin
 # nhân viên hoặc tin chỉ-ảnh xen giữa mà không cần phân trang.
+#
+# NỢ (chấp nhận): nếu khách gửi hơn _MESSAGE_SCAN_LIMIT tin CHỈ-ẢNH liên tiếp
+# trước tin text đầu tiên, snapshot sẽ rỗng và hội thoại giữ CHO_PHAN (an toàn —
+# Manager phân tay). Với hội thoại CHO_PHAN, các tin đầu vốn là tin khách (chưa
+# có nhân viên nên không có OUTBOUND), nên kịch bản này cực hiếm. Nếu cần chắc
+# chắn: thêm truy vấn "N tin INBOUND có text đầu tiên" vào IMessageRepository #1.
 _MESSAGE_SCAN_LIMIT = 20
 
 
