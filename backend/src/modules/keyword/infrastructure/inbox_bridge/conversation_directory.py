@@ -15,8 +15,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.inbox.domain.entities.conversation import ConversationStatus
 from src.modules.inbox.domain.entities.message import MessageDirection
+from src.modules.inbox.domain.value_objects.platform import Platform
+from src.modules.inbox.infrastructure.repositories.channel_repository import (
+    SqlAlchemyChannelRepository,
+)
 from src.modules.inbox.infrastructure.repositories.conversation_repository import (
     SqlAlchemyConversationRepository,
+)
+from src.modules.inbox.infrastructure.repositories.customer_repository import (
+    SqlAlchemyCustomerRepository,
 )
 from src.modules.inbox.infrastructure.repositories.message_repository import (
     SqlAlchemyMessageRepository,
@@ -38,8 +45,29 @@ class InboxConversationDirectory:
     """Đọc hội thoại + vài tin inbound đầu từ inbox, trả kiểu trung lập của keyword."""
 
     def __init__(self, session: AsyncSession) -> None:
+        self._channel_repo = SqlAlchemyChannelRepository(session)
+        self._customer_repo = SqlAlchemyCustomerRepository(session)
         self._conversation_repo = SqlAlchemyConversationRepository(session)
         self._message_repo = SqlAlchemyMessageRepository(session)
+
+    async def resolve_conversation_id(
+        self, platform: Platform, external_channel_id: str, external_customer_id: str
+    ) -> UUID | None:
+        """Tra ``conversation_id`` từ định danh ngoài của một sự kiện webhook.
+
+        Lặp lại đúng cách ``IngestInboundMessage`` tìm hội thoại (kênh theo external
+        → khách theo external → hội thoại đang mở của cặp đó), để hook post-ingest
+        biết vừa có tin vào hội thoại nào mà KHÔNG cần #1 đổi hợp đồng trả về.
+        Trả ``None`` nếu chưa dựng đủ (kênh/khách/hội thoại chưa có).
+        """
+        channel = await self._channel_repo.get_by_external(platform, external_channel_id)
+        if channel is None:
+            return None
+        customer = await self._customer_repo.get_by_external(channel.id, external_customer_id)
+        if customer is None:
+            return None
+        conversation = await self._conversation_repo.get_open_for(channel.id, customer.id)
+        return conversation.id if conversation is not None else None
 
     async def get_snapshot(
         self, conversation_id: UUID, max_messages: int
