@@ -23,6 +23,12 @@ class ConversationAnalysisModel(Base):
     ``{"text": ..., "normalized": ...}`` — giữ nguyên kể cả khi không phân được
     phòng, để #5 phát hiện nhu cầu mới. ``suggested_department_id``/``confidence``
     chỉ có khi tự phân (AUTO_ASSIGNED) hoặc mơ hồ (AMBIGUOUS có confidence).
+
+    Lưu ý ``confidence`` là ``Numeric(4, 3)``: giá trị được **làm tròn về 3 chữ
+    số thập phân** khi lưu (ví dụ 0.87654 → 0.877). Việc *gác* tự phân so sánh
+    confidence với ngưỡng ở use case xảy ra TRƯỚC khi lưu, trên giá trị đầy đủ
+    của LLM, nên không bị ảnh hưởng; nhưng #3/#5 khi đọc lại chỉ thấy giá trị đã
+    làm tròn — đừng giả định độ chính xác tuyệt đối.
     """
 
     __tablename__ = "conversation_analyses"
