@@ -200,8 +200,14 @@ def create_app() -> FastAPI:
     app.include_router(user_router, prefix="/api/v1")
     app.include_router(department_router, prefix="/api/v1")
 
+    # Hook post-ingest: các module hạ nguồn (keyword #2) đăng ký callable chạy
+    # sau khi webhook ingest xong một tin. Khởi tạo trước _wire_inbox để webhook
+    # router luôn thấy danh sách (rỗng nếu không ai đăng ký).
+    app.state.post_ingest_hooks = []
+
     _wire_inbox(app, settings)
     _wire_hrm(app, settings)
+    _wire_keyword(app, settings)
 
     return app
 
@@ -311,6 +317,113 @@ def _wire_hrm(app: FastAPI, settings: Settings) -> None:
     app.include_router(shift_router, prefix="/api/v1")
     app.include_router(kpi_router, prefix="/api/v1")
     app.include_router(request_router, prefix="/api/v1")
+
+
+def _wire_keyword(app: FastAPI, settings: Settings) -> None:
+    """Ghép nối module keyword (#2): directory, adapter Claude, cầu nối, hook.
+
+    Đây là composition root nên được biết cả identity, inbox lẫn Claude cùng lúc
+    (contract chỉ cấm tầng keyword.presentation). Đặt các factory ở ``app.state``
+    để presentation ráp use case mà không import implementation, và đăng ký hook
+    post-ingest để tin mới kích hoạt phân tích — webhook router của inbox gọi hook
+    qua ``app.state`` chứ không import keyword (giữ inbox ⊥ keyword).
+
+    Không có ``ANTHROPIC_API_KEY`` (dev/test): dùng classifier "vô hiệu" luôn ném
+    ``ClassifierError`` → mọi hội thoại rơi vào NOT_ANALYZED, luồng nhận tin vẫn
+    chạy. Test bơm classifier giả qua ``app.state.keyword_classifier_factory``.
+    """
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from src.modules.identity.presentation.dependencies import get_token_service
+    from src.modules.keyword.application.use_cases.analyze_conversation import (
+        AnalyzeConversation,
+    )
+    from src.modules.keyword.domain.ports import (
+        ClassifierError,
+        IConversationClassifier,
+    )
+    from src.modules.keyword.infrastructure.classifier.claude_classifier import (
+        ClaudeConversationClassifier,
+    )
+    from src.modules.keyword.infrastructure.directory.workforce_directory import (
+        IdentityWorkforceDirectory,
+    )
+    from src.modules.keyword.infrastructure.inbox_bridge.analyze_factory import (
+        build_analyze_conversation,
+    )
+    from src.modules.keyword.infrastructure.inbox_bridge.conversation_directory import (
+        InboxConversationDirectory,
+    )
+    from src.modules.keyword.infrastructure.inbox_bridge.conversation_router import (
+        InboxConversationRouter,
+    )
+    from src.modules.keyword.infrastructure.inbox_bridge.post_ingest_hook import (
+        make_post_ingest_hook,
+    )
+    from src.modules.keyword.presentation.routers.analysis_router import (
+        router as analysis_router,
+    )
+    from src.modules.keyword.presentation.routers.keyword_router import (
+        router as keyword_router,
+    )
+
+    app.state.token_service = get_token_service(settings)
+    app.state.keyword_directory_factory = IdentityWorkforceDirectory
+    app.state.keyword_conversation_directory_factory = InboxConversationDirectory
+
+    # Router tự phân cần notifier realtime của inbox để phát tín hiệu khi đổi
+    # trạng thái — dùng chung singleton _wire_inbox đã đặt. Clock hệ thống.
+    notifier = app.state.inbox_notifier
+    clock = SystemClock()
+
+    def conversation_router_factory(session: AsyncSession) -> InboxConversationRouter:
+        return InboxConversationRouter(session, notifier=notifier, clock=clock)
+
+    app.state.keyword_conversation_router_factory = conversation_router_factory
+
+    api_key = settings.anthropic_api_key
+    if api_key:
+        from anthropic import AsyncAnthropic
+
+        anthropic_client = AsyncAnthropic(api_key=api_key)
+
+        def classifier_factory() -> IConversationClassifier:
+            return ClaudeConversationClassifier(anthropic_client, settings.anthropic_model)
+    else:
+        logger.warning(
+            "ANTHROPIC_API_KEY chưa đặt — phân tích #2 vô hiệu (mọi hội thoại "
+            "NOT_ANALYZED). Đặt khoá thật trong .env để bật tự phân bằng LLM."
+        )
+
+        class _DisabledClassifier:
+            async def classify(self, texts, departments):  # type: ignore[no-untyped-def]
+                raise ClassifierError("Chưa cấu hình ANTHROPIC_API_KEY.")
+
+        def classifier_factory() -> IConversationClassifier:
+            return _DisabledClassifier()
+
+    app.state.keyword_classifier_factory = classifier_factory
+
+    # Hook post-ingest: mỗi tin mới (không trùng) kích hoạt phân tích trên session
+    # riêng, sau khi #1 đã commit. Ráp cùng builder mà endpoint force dùng. Đọc
+    # classifier factory LƯỜI từ app.state để test bơm classifier giả sau khi dựng
+    # app vẫn có hiệu lực (giống lối presentation lấy factory ở request-time).
+    def analyze_factory(session: AsyncSession) -> AnalyzeConversation:
+        return build_analyze_conversation(
+            session,
+            classifier_factory=app.state.keyword_classifier_factory,
+            conversation_directory_factory=InboxConversationDirectory,
+            conversation_router_factory=conversation_router_factory,
+            workforce_factory=IdentityWorkforceDirectory,
+            clock=clock,
+        )
+
+    app.state.post_ingest_hooks.append(
+        make_post_ingest_hook(lambda: app.state.session_factory, analyze_factory)
+    )
+
+    app.include_router(keyword_router, prefix="/api/v1")
+    app.include_router(analysis_router, prefix="/api/v1")
 
 
 app = create_app()
