@@ -12,10 +12,13 @@ from src.modules.keyword.domain.entities.conversation_analysis import (
 )
 from src.modules.keyword.domain.entities.keyword import Keyword
 from src.modules.keyword.domain.ports import (
+    ClassifierError,
     ConversationSnapshot,
-    ExtractorError,
 )
-from src.modules.keyword.domain.value_objects.extracted_term import ExtractionResult
+from src.modules.keyword.domain.value_objects.extracted_term import (
+    ClassificationResult,
+    DepartmentKeywords,
+)
 
 
 class FakeClock:
@@ -130,19 +133,27 @@ class FakeConversationRouter:
         return self.succeed
 
 
-class FakeKeywordExtractor:
-    """Extractor giả tất định: test bơm sẵn kết quả hoặc bật lỗi."""
+class FakeConversationClassifier:
+    """Classifier giả tất định: test bơm sẵn kết quả hoặc bật lỗi.
 
-    def __init__(self, result: ExtractionResult | None = None) -> None:
-        self._result = result or ExtractionResult()
+    Ghi lại danh mục phòng được truyền vào để test khẳng định danh mục đúng
+    được bơm cho LLM.
+    """
+
+    def __init__(self, result: ClassificationResult | None = None) -> None:
+        self._result = result or ClassificationResult()
         self.raise_error = False
         self.calls: list[tuple[str, ...]] = []
+        self.departments_seen: list[tuple[DepartmentKeywords, ...]] = []
 
-    def set_result(self, result: ExtractionResult) -> None:
+    def set_result(self, result: ClassificationResult) -> None:
         self._result = result
 
-    async def extract(self, texts: tuple[str, ...]) -> ExtractionResult:
+    async def classify(
+        self, texts: tuple[str, ...], departments: tuple[DepartmentKeywords, ...]
+    ) -> ClassificationResult:
         self.calls.append(texts)
+        self.departments_seen.append(departments)
         if self.raise_error:
-            raise ExtractorError("LLM lỗi giả lập")
+            raise ClassifierError("LLM lỗi giả lập")
         return self._result

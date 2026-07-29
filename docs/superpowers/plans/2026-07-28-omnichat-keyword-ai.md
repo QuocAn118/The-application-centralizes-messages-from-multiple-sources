@@ -32,12 +32,11 @@ Kế thừa toàn bộ Global Constraints của #0–#4 (event loop Windows, UUI
 | `src/modules/keyword/application/use_cases/keyword_use_cases.py` | CRUD keyword |
 | `src/modules/keyword/application/use_cases/analyze_conversation.py` | Use case lõi |
 | `src/modules/keyword/application/use_cases/analysis_read.py` | List/Get phân tích |
-| `src/modules/keyword/application/services/keyword_matcher.py` | Khớp cụm nhu cầu ↔ danh mục phòng (thuần, tất định) |
 | `src/modules/keyword/application/dto/keyword_dto.py` | DTO |
 | `src/modules/keyword/infrastructure/models/` | ORM `keywords`, `conversation_analyses` |
 | `src/modules/keyword/infrastructure/mappers/` | ORM ↔ domain |
 | `src/modules/keyword/infrastructure/repositories/` | Repo implementations |
-| `src/modules/keyword/infrastructure/extractor/claude_extractor.py` | Adapter Claude (`IKeywordExtractor`) |
+| `src/modules/keyword/infrastructure/classifier/claude_classifier.py` | Adapter Claude (`IConversationClassifier`) |
 | `src/modules/keyword/infrastructure/directory/workforce_directory.py` | `IdentityWorkforceDirectory` (chạm identity) |
 | `src/modules/keyword/infrastructure/inbox_bridge/conversation_directory.py` | `InboxConversationDirectory` (đọc hội thoại/tin — chạm inbox) |
 | `src/modules/keyword/infrastructure/inbox_bridge/conversation_router.py` | `InboxConversationRouter` (gọi use case phân của #1) |
@@ -63,8 +62,8 @@ Thực hiện tuần tự. Mỗi giai đoạn review trước khi sang giai đo�
 | Task | Nội dung | Deliverable |
 |---|---|---|
 | 4 | `KeywordActor` + authorization + CRUD keyword use cases (Create/Update/Delete/List) | Unit test: Manager phòng mình, Admin all, Staff bị từ chối; chống trùng normalized |
-| 5 | `keyword_matcher` service (khớp cụm nhu cầu ↔ danh mục phòng; đúng-1-phòng + ngưỡng) | Unit test tất định: khớp 1 phòng, mơ hồ nhiều phòng, không khớp |
-| 6 | `AnalyzeConversation` (điều kiện CHO_PHAN + đủ tin; gọi extractor; matcher; tự phân qua router hoặc giữ; lưu analysis; **nuốt lỗi LLM**) | Unit test: tự phân khi khớp 1 phòng; giữ CHO_PHAN khi mơ hồ; LLM ném lỗi → không ném ra, vẫn lưu "không phân tích được" |
+| ~~5~~ | ~~keyword_matcher~~ — **BỎ**: LLM tự chọn phòng (review GĐ2), không khớp chuỗi thủ công | — |
+| 6 | `AnalyzeConversation` (điều kiện CHO_PHAN + đủ tin + guard chưa-phân-tích; gom danh mục phòng; gọi `IConversationClassifier` cho LLM tự chọn phòng; **gác** phòng tồn tại + đủ tin cậy; tự phân qua router hoặc giữ; lưu analysis; **nuốt lỗi LLM**) | Unit test: tự phân khi LLM chọn phòng hợp lệ đủ tin cậy; giữ CHO_PHAN khi không rõ/tin cậy thấp/**LLM bịa phòng không tồn tại**; guard lặp; LLM ném lỗi → không ném ra |
 | 7 | `ListConversationAnalyses` + `GetConversationAnalysis` (phạm vi quyền) | Unit test phạm vi |
 
 ### Giai đoạn 3 — Hạ tầng lưu trữ + adapter LLM + cầu nối
@@ -74,7 +73,7 @@ Thực hiện tuần tự. Mỗi giai đoạn review trước khi sang giai đo�
 | 8 | ORM `keywords` + `conversation_analyses` + Alembic migration (unique normalized theo phòng; JSONB terms) | Integration test schema PostgreSQL thật |
 | 9 | Mappers + repository implementations | Integration test round-trip |
 | 10 | `IdentityWorkforceDirectory` + `InboxConversationDirectory` (đọc hội thoại/tin qua repo inbox) + `InboxConversationRouter` (gọi `AssignConversationToDepartment` của #1) | Integration test: đọc hội thoại CHO_PHAN + tin đầu; router phân được hội thoại |
-| 11 | `ClaudeKeywordExtractor` (adapter `anthropic`; đọc N tin, prompt trích nhu cầu, parse JSON; lỗi → ném `ExtractorError`) | Unit test với client giả (không ra mạng); parse kết quả; lỗi mạng → ExtractorError |
+| 11 | `ClaudeConversationClassifier` (adapter `anthropic`; prompt gồm N tin + danh mục keyword các phòng, yêu cầu LLM chọn phòng + confidence + cụm nhu cầu, parse JSON; lỗi → ném `ClassifierError`) | Unit test với client giả (không ra mạng); parse kết quả; lỗi mạng → ClassifierError |
 
 ### Giai đoạn 4 — HTTP + wiring + tích hợp webhook
 
