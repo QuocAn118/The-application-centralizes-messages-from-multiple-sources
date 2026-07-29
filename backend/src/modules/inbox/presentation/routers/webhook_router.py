@@ -109,6 +109,11 @@ async def nhan_webhook(
 
         # Chỉ chạy hook cho tin THẬT SỰ mới (không trùng idempotency). Hook tự lo
         # session/lỗi riêng — lỗi hook không được ảnh hưởng phản hồi webhook.
+        #
+        # NỢ (chấp nhận — spec §9, ghi rõ ở review GĐ4): hook chạy ĐỒNG BỘ trong
+        # request. Với LLM thật (#2 gọi Claude vài giây/tin) webhook chậm đi tương
+        # ứng; nền tảng có thể timeout và gửi lại (idempotency giữ đúng nhưng tốn
+        # gọi LLM thừa). Tách sang hàng đợi nền là nợ để sau, không sửa ở GĐ4.
         if ket_qua is None:
             continue
         for hook in post_ingest_hooks:

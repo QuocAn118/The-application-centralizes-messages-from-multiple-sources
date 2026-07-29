@@ -93,6 +93,9 @@ Thực hiện tuần tự. Mỗi giai đoạn review trước khi sang giai đo�
 - **Nợ chốt sau review GĐ3:**
   - *(F1)* `InboxConversationDirectory` quét `_MESSAGE_SCAN_LIMIT=20` tin đầu rồi lọc INBOUND-có-text. Nếu khách gửi >20 tin CHỈ-ẢNH trước tin text đầu → snapshot rỗng, giữ CHO_PHAN (an toàn). Cực hiếm với CHO_PHAN (chưa có OUTBOUND). Không sửa; muốn chắc thì thêm truy vấn "N tin INBOUND có text đầu" vào `IMessageRepository` #1.
   - *(F2)* `conversation_analyses.confidence` là `Numeric(4,3)` → làm tròn về 3 chữ số thập phân khi lưu. Gác tự phân so ngưỡng TRƯỚC khi lưu (full precision) nên không ảnh hưởng; #3/#5 đọc lại thấy giá trị đã tròn — đã ghi rõ trong docstring model. Không sửa.
+- **Nợ chốt sau review GĐ4:**
+  - *(F1 phạm vi)* `POST /conversations/{id}/analyses` (kích hoạt lại) chỉ kiểm vai Manager/Admin, KHÔNG kiểm phòng của hội thoại → Manager có thể ép định tuyến một `CHO_PHAN` bất kỳ sang *bất kỳ* phòng nào (rộng hơn #1). Chấp nhận: `CHO_PHAN` chưa thuộc ai, kết quả vẫn gác qua `department_exists_active`; ghi docstring endpoint. **#3 sẽ xem lại mô hình quyền định tuyến.** Không sửa.
+  - *(F2 đồng bộ)* Webhook `await` hook nối tiếp trong request → LLM thật (Claude vài giây/tin) làm webhook chậm, nền tảng có thể timeout+gửi lại (idempotency giữ đúng, tốn gọi LLM thừa). Đúng nợ "phân tích đồng bộ" spec §9; tách hàng đợi nền để sau. Ghi rõ trong webhook router. Không sửa.
 - **Chỗ móc cho #3:** `conversation_analyses.suggested_department_id` + `confidence` + `extracted_terms` chính là dữ liệu #3 (auto-assignment) dùng để tinh chỉnh routing theo KPI/ca làm.
 
 Chi tiết từng task (Files/Interfaces/Steps + code) viết khi bắt đầu từng giai đoạn, theo cách #0–#4 đã làm.
