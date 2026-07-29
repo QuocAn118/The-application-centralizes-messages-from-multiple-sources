@@ -86,13 +86,18 @@ async def nhan_webhook(
         clock=clock,
     )
 
+    # Hook chạy sau khi mỗi event được commit — chỗ các module hạ nguồn (ví dụ #2
+    # phân tích/AI) móc vào mà KHÔNG để inbox import chúng: composition root đăng
+    # ký callable vào app.state, router chỉ gọi. Danh sách rỗng nếu không ai đăng ký.
+    post_ingest_hooks = getattr(request.app.state, "post_ingest_hooks", ())
+
     for event in events:
         # Mỗi event là một giao dịch độc lập: commit ngay khi xong để event lỗi
         # phía sau (ví dụ ảnh hỏng) không rollback các event đã ghi. Webhook Meta
         # gộp nhiều tin nên không được để một tin hỏng chặn cả lô. Idempotency ở
         # use case bỏ qua event đã xử lý *trước khi* tải media (chống lãng phí).
         try:
-            await use_case.execute(event, adapter.download_attachment)
+            ket_qua = await use_case.execute(event, adapter.download_attachment)
             await session.commit()
         except Exception:
             await session.rollback()
@@ -100,6 +105,14 @@ async def nhan_webhook(
                 "Bỏ qua một event webhook lỗi",
                 extra={"external_message_id": event.external_message_id},
             )
+            continue
+
+        # Chỉ chạy hook cho tin THẬT SỰ mới (không trùng idempotency). Hook tự lo
+        # session/lỗi riêng — lỗi hook không được ảnh hưởng phản hồi webhook.
+        if ket_qua is None:
+            continue
+        for hook in post_ingest_hooks:
+            await hook(event)
 
     # Luôn 200: nền tảng coi 2xx là "đã nhận", kể cả event trùng đã idempotent.
     return Response(status_code=200)

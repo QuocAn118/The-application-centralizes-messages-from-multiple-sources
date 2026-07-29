@@ -75,13 +75,13 @@ Thực hiện tuần tự. Mỗi giai đoạn review trước khi sang giai đo�
 | 10 ✅ | `IdentityWorkforceDirectory` + `InboxConversationDirectory` (chỉ tin **INBOUND** có text — F3) + `InboxConversationRouter` (gọi `AssignConversationToDepartment` của #1 với actor hệ thống ADMIN; nuốt lỗi phân → `False`) | Integration: snapshot CHO_PHAN + tin đầu; router phân được + phân lại trả False |
 | 11 ✅ | `ClaudeConversationClassifier` (adapter `anthropic`; client bơm vào để test; prompt gồm N tin + danh mục keyword phòng; parse JSON, cắt `{...}` khỏi ```json; kẹp confidence [0,1]; id sai → None; lỗi → `ClassifierError`) | Unit test với client giả (không ra mạng): parse, kẹp, các nhánh lỗi |
 
-### Giai đoạn 4 — HTTP + wiring + tích hợp webhook
+### Giai đoạn 4 — HTTP + wiring + tích hợp webhook ✅ XONG
 
 | Task | Nội dung | Deliverable |
 |---|---|---|
-| 12 | Keyword CRUD router + schemas + dependencies (get_actor, factory cầu nối) | e2e: Manager CRUD keyword phòng mình; Staff 403 |
-| 13 | Analysis router (xem + kích hoạt phân tích lại) | e2e phạm vi |
-| 14 | **Wiring + móc vào webhook**: `_wire_keyword` trong main.py (extractor factory + cầu nối + notifier); webhook router gọi `AnalyzeConversation` sau ingest trong try/except riêng. Config `ANTHROPIC_API_KEY`. import-linter contract. | e2e: khách nhắn hội thoại CHO_PHAN + keyword khớp (extractor giả) → tự phân về phòng; LLM giả lỗi → tin vẫn vào, hội thoại giữ CHO_PHAN |
+| 12 ✅ | `dependencies.py` (get_actor qua directory factory; get_directory), CRUD router (`POST/GET/PATCH/DELETE /keywords`), schemas | e2e: Manager CRUD keyword phòng mình; Staff 403; Manager phòng khác 403 |
+| 13 ✅ | Analysis router: `GET /analyses` (phân trang, theo phạm vi), `GET /conversations/{id}/analyses`, `POST /conversations/{id}/analyses` (kích hoạt lại `force=True`, Manager/Admin) | e2e: kích hoạt lại tự phân; Staff 403 |
+| 14 ✅ | **Wiring + móc webhook (giải RB webhook):** `_wire_keyword` trong main.py; **hook post-ingest qua `app.state.post_ingest_hooks`** — webhook router (inbox.presentation) chỉ gọi callable, KHÔNG import keyword (import-linter 10 kept giữ inbox⊥keyword). Hook chạy trên **session riêng sau commit**, tra `conversation_id` từ external ids (không đổi hợp đồng #1), nuốt mọi lỗi. Config `ANTHROPIC_API_KEY`/`anthropic_model`; không key → classifier vô hiệu (NOT_ANALYZED). conftest TRUNCATE thêm keyword tables. | e2e: khách nhắn hội thoại CHO_PHAN + keyword + LLM giả chọn phòng → **tự phân** (DANG_MO); LLM giả **lỗi** → tin vẫn vào, giữ CHO_PHAN |
 
 ## Ghi chú thực hiện
 
