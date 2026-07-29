@@ -14,9 +14,11 @@ Không thuộc #2: routing nâng cao theo KPI + ca làm + hàng đợi (#3 dùng
 
 **RB-2 — Phân tích chạy SAU khi tin đã lưu, không nhét vào ingest của #1.** `IngestInboundMessage` của #1 không đổi một dòng. Composition root (webhook router) sau khi ingest xong sẽ gọi tiếp use case phân tích của #2 trong **cùng request** nhưng **tách giao dịch/tách lỗi**: phân tích lỗi (kể cả LLM lỗi) **không** làm hỏng việc nhận tin. Tin đã lưu vẫn nguyên; hội thoại chỉ chưa được gợi ý phòng, có thể phân tích lại sau.
 
-**RB-3 — LLM sau một cổng, thất bại là chuyện thường.** Trích keyword bằng LLM (Claude API) đặt sau port `IKeywordExtractor`. Test dùng fake tất định; production dùng adapter gọi Claude. LLM lỗi/timeout/quota → **bỏ qua, ghi log, không ném lên trên**. Không retry ở #2 (ghi nợ; thêm khi thấy cần).
+**RB-3 — LLM tự đọc hiểu và tự chọn phòng, sau một cổng.** Thay vì khớp chuỗi thủ công (dễ khớp bừa với keyword ngắn tiếng Việt), **LLM tự đọc vài tin đầu và tự chọn phòng phù hợp**, dựa trên danh mục từ khoá của từng phòng được bơm vào prompt. Đặt sau port `IConversationClassifier` (nhận nội dung tin + danh mục keyword các phòng, trả về phòng LLM chọn + độ tin cậy + cụm nhu cầu). Test dùng fake tất định; production dùng adapter Claude. LLM lỗi/timeout/quota → **bỏ qua, ghi log, không ném lên trên**. Không retry ở #2 (ghi nợ).
 
-**RB-4 — Chỉ tự phân khi đủ tự tin và khớp đúng một phòng.** LLM trả nhu cầu → khớp danh mục từ khoá các phòng. Nếu khớp **đúng một phòng** với độ tin cậy đạt ngưỡng → tự phân (CHO_PHAN → DANG_MO qua cổng). Nếu không khớp / mơ hồ / nhiều phòng ngang nhau → **để nguyên CHO_PHAN** cho Manager phân tay (không phân bừa). Việc đổi trạng thái hội thoại đi qua một cổng `IConversationRouter` (implementation gọi use case `AssignConversationToDepartment` của #1 với actor hệ thống), không để keyword đụng thẳng vào máy trạng thái inbox.
+**RB-4 — Code vẫn GÁC kết quả LLM trước khi tự phân.** LLM chọn phòng nào là gợi ý, không phải lệnh. Use case kiểm: phòng LLM chọn phải **tồn tại và đang hoạt động** (qua `IWorkforceDirectory`), và độ tin cậy **đạt ngưỡng**. Đủ cả hai → tự phân (CHO_PHAN → DANG_MO qua cổng). LLM trả "không rõ" / chọn phòng không tồn tại / tin cậy thấp → **để nguyên CHO_PHAN** cho Manager phân tay (không phân bừa, LLM không "bịa" phòng làm phân sai). Việc đổi trạng thái đi qua cổng `IConversationRouter` (implementation gọi use case `AssignConversationToDepartment` của #1 với actor hệ thống), không để keyword đụng thẳng máy trạng thái inbox.
+
+**RB-5 — Không gọi LLM lặp.** Một hội thoại đã có bản ghi phân tích thì không gọi LLM lại khi có tin mới (trừ khi Manager kích hoạt lại thủ công). Tiết kiệm token; hội thoại tự phân xong chuyển DANG_MO nên vốn không còn được phân tích, guard này chặn nốt trường hợp mơ hồ/lỗi nhận thêm tin.
 
 ## 3. Ngôn ngữ miền (domain)
 
@@ -58,7 +60,7 @@ Không thuộc #2: routing nâng cao theo KPI + ca làm + hàng đợi (#3 dùng
 
 ## 5. Cổng (ports) mà domain/application định nghĩa
 
-- `IKeywordExtractor` — nhận nội dung vài tin đầu (text thuần), trả danh sách **cụm nhu cầu** đã trích + độ tin cậy tổng thể. Implementation: adapter Claude API. Fake tất định cho test. LLM lỗi → implementation ném lỗi rõ; use case bắt và bỏ qua.
+- `IConversationClassifier` — nhận nội dung vài tin đầu (text thuần) + **danh mục từ khoá của từng phòng**, cho LLM tự đọc hiểu và trả về **phòng LLM chọn** (hoặc "không rõ") + **độ tin cậy** + các **cụm nhu cầu** (cho #5). Implementation: adapter Claude API. Fake tất định cho test. LLM lỗi → ném `ClassifierError`; use case bắt và bỏ qua.
 - `IConversationDirectory` — hỏi inbox gián tiếp: "hội thoại X có đang CHO_PHAN không", "lấy N tin inbound đầu của hội thoại X". Không import inbox vào keyword.domain.
 - `IDepartmentKeywordSource` — lấy danh mục keyword của tất cả phòng đang hoạt động để khớp (đọc từ chính bảng keyword của #2).
 - `IConversationRouter` — tự phân hội thoại về một phòng (implementation gọi use case phân của #1 với actor hệ thống). Đây là chỗ *duy nhất* keyword tác động ngược vào inbox, và đi qua use case chính thống của #1 (giữ máy trạng thái, phân quyền, realtime của #1 nguyên vẹn).
@@ -72,7 +74,7 @@ Không thuộc #2: routing nâng cao theo KPI + ca làm + hàng đợi (#3 dùng
 - `ListKeywords` — theo phạm vi phòng (Manager phòng mình; Admin tất cả).
 
 ### 6.2 Nhóm phân tích
-- `AnalyzeConversation` — use case lõi: điều kiện (hội thoại CHO_PHAN, đủ tin), gọi `IKeywordExtractor`, khớp danh mục, quyết định tự phân hay giữ, lưu `ConversationAnalysis`. Bắt mọi lỗi LLM → log + trả kết quả "không phân tích được", không ném.
+- `AnalyzeConversation` — use case lõi: điều kiện (hội thoại CHO_PHAN, đủ tin, chưa phân tích trừ khi `force`), gom danh mục keyword các phòng, gọi `IConversationClassifier` cho LLM tự chọn phòng, **gác** kết quả (phòng tồn tại + đủ tin cậy) rồi quyết định tự phân hay giữ, lưu `ConversationAnalysis`. Bắt mọi lỗi LLM → log + trả kết quả "không phân tích được", không ném.
 - `ListConversationAnalyses` / `GetConversationAnalysis` — xem lịch sử/kết quả theo phạm vi quyền.
 
 Webhook router (composition root) sau ingest gọi `AnalyzeConversation` cho hội thoại vừa nhận tin, trong khối try/except riêng (RB-2).
@@ -103,9 +105,10 @@ Webhook router (composition root) sau ingest gọi `AnalyzeConversation` cho h�
 
 ## 10. Quyết định đã chốt (khép câu hỏi mở)
 
-- **Trích keyword bằng LLM (Claude API)** sau port `IKeywordExtractor`; chạy **sau ingest**, tách lỗi khỏi nhận tin.
-- **Danh mục keyword của Manager là cơ sở khớp** để suy phòng; cụm nhu cầu LLM trả được lưu lại (kể cả khi không khớp) cho #5.
-- **#2 tự phân hội thoại** về phòng đề xuất khi đủ tin cậy và khớp đúng một phòng, qua cổng `IConversationRouter` gọi use case phân của #1 (không đụng thẳng máy trạng thái). Mơ hồ thì giữ `CHO_PHAN`.
+- **LLM (Claude API) tự đọc hiểu và tự chọn phòng** sau port `IConversationClassifier`, dựa trên danh mục keyword các phòng bơm vào prompt (không khớp chuỗi thủ công — tránh khớp bừa với keyword ngắn tiếng Việt); chạy **sau ingest**, tách lỗi khỏi nhận tin.
+- **Danh mục keyword của Manager là ngữ cảnh cho LLM** để chọn phòng; cụm nhu cầu LLM trả được lưu lại (kể cả khi không phân được) cho #5.
+- **Code vẫn gác kết quả LLM**: phòng LLM chọn phải tồn tại + đủ tin cậy mới tự phân, qua cổng `IConversationRouter` gọi use case phân của #1 (không đụng thẳng máy trạng thái). Không rõ / phòng không tồn tại / tin cậy thấp → giữ `CHO_PHAN`.
+- **Không gọi LLM lặp**: hội thoại đã phân tích thì bỏ qua (trừ khi kích hoạt lại thủ công).
 - **LLM lỗi → log + bỏ qua**, tin vẫn nguyên.
 - **Độc lập module hai chiều:** keyword ⊥ identity/inbox, và inbox ⊥ keyword. `import-linter` thêm contract tương ứng.
 

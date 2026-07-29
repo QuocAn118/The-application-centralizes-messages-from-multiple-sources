@@ -9,7 +9,10 @@ from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
 
-from src.modules.keyword.domain.value_objects.extracted_term import ExtractionResult
+from src.modules.keyword.domain.value_objects.extracted_term import (
+    ClassificationResult,
+    DepartmentKeywords,
+)
 
 
 @dataclass(frozen=True)
@@ -66,18 +69,25 @@ class IConversationRouter(Protocol):
     async def assign_to_department(self, conversation_id: UUID, department_id: UUID) -> bool: ...
 
 
-class ExtractorError(Exception):
-    """LLM trích keyword thất bại (mạng/quota/timeout/parse).
+class ClassifierError(Exception):
+    """LLM phân loại thất bại (mạng/quota/timeout/parse).
 
     Use case bắt lỗi này và bỏ qua — phân tích lỗi không được làm hỏng nhận tin.
     """
 
 
-class IKeywordExtractor(Protocol):
-    """Trích cụm nhu cầu của khách từ nội dung vài tin đầu, bằng LLM.
+class IConversationClassifier(Protocol):
+    """Cho LLM đọc vài tin đầu của khách và tự chọn phòng phù hợp.
 
-    Ném ``ExtractorError`` khi thất bại; use case nuốt lỗi. Implementation dev:
-    adapter Claude API. Fake tất định cho test.
+    Nhận nội dung tin + danh mục từ khoá của từng phòng (để LLM tham chiếu) và
+    trả về phòng LLM chọn + độ tin cậy + cụm nhu cầu. Ném ``ClassifierError`` khi
+    thất bại; use case nuốt lỗi. Implementation dev: adapter Claude API. Fake tất
+    định cho test.
+
+    Code gọi vẫn *gác* kết quả: phòng LLM trả phải nằm trong danh mục truyền vào
+    và đủ tin cậy thì mới tự phân — LLM "bịa" phòng không làm phân sai.
     """
 
-    async def extract(self, texts: tuple[str, ...]) -> ExtractionResult: ...
+    async def classify(
+        self, texts: tuple[str, ...], departments: tuple[DepartmentKeywords, ...]
+    ) -> ClassificationResult: ...

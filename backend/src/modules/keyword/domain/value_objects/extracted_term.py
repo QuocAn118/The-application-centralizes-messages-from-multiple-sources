@@ -1,4 +1,9 @@
-"""Value object cho kết quả phân tích nhu cầu khách bằng LLM."""
+"""Value object cho kết quả phân loại hội thoại bằng LLM.
+
+Cách tiếp cận: LLM tự đọc hiểu vài tin đầu của khách và, dựa trên danh mục từ
+khoá của từng phòng (bơm vào prompt), tự chọn phòng phù hợp — thay cho khớp
+chuỗi thủ công. Code chỉ *gác* kết quả LLM (phòng phải tồn tại + đủ tin cậy).
+"""
 
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -9,9 +14,9 @@ from uuid import UUID
 class AnalysisOutcome(StrEnum):
     """Kết cục của một lần phân tích hội thoại.
 
-    ``AUTO_ASSIGNED``: khớp đúng một phòng đủ tin cậy → đã tự phân.
-    ``AMBIGUOUS``: LLM trích được nhu cầu nhưng không khớp một phòng rõ ràng
-    (không khớp phòng nào, hoặc khớp nhiều phòng ngang nhau) → giữ CHO_PHAN.
+    ``AUTO_ASSIGNED``: LLM chọn được một phòng hợp lệ, đủ tin cậy → đã tự phân.
+    ``AMBIGUOUS``: LLM đọc được nhu cầu nhưng không chọn được phòng rõ ràng
+    (LLM trả "không rõ", chọn phòng không tồn tại, hoặc tin cậy thấp) → giữ CHO_PHAN.
     ``NOT_ANALYZED``: không phân tích được (LLM lỗi, hoặc chưa đủ tin) → giữ nguyên.
     """
 
@@ -22,10 +27,10 @@ class AnalysisOutcome(StrEnum):
 
 @dataclass(frozen=True)
 class ExtractedTerm:
-    """Một cụm nhu cầu LLM trích được từ nội dung tin, ở dạng chuẩn hoá để khớp.
+    """Một cụm nhu cầu LLM nhận ra từ nội dung tin.
 
-    ``text`` là cụm gốc LLM trả (giữ để #5 báo cáo nhu cầu mới); ``normalized``
-    là dạng đã bỏ dấu/thường hoá để so khớp với keyword của phòng.
+    Giữ để #5 báo cáo nhu cầu khách (kể cả khi không phân được phòng). ``text``
+    là cụm LLM diễn đạt; ``normalized`` là dạng bỏ dấu/thường hoá để #5 gom nhóm.
     """
 
     text: str
@@ -33,24 +38,26 @@ class ExtractedTerm:
 
 
 @dataclass(frozen=True)
-class ExtractionResult:
-    """Kết quả một lần gọi ``IKeywordExtractor``.
+class DepartmentKeywords:
+    """Danh mục từ khoá của một phòng, ở dạng bơm vào prompt cho LLM tham chiếu.
 
-    ``terms`` là các cụm nhu cầu trích được; ``confidence`` là độ tin cậy tổng
-    thể LLM tự đánh giá (0..1). Rỗng ``terms`` nghĩa là không trích được gì.
-    """
-
-    terms: tuple[ExtractedTerm, ...] = field(default_factory=tuple)
-    confidence: Decimal = Decimal("0")
-
-
-@dataclass(frozen=True)
-class DepartmentMatch:
-    """Một phòng ứng viên sau khi khớp cụm nhu cầu với danh mục keyword.
-
-    ``matched_terms`` là các cụm nhu cầu đã khớp keyword của phòng này; số lượng
-    khớp là cơ sở chọn phòng thắng.
+    ``keywords`` là các từ khoá gốc (Manager nhập) của phòng ``department_id``.
     """
 
     department_id: UUID
-    matched_terms: tuple[str, ...]
+    keywords: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ClassificationResult:
+    """Kết quả một lần gọi ``IConversationClassifier``.
+
+    ``department_id`` là phòng LLM chọn, hoặc ``None`` nếu LLM không xác định
+    được. ``confidence`` (0..1) là độ tin cậy LLM tự đánh giá. ``terms`` là các
+    cụm nhu cầu LLM nhận ra (cho #5). Phòng LLM chọn vẫn được use case *gác* lại
+    (phải tồn tại + đủ tin cậy) trước khi tự phân.
+    """
+
+    department_id: UUID | None = None
+    confidence: Decimal = Decimal("0")
+    terms: tuple[ExtractedTerm, ...] = field(default_factory=tuple)
