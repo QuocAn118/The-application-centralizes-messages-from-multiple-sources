@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     # Token dùng khi Meta/Zalo verify webhook (GET hub.challenge). Rỗng = bỏ qua.
     webhook_verify_token: str = ""
 
+    # Keyword (#2): Claude API để LLM tự đọc tin và chọn phòng phù hợp.
+    # Khoá là BÍ MẬT — chỉ đọc từ .env, không commit, không log.
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-sonnet-4-5"
+
     app_env: str = "development"
     log_level: str = "INFO"
 

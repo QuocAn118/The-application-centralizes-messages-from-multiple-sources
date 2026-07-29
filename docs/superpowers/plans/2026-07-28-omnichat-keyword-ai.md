@@ -66,14 +66,14 @@ Thực hiện tuần tự. Mỗi giai đoạn review trước khi sang giai đo�
 | 6 | `AnalyzeConversation` (điều kiện CHO_PHAN + đủ tin + guard chưa-phân-tích; gom danh mục phòng; gọi `IConversationClassifier` cho LLM tự chọn phòng; **gác** phòng tồn tại + đủ tin cậy; tự phân qua router hoặc giữ; lưu analysis; **nuốt lỗi LLM**) | Unit test: tự phân khi LLM chọn phòng hợp lệ đủ tin cậy; giữ CHO_PHAN khi không rõ/tin cậy thấp/**LLM bịa phòng không tồn tại**; guard lặp; LLM ném lỗi → không ném ra |
 | 7 | `ListConversationAnalyses` + `GetConversationAnalysis` (phạm vi quyền) | Unit test phạm vi |
 
-### Giai đoạn 3 — Hạ tầng lưu trữ + adapter LLM + cầu nối
+### Giai đoạn 3 — Hạ tầng lưu trữ + adapter LLM + cầu nối ✅ XONG
 
 | Task | Nội dung | Deliverable |
 |---|---|---|
-| 8 | ORM `keywords` + `conversation_analyses` + Alembic migration (unique normalized theo phòng; JSONB terms) | Integration test schema PostgreSQL thật |
-| 9 | Mappers + repository implementations | Integration test round-trip |
-| 10 | `IdentityWorkforceDirectory` + `InboxConversationDirectory` (đọc hội thoại/tin qua repo inbox) + `InboxConversationRouter` (gọi `AssignConversationToDepartment` của #1) | Integration test: đọc hội thoại CHO_PHAN + tin đầu; router phân được hội thoại |
-| 11 | `ClaudeConversationClassifier` (adapter `anthropic`; prompt gồm N tin + danh mục keyword các phòng, yêu cầu LLM chọn phòng + confidence + cụm nhu cầu, parse JSON; lỗi → ném `ClassifierError`) | Unit test với client giả (không ra mạng); parse kết quả; lỗi mạng → ClassifierError |
+| 8 ✅ | ORM `keywords` (unique `(department_id, normalized)`) + `conversation_analyses` (JSONB `terms`) + Alembic migration `dff8571b18ef` | Integration: schema + unique chặn trùng trên PostgreSQL thật |
+| 9 ✅ | Mappers (`KeywordMapper`, `ConversationAnalysisMapper` — JSONB terms) + repo (`SqlAlchemyKeywordRepository`, `SqlAlchemyAnalysisRepository`) | Integration round-trip + list/count theo scope |
+| 10 ✅ | `IdentityWorkforceDirectory` + `InboxConversationDirectory` (chỉ tin **INBOUND** có text — F3) + `InboxConversationRouter` (gọi `AssignConversationToDepartment` của #1 với actor hệ thống ADMIN; nuốt lỗi phân → `False`) | Integration: snapshot CHO_PHAN + tin đầu; router phân được + phân lại trả False |
+| 11 ✅ | `ClaudeConversationClassifier` (adapter `anthropic`; client bơm vào để test; prompt gồm N tin + danh mục keyword phòng; parse JSON, cắt `{...}` khỏi ```json; kẹp confidence [0,1]; id sai → None; lỗi → `ClassifierError`) | Unit test với client giả (không ra mạng): parse, kẹp, các nhánh lỗi |
 
 ### Giai đoạn 4 — HTTP + wiring + tích hợp webhook
 
