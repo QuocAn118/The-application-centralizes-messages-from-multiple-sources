@@ -1,5 +1,6 @@
 """Endpoint inbox: liệt kê, xem, trả lời, phân, nhận, đóng hội thoại."""
 
+import logging
 from typing import Annotated
 from uuid import UUID
 
@@ -47,6 +48,8 @@ from src.modules.inbox.presentation.schemas.inbox_schemas import (
     MessageResponse,
     ReplyRequest,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["inbox"])
 
@@ -186,12 +189,20 @@ async def dong_hoi_thoai(
     # Nhân viên vừa rảnh ra → hook hạ nguồn (assignment #3) kéo hàng đợi phòng cho
     # người trong ca. Composition root đăng ký callable vào app.state; router chỉ
     # gọi (không import assignment — giữ inbox ⊥ assignment). Commit thao tác đóng
-    # TRƯỚC khi chạy hook (dependency get_session commit khi request xong; nhưng
-    # hook chạy trên session RIÊNG nên cần dữ liệu đã thấy được). Đóng đã ghi vào
-    # session hiện tại; flush để hook (session khác) đọc được sau commit của nó.
+    # TRƯỚC khi chạy hook: hook chạy trên session RIÊNG nên cần dữ liệu đã thấy được.
     await session.commit()
+
+    # Đóng đã hoàn tất (commit + notify). Lỗi hook KHÔNG được biến thành 500 cho
+    # thao tác đã thành công — bọc try/except ở đây thay vì tin mọi hook tự nuốt
+    # lỗi (không phụ thuộc ngầm khi thêm hook mới về sau).
     post_close_hooks = getattr(request.app.state, "post_close_hooks", ())
     for hook in post_close_hooks:
-        await hook(conversation.department_id)
+        try:
+            await hook(conversation.department_id)
+        except Exception:
+            logger.exception(
+                "Hook post-close lỗi — bỏ qua, hội thoại vẫn đã đóng",
+                extra={"conversation_id": str(conversation_id)},
+            )
 
     return phan_hoi
