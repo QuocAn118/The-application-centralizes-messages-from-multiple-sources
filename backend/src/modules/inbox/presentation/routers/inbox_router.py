@@ -3,7 +3,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 
 from src.modules.inbox.application.use_cases.assign_conversation_to_department import (
     AssignConversationToDepartment,
@@ -174,10 +174,24 @@ async def dong_hoi_thoai(
     session: DbSession,
     notifier: Notifier,
     clock: Clock,
+    request: Request,
 ) -> ConversationResponse:
-    await CloseConversation(
+    conversation = await CloseConversation(
         conversation_repo=SqlAlchemyConversationRepository(session),
         notifier=notifier,
         clock=clock,
     ).execute(actor=actor, conversation_id=conversation_id)
-    return await _tra_ve_hoi_thoai(conversation_id, actor, session)
+    phan_hoi = await _tra_ve_hoi_thoai(conversation_id, actor, session)
+
+    # Nhân viên vừa rảnh ra → hook hạ nguồn (assignment #3) kéo hàng đợi phòng cho
+    # người trong ca. Composition root đăng ký callable vào app.state; router chỉ
+    # gọi (không import assignment — giữ inbox ⊥ assignment). Commit thao tác đóng
+    # TRƯỚC khi chạy hook (dependency get_session commit khi request xong; nhưng
+    # hook chạy trên session RIÊNG nên cần dữ liệu đã thấy được). Đóng đã ghi vào
+    # session hiện tại; flush để hook (session khác) đọc được sau commit của nó.
+    await session.commit()
+    post_close_hooks = getattr(request.app.state, "post_close_hooks", ())
+    for hook in post_close_hooks:
+        await hook(conversation.department_id)
+
+    return phan_hoi

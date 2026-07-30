@@ -66,12 +66,16 @@ Kế thừa toàn bộ Global Constraints #0–#4 (event loop Windows, UUID v7 `
 | 7 ✅ | `HrmIdentityAgentPool` (`IAgentPool`): STAFF+MANAGER active của phòng (identity) → on_shift (shift #4 hôm nay bao giờ hiện tại), open_load (đếm DANG_MO gán họ — #1), last_assigned_at (max updated_at hội thoại đã gán họ — #1). **kpi_percent = None (NỢ)**: KPI đủ nghĩa cần chốt chỉ số/kỳ/nguồn (quyết định nghiệp vụ chưa có); selector xử None trung tính | Integration: gom đúng on_shift + tải trên PostgreSQL thật |
 | 8 ✅ | `InboxConversationAssigner` (gọi `AssignConversationToAgent` #1 với actor hệ thống ADMIN, nuốt DomainError/ApplicationError→False) + `InboxWaitingQueue` (đọc DANG_MO chưa gán của phòng, sắp chờ-lâu-nhất-trước theo last_message_at) | Integration: gán được; khước từ khi đã có người→False; hàng đợi đúng thứ tự |
 
-### Giai đoạn 4 — HTTP + wiring + trigger
+### Giai đoạn 4 — HTTP + wiring + trigger ✅ XONG
 
 | Task | Nội dung | Deliverable |
 |---|---|---|
-| 9 | `assignment_router` `POST /departments/{id}/auto-assign` + schemas + dependencies (get_actor, factory cầu nối) | e2e: Manager kéo hàng đợi phòng mình; Staff 403; Manager phòng khác 403 |
-| 10 | **Wiring + trigger**: `_wire_assignment` trong main.py; đăng ký hook vào `app.state`: (a) sau khi hội thoại được phân phòng → `AutoAssignConversation`; (b) sau khi đóng hội thoại → `PullDepartmentQueue` cho người vừa rảnh. Cần điểm móc ở #1 (`CloseConversation`) và #2 (sau khi router tự phân) — dùng cơ chế hook ở composition root, KHÔNG để #1/#2 import #3. import-linter contract. | e2e: khách nhắn → #2 phân phòng → #3 tự gán nhân viên đang trong ca; không ai trong ca → hàng đợi; nhân viên đóng việc → kéo việc kế |
+| 9 ✅ | `assignment_router` `POST /departments/{id}/auto-assign` + schemas (`PullQueueResponse`) + dependencies (`get_actor` trung lập qua token_service + directory factory ở app.state; `build_pull_department_queue` qua factory) + authorization `bao_dam_dieu_phoi_duoc_phong` (Admin mọi phòng / Manager phòng mình / Staff 403) | e2e: Manager kéo hàng đợi phòng mình (200, assigned=1); Staff 403; Manager phòng khác 403 |
+| 10 ✅ | **Wiring + trigger**: `_wire_assignment` trong main.py (truyền `settings.app_timezone` vào pool — nợ F1); hai builder ở `pull_queue_factory.py`; đăng ký hook vào `app.state`: (a) `post_ingest_hooks` — hook #3 đăng ký SAU hook #2 nên chạy sau, đọc hội thoại (DANG_MO + có phòng + chưa ai) → `AutoAssignConversation`; (b) `post_close_hooks` (list MỚI) — close router gọi với `department_id` → `PullDepartmentQueue`. #1/#2 KHÔNG import #3 (webhook/close router chỉ gọi callable ở app.state). import-linter 13 kept. | e2e: khách nhắn → #2 phân phòng → #3 tự gán nhân viên đang trong ca; không ai trong ca → hàng đợi (assigned_user_id NULL); nhân viên đóng việc → kéo việc kế |
+
+**Cơ chế trigger đã chốt (task 10):**
+- **(a) Phân phòng → tự gán:** KHÔNG thêm `post_assign_department_hooks` riêng. Tái dùng luồng `post_ingest_hooks` — đăng ký hook #3 *sau* hook #2 trong `create_app` (thứ tự list = thứ tự chạy). Hook #3 đọc trạng thái hội thoại hiện tại trên session riêng (sau khi #2 commit phân phòng): chỉ gán khi `DANG_MO` + có `department_id` + `assigned_user_id IS NULL`. Bắt luôn được cả đường #2-webhook lẫn bất kỳ tin mới nào rơi vào phòng chưa ai nhận, mà không sửa hợp đồng #1/#2. Manager phân/nhận tay qua HTTP là đường người-điều-khiển riêng (họ có thể tự chọn nhân viên); endpoint `POST /auto-assign` phủ trường hợp kéo thủ công.
+- **(b) Đóng hội thoại → kéo hàng đợi:** thêm `app.state.post_close_hooks`; `dong_hoi_thoai` (inbox.presentation) commit thao tác đóng rồi gọi các hook với `department_id` của hội thoại vừa đóng (giống webhook router gọi `post_ingest_hooks`). Hook #3 (`assignment.infrastructure`) chạy `PullDepartmentQueue` trên session riêng, nuốt lỗi. inbox.presentation KHÔNG import assignment.
 
 ## Ghi chú thực hiện
 

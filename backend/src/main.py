@@ -200,14 +200,19 @@ def create_app() -> FastAPI:
     app.include_router(user_router, prefix="/api/v1")
     app.include_router(department_router, prefix="/api/v1")
 
-    # Hook post-ingest: các module hạ nguồn (keyword #2) đăng ký callable chạy
-    # sau khi webhook ingest xong một tin. Khởi tạo trước _wire_inbox để webhook
-    # router luôn thấy danh sách (rỗng nếu không ai đăng ký).
+    # Hook post-ingest: các module hạ nguồn (keyword #2, assignment #3) đăng ký
+    # callable chạy sau khi webhook ingest xong một tin. Hook post-close: chạy sau
+    # khi một hội thoại được đóng (assignment #3 kéo hàng đợi). Khởi tạo TRƯỚC
+    # _wire_inbox để các router của inbox luôn thấy danh sách (rỗng nếu không ai
+    # đăng ký). Thứ tự đăng ký post_ingest quan trọng: #2 (phân phòng) phải trước
+    # #3 (tự gán) để #3 thấy phòng #2 vừa gán.
     app.state.post_ingest_hooks = []
+    app.state.post_close_hooks = []
 
     _wire_inbox(app, settings)
     _wire_hrm(app, settings)
     _wire_keyword(app, settings)
+    _wire_assignment(app, settings)
 
     return app
 
@@ -424,6 +429,84 @@ def _wire_keyword(app: FastAPI, settings: Settings) -> None:
 
     app.include_router(keyword_router, prefix="/api/v1")
     app.include_router(analysis_router, prefix="/api/v1")
+
+
+def _wire_assignment(app: FastAPI, settings: Settings) -> None:
+    """Ghép nối module assignment (#3): directory actor, factory kéo hàng đợi, hai hook.
+
+    Composition root nên được biết cả identity (directory dựng actor), inbox lẫn
+    hrm cùng lúc (contract chỉ cấm tầng assignment.presentation). Đặt các factory ở
+    ``app.state`` để presentation ráp use case mà không import implementation.
+
+    Hai trigger tự động — nối qua ``app.state`` để #1/#2 KHÔNG import #3:
+    - ``post_ingest`` (#3): SAU hook #2 (đăng ký sau nên chạy sau), nếu hội thoại
+      vừa được #2 phân phòng (DANG_MO + có phòng + chưa ai nhận) → tự gán nhân viên.
+    - ``post_close`` (#3): khi nhân viên đóng hội thoại → kéo hàng đợi phòng đó.
+
+    NỢ F1 (review GĐ3): pool so "đang trong ca" theo giờ nghiệp vụ địa phương — PHẢI
+    truyền ``settings.app_timezone`` vào mọi builder pool ở đây.
+    """
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from src.modules.assignment.application.use_cases.auto_assign_conversation import (
+        AutoAssignConversation,
+    )
+    from src.modules.assignment.application.use_cases.pull_department_queue import (
+        PullDepartmentQueue,
+    )
+    from src.modules.assignment.infrastructure.inbox_bridge.post_close_hook import (
+        make_post_close_hook,
+    )
+    from src.modules.assignment.infrastructure.inbox_bridge.post_ingest_hook import (
+        make_post_ingest_hook,
+    )
+    from src.modules.assignment.infrastructure.inbox_bridge.pull_queue_factory import (
+        build_auto_assign_conversation,
+        build_pull_department_queue,
+    )
+    from src.modules.assignment.presentation.routers.assignment_router import (
+        router as assignment_router,
+    )
+    from src.modules.identity.presentation.dependencies import get_token_service
+    from src.modules.inbox.infrastructure.directory.workforce_directory import (
+        IdentityWorkforceDirectory,
+    )
+
+    app.state.token_service = get_token_service(settings)
+    # Directory (identity) để assignment.presentation dựng AssignmentActor mà không
+    # import implementation — lấy qua factory ở app.state (giống inbox/keyword).
+    app.state.assignment_directory_factory = IdentityWorkforceDirectory
+
+    # Notifier realtime dùng chung của inbox (đổi trạng thái khi tự gán phát tín
+    # hiệu đúng) và clock hệ thống. Timezone lấy từ config (nợ F1).
+    notifier = app.state.inbox_notifier
+    clock = SystemClock()
+    timezone = settings.app_timezone
+
+    def pull_queue_factory(session: AsyncSession) -> PullDepartmentQueue:
+        return build_pull_department_queue(
+            session, notifier=notifier, clock=clock, timezone=timezone
+        )
+
+    def auto_assign_factory(session: AsyncSession) -> AutoAssignConversation:
+        return build_auto_assign_conversation(
+            session, notifier=notifier, clock=clock, timezone=timezone
+        )
+
+    # Endpoint kéo hàng đợi thủ công dùng chung builder pull-queue.
+    app.state.assignment_pull_queue_factory = pull_queue_factory
+
+    # Trigger tự gán sau ingest: đăng ký SAU hook #2 để chạy sau nó (thấy phòng #2
+    # vừa gán). Cả hai hook chạy trên session riêng, đọc factory lười ở app.state.
+    app.state.post_ingest_hooks.append(
+        make_post_ingest_hook(lambda: app.state.session_factory, auto_assign_factory)
+    )
+    # Trigger kéo hàng đợi sau khi đóng hội thoại.
+    app.state.post_close_hooks.append(
+        make_post_close_hook(lambda: app.state.session_factory, pull_queue_factory)
+    )
+
+    app.include_router(assignment_router, prefix="/api/v1")
 
 
 app = create_app()
