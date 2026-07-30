@@ -116,8 +116,17 @@ async def nhan_webhook(
         # gọi LLM thừa). Tách sang hàng đợi nền là nợ để sau, không sửa ở GĐ4.
         if ket_qua is None:
             continue
+        # Lỗi hook KHÔNG được làm hỏng phản hồi webhook (tin đã commit). Các hook
+        # vốn tự nuốt lỗi, nhưng bọc thêm ở đây để không phụ thuộc ngầm khi thêm
+        # hook mới về sau — nhất quán với router đóng hội thoại (post_close).
         for hook in post_ingest_hooks:
-            await hook(event)
+            try:
+                await hook(event)
+            except Exception:
+                logger.exception(
+                    "Hook post-ingest lỗi — bỏ qua, tin vẫn nguyên",
+                    extra={"external_message_id": event.external_message_id},
+                )
 
     # Luôn 200: nền tảng coi 2xx là "đã nhận", kể cả event trùng đã idempotent.
     return Response(status_code=200)
