@@ -1,0 +1,87 @@
+# OmniChat #3 Auto-Assignment — Implementation Plan
+
+> **For agentic workers:** subagent-driven-development, task-by-task. Steps dùng checkbox. Mỗi task xong: test xanh + ruff/format/mypy/import-linter sạch, commit. Mỗi giai đoạn review trước khi sang tiếp.
+
+**Goal:** Sau khi hội thoại đã thuộc một phòng (#2 tự phân / Manager phân tay), tự chọn **một nhân viên** trong phòng theo chuỗi tiêu chí (đang trong ca → tải thấp nhất → chưa đủ KPI → round-robin) và gán qua use case của #1. Không ai hợp lệ → hội thoại nằm trong hàng đợi phòng, kéo lại khi có người rảnh/vào ca. Module `assignment` độc lập hai chiều với inbox/hrm/identity/keyword.
+
+**Spec:** [2026-07-29-omnichat-autoassign-design.md](../specs/2026-07-29-omnichat-autoassign-design.md)
+
+**Tech Stack:** kế thừa #0–#2, #4 (Python 3.13 · FastAPI · SQLAlchemy 2.0 async · psycopg 3 · PostgreSQL 17 · Alembic · Pydantic v2 · uv · pytest · ruff · mypy · import-linter). Không thêm dependency ngoài.
+
+## Quyết định chốt (3 câu hỏi mở của spec)
+
+- **Tên module:** `assignment`.
+- **Endpoint HTTP:** CÓ — `POST /departments/{id}/auto-assign` cho Manager (phòng mình) / Admin chạy lại việc kéo hàng đợi một phòng thủ công. Ngoài ra vẫn chạy ngầm qua trigger.
+- **Bảng `assignment_log`:** HOÃN. Bản đầu suy round-robin từ mốc gán trên hội thoại; không tạo bảng mới ở #3. Ghi nợ cho #5 nếu cần lịch sử phân việc chính xác.
+
+## Global Constraints
+
+Kế thừa toàn bộ Global Constraints #0–#4 (event loop Windows, UUID v7 `new_id()`, `timestamptz` UTC, tên test tiếng Việt không dấu, mọi lệnh qua `uv run` trong `backend/`, coverage domain+application ≥ 90%). Bổ sung cho #3:
+
+- **Module `assignment` độc lập hai chiều.** `assignment.{domain,application,presentation}` KHÔNG import inbox/hrm/identity/keyword. VÀ inbox/hrm/identity/keyword KHÔNG import assignment (giữ #1/#2/#4 đóng băng; #3 là hạ nguồn). import-linter thêm: assignment.domain vào "Domain…"; assignment.application vào "Application…"; layer assignment một chiều; forbidden mới cấm `assignment.{domain,application,presentation} → inbox, hrm, identity, keyword`; và forbidden chiều ngược cấm `inbox, hrm, identity, keyword → assignment`.
+- **Tự gán qua use case #1 với actor hệ thống** — không đụng máy trạng thái/realtime/phân quyền của #1. #3 chỉ "một Admin tự động chọn người".
+- **Không cướp việc.** Chỉ gán hội thoại `DANG_MO` + `assigned_user_id IS NULL`; đã có người → bỏ qua (idempotent).
+- **Tách lỗi.** Auto-assign lỗi (không ai trong ca, race) KHÔNG làm hỏng luồng gọi (webhook/đóng hội thoại) — nuốt lỗi, để hàng đợi. Nối trigger qua hook ở composition root (giống #2 với `post_ingest_hooks`).
+
+## Bản đồ file (module assignment)
+
+| Đường dẫn | Trách nhiệm |
+|---|---|
+| `src/modules/assignment/domain/value_objects/candidate.py` | `AgentCandidate` (user_id, on_shift, open_load, kpi_percent?, last_assigned_at?), `AssignmentOutcome` |
+| `src/modules/assignment/domain/services/selector.py` | `chon_nhan_vien(candidates) -> UUID | None` — chuỗi tiêu chí thuần, không I/O |
+| `src/modules/assignment/domain/ports.py` | `IAgentPool`, `IConversationAssigner`, `IWaitingQueue` + DTO cổng |
+| `src/modules/assignment/application/actor.py` | `AssignmentActor` (trung lập) |
+| `src/modules/assignment/application/use_cases/auto_assign_conversation.py` | Gán một hội thoại (trigger: vừa phân phòng) |
+| `src/modules/assignment/application/use_cases/pull_department_queue.py` | Kéo hàng đợi một phòng cho (những) người rảnh |
+| `src/modules/assignment/infrastructure/agent_pool/hrm_identity_pool.py` | `IAgentPool` — gom ca (#4) + tải (#1) + KPI (#4) + identity |
+| `src/modules/assignment/infrastructure/inbox_bridge/conversation_assigner.py` | `IConversationAssigner` — gọi use case gán-agent của #1 |
+| `src/modules/assignment/infrastructure/inbox_bridge/waiting_queue.py` | `IWaitingQueue` — đọc hàng đợi phòng |
+| `src/modules/assignment/infrastructure/inbox_bridge/post_assign_hook.py` | Hook: sau khi phân phòng / đóng hội thoại → auto-assign |
+| `src/modules/assignment/presentation/routers/assignment_router.py` | `POST /departments/{id}/auto-assign` |
+| `src/modules/assignment/presentation/{schemas,dependencies}.py` | Pydantic + DI factory |
+| `src/modules/inbox/application/use_cases/assign_conversation_to_agent.py` | **MỚI ở #1**: gán một hội thoại cho một nhân viên bất kỳ (actor Manager/Admin/hệ thống) |
+
+## Danh sách Task
+
+### Giai đoạn 1 — Domain assignment (thuần, không I/O)
+
+| Task | Nội dung | Deliverable |
+|---|---|---|
+| 1 | `AgentCandidate` + `AssignmentOutcome` (value objects) | Unit test bất biến |
+| 2 | `selector.chon_nhan_vien` — chuỗi tiêu chí: lọc on_shift → min open_load → min kpi_percent (None = thấp nhất, ưu tiên) → round-robin theo last_assigned_at (None/cũ nhất trước) | Unit test: mỗi tiêu chí phá hoà đúng thứ tự; rỗng → None; on_shift lọc trước tất cả |
+| 3 | Ports (`IAgentPool`, `IConversationAssigner`, `IWaitingQueue`) + DTO cổng + fakes | Fake dùng được; import-linter cấm assignment→(inbox,hrm,identity,keyword) + chiều ngược |
+
+### Giai đoạn 2 — Use case (application, dùng fake)
+
+| Task | Nội dung | Deliverable |
+|---|---|---|
+| 4 | `AutoAssignConversation` (nhận conversation_id + department_id; RB-1 chỉ khi chưa gán; lấy candidates từ IAgentPool; selector chọn; gán qua IConversationAssigner; không ai → để hàng đợi; nuốt lỗi) | Unit: gán người hợp lệ; không ai trong ca → không gán, không lỗi; đã có người → bỏ qua; race gán-thất-bại → không ném |
+| 5 | `PullDepartmentQueue` (cho một hoặc nhiều người rảnh: lấy hàng đợi phòng chờ lâu nhất, gán lần lượt tới khi hết người/hết việc) | Unit: kéo đúng thứ tự chờ; dừng khi hết ứng viên |
+
+### Giai đoạn 3 — Hạ tầng: use case #1 mới + cầu nối
+
+| Task | Nội dung | Deliverable |
+|---|---|---|
+| 6 | **#1**: `AssignConversationToAgent` use case (Manager/Admin/hệ thống gán một nhân viên vào hội thoại `DANG_MO`; kiểm agent thuộc phòng hội thoại + active qua directory; dùng `assign_to_agent`; notify). e2e/unit của #1. | Unit #1: gán được; chặn khác phòng; chặn khi đã có người |
+| 7 | `HrmIdentityAgentPool` (`IAgentPool`): liệt kê nhân viên active của phòng (identity) → mỗi người: on_shift (đọc shift #4 hôm nay bao giờ hiện tại), open_load (đếm hội thoại DANG_MO gán họ, qua repo #1), kpi_percent (KpiProgress #4), last_assigned_at (mốc gán gần nhất từ #1) | Integration: đúng dữ liệu trên PostgreSQL thật |
+| 8 | `InboxConversationAssigner` (`IConversationAssigner`, gọi `AssignConversationToAgent` #1 với actor hệ thống, nuốt lỗi→False) + `InboxWaitingQueue` (`IWaitingQueue`, đọc hội thoại DANG_MO chưa gán của phòng, sắp theo chờ lâu nhất) | Integration: gán được; hàng đợi đúng thứ tự |
+
+### Giai đoạn 4 — HTTP + wiring + trigger
+
+| Task | Nội dung | Deliverable |
+|---|---|---|
+| 9 | `assignment_router` `POST /departments/{id}/auto-assign` + schemas + dependencies (get_actor, factory cầu nối) | e2e: Manager kéo hàng đợi phòng mình; Staff 403; Manager phòng khác 403 |
+| 10 | **Wiring + trigger**: `_wire_assignment` trong main.py; đăng ký hook vào `app.state`: (a) sau khi hội thoại được phân phòng → `AutoAssignConversation`; (b) sau khi đóng hội thoại → `PullDepartmentQueue` cho người vừa rảnh. Cần điểm móc ở #1 (`CloseConversation`) và #2 (sau khi router tự phân) — dùng cơ chế hook ở composition root, KHÔNG để #1/#2 import #3. import-linter contract. | e2e: khách nhắn → #2 phân phòng → #3 tự gán nhân viên đang trong ca; không ai trong ca → hàng đợi; nhân viên đóng việc → kéo việc kế |
+
+## Ghi chú thực hiện
+
+- **Điểm móc trigger (rủi ro nhất, như #2 GĐ4):** #3 cần chạy sau hai sự kiện của #1: "hội thoại vừa được gán phòng" và "hội thoại vừa đóng". Cả hai phải nối qua hook ở composition root để #1 không import #3.
+  - *Phân phòng:* #2 tự phân qua `InboxConversationRouter` (gọi `AssignConversationToDepartment`). Chèn hook sau bước đó — hoặc mở rộng `post_ingest_hooks` để hook #3 chạy tiếp sau hook #2, hoặc thêm một danh sách hook riêng `post_assign_department_hooks` mà cả #2-router-bridge lẫn #1-Manager-assign gọi. Quyết ở task 10; ưu tiên một cơ chế hook chung ở app.state, tránh sửa hợp đồng #1/#2.
+  - *Đóng hội thoại:* thêm `post_close_hooks` mà `CloseConversation` (hoặc webhook/HTTP router gọi close) kích hoạt. Cân nhắc: có thể cần một điểm hook mỏng ở composition. Ghi rõ khi làm.
+- **Actor hệ thống:** `InboxConversationAssigner` gọi use case #1 với `InboxActor` vai ADMIN (giống #2). Ghi rõ đây là hành động tự động của #3.
+- **F1 nợ #2 GĐ4 (quyền định tuyến):** #3 auto-assign CHỈ trong phòng của hội thoại (RB-2). Endpoint kéo hàng đợi giới hạn Manager theo phòng mình / Admin toàn cục — thống nhất mô hình quyền, ghi rõ ở task 9.
+- **Round-robin bản đầu:** suy `last_assigned_at` từ hội thoại đã gán gần nhất của mỗi nhân viên (query #1). Không tạo `assignment_log`; nợ cho #5 nếu cần.
+- **Tải (open_load):** đếm hội thoại `DANG_MO` có `assigned_user_id = agent` — cần một truy vấn đếm-theo-agent (bổ sung ở bridge hoặc repo #1 nếu thiếu; ưu tiên đọc qua repo có sẵn, không đổi hợp đồng #1 nếu tránh được).
+- **Đồng bộ:** trigger chạy trong request (webhook/close) — kế thừa nợ "xử lý đồng bộ" của #2; tách hàng đợi nền để sau.
+
+Chi tiết từng task (Files/Interfaces/Steps + code) viết khi bắt đầu từng giai đoạn, theo cách #0–#4 đã làm.
