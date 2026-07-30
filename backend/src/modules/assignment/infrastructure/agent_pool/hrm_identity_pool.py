@@ -2,9 +2,17 @@
 
 Implementation ``IAgentPool`` — chỗ DUY NHẤT (cùng các bridge khác) assignment
 được biết các module kia tồn tại. Với mỗi nhân viên active của phòng, gom:
-- ``on_shift``: có buổi phân ca ACTIVE hôm nay bao thời điểm hiện tại (#4).
+- ``on_shift``: có buổi phân ca ACTIVE hôm nay bao thời điểm hiện tại (#4). Giờ ca
+  (#4) lưu theo **giờ nghiệp vụ địa phương** (nhân viên nhập "ca sáng 08:00" theo
+  giờ VN), trong khi ``clock.now()`` là UTC — nên phải quy đổi UTC → giờ địa
+  phương (``timezone``) trước khi so, nếu không sẽ lệch đúng bằng offset và gần
+  như không ai được coi là trong ca.
 - ``open_load``: số hội thoại DANG_MO đang gán cho họ (#1).
-- ``last_assigned_at``: mốc gán gần nhất (suy từ hội thoại đã gán họ — #1).
+- ``last_assigned_at``: **proxy thô** = ``max(updated_at)`` của hội thoại đã gán
+  họ. ``updated_at`` bị bước bởi cả đóng/nhận-tin-mới lẫn gán, nên đây thực chất
+  là "mốc hoạt động gần nhất", KHÔNG phải "mốc gán". Dùng phá hoà round-robin
+  (tiebreaker thứ 4, hiếm tới) nên lệch nhỏ chấp nhận được; ``assignment_log``
+  (#5) mới cho mốc gán chính xác.
 - ``kpi_percent``: **NỢ** — hiện để ``None``. Tính KPI đủ nghĩa cần chốt "chỉ số
   định tuyến chuẩn" + kỳ + nguồn hiệu suất (quyết định nghiệp vụ chưa có). KPI là
   tiêu chí phá hoà thứ 3, ``None`` được selector xử như thấp nhất (trung tính giữa
@@ -13,6 +21,7 @@ Implementation ``IAgentPool`` — chỗ DUY NHẤT (cùng các bridge khác) ass
 
 from datetime import date, datetime, time
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,16 +42,20 @@ from src.shared.application.ports import IClock
 class HrmIdentityAgentPool:
     """Gom ứng viên của một phòng từ identity + ca (#4) + tải hội thoại (#1)."""
 
-    def __init__(self, session: AsyncSession, clock: IClock) -> None:
+    def __init__(self, session: AsyncSession, clock: IClock, timezone: str) -> None:
         self._session = session
         self._user_repo = SqlAlchemyUserRepository(session)
         self._shift_repo = SqlAlchemyShiftAssignmentRepository(session)
         self._clock = clock
+        self._tz = ZoneInfo(timezone)
 
     async def candidates_for_department(self, department_id: UUID) -> tuple[AgentCandidate, ...]:
-        now = self._clock.now()
-        hom_nay = now.date()
-        gio = now.timetz().replace(tzinfo=None)
+        # Quy đổi UTC → giờ nghiệp vụ địa phương để so với giờ ca (#4 lưu theo giờ
+        # địa phương). ``hom_nay``/``gio`` phải lấy SAU khi đổi múi để không lệch
+        # ngày quanh nửa đêm.
+        local = self._clock.now().astimezone(self._tz)
+        hom_nay = local.date()
+        gio = local.time()
 
         # Nhân viên active của phòng: cả STAFF lẫn MANAGER đều có thể nhận việc.
         users = [
@@ -54,6 +67,8 @@ class HrmIdentityAgentPool:
             ),
         ]
 
+        # N+1: 3 truy vấn mỗi nhân viên. Chấp nhận ở bản đầu (phòng thường vài tới
+        # vài chục người); gộp thành truy vấn tổng hợp theo phòng là tối ưu để sau.
         candidates: list[AgentCandidate] = []
         for user in users:
             candidates.append(

@@ -84,5 +84,9 @@ Kế thừa toàn bộ Global Constraints #0–#4 (event loop Windows, UUID v7 `
 - **NỢ KPI (chốt GĐ3):** `HrmIdentityAgentPool` để `kpi_percent = None`. Tính KPI đủ nghĩa cần chốt *một chỉ số định tuyến chuẩn* + kỳ + nguồn hiệu suất — quyết định nghiệp vụ chưa có, và `GetKpiProgress` #4 đòi metric_type/period/actor cụ thể (quá nặng cho một quyết định routing per-hội-thoại). KPI là tiêu chí phá hoà **thứ 3**; `None` được selector xử như thấp nhất (trung tính giữa các ứng viên hoà tải) nên bỏ trống vẫn giữ đúng thứ tự ưu tiên ca→tải→(kpi)→round-robin. Nối KPI thật khi nghiệp vụ chốt chỉ số chuẩn.
 - **Tải (open_load):** đếm hội thoại `DANG_MO` có `assigned_user_id = agent` — cần một truy vấn đếm-theo-agent (bổ sung ở bridge hoặc repo #1 nếu thiếu; ưu tiên đọc qua repo có sẵn, không đổi hợp đồng #1 nếu tránh được).
 - **Đồng bộ:** trigger chạy trong request (webhook/close) — kế thừa nợ "xử lý đồng bộ" của #2; tách hàng đợi nền để sau.
+- **Chốt sau review GĐ3:**
+  - *(F1 — BUG đã sửa)* Kiểm "đang trong ca" ban đầu so **giờ UTC** của `now()` với giờ ca — mà giờ ca (#4) nhập theo **giờ nghiệp vụ địa phương** (VN, UTC+7). Lệch đúng offset → gần như không ai được coi trong ca. Sửa: thêm config `APP_TIMEZONE` (mặc định `Asia/Ho_Chi_Minh`); `HrmIdentityAgentPool` nhận `timezone`, quy đổi `now().astimezone(tz)` trước khi so (lấy ngày+giờ sau khi đổi). Có regression test. **GĐ4 phải truyền `settings.app_timezone` vào pool khi wiring.**
+  - *(F3 — ghi nợ)* `last_assigned_at` = `max(updated_at)` là **proxy thô** ("mốc hoạt động gần nhất", không phải "mốc gán" — `updated_at` bị bước bởi close/tin-mới/gán). Round-robin (tiebreaker thứ 4) lệch nhỏ; `assignment_log` (#5) mới chính xác. Đã sửa docstring cho đúng.
+  - *(F2 — note)* `candidates_for_department` là N+1 (3 truy vấn/nhân viên). Chấp nhận bản đầu; gộp truy vấn tổng hợp theo phòng để sau.
 
 Chi tiết từng task (Files/Interfaces/Steps + code) viết khi bắt đầu từng giai đoạn, theo cách #0–#4 đã làm.
