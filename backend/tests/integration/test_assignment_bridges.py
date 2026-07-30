@@ -61,8 +61,11 @@ HOM_NAY = NOW.date()
 
 
 class _Clock:
+    def __init__(self, moment: datetime = NOW) -> None:
+        self._moment = moment
+
     def now(self) -> datetime:
-        return NOW
+        return self._moment
 
 
 async def _phong(session: AsyncSession) -> Department:
@@ -175,7 +178,8 @@ class TestAgentPool:
                 last_message_at=NOW,
             )
 
-        pool = HrmIdentityAgentPool(db_session, _Clock())
+        # timezone="UTC" để giờ địa phương == NOW (10:00) rơi vào ca 08:00-12:00.
+        pool = HrmIdentityAgentPool(db_session, _Clock(), timezone="UTC")
         cands = {c.user_id: c for c in await pool.candidates_for_department(phong.id)}
 
         assert set(cands) == {trong_ca.id, ngoai_ca.id}  # chỉ nhân viên phòng này
@@ -184,6 +188,19 @@ class TestAgentPool:
         assert cands[ngoai_ca.id].on_shift is False
         assert cands[ngoai_ca.id].open_load == 0
         assert cands[trong_ca.id].kpi_percent is None  # nợ KPI
+
+    async def test_on_shift_quy_doi_ve_gio_dia_phuong(self, db_session: AsyncSession) -> None:
+        # Regression F1: giờ ca lưu theo giờ VN. now() = 03:00 UTC ~ 10:00 VN, phải
+        # rơi vào ca 08:00-12:00. Nếu so thẳng UTC (03:00) sẽ SAI (coi ngoài ca).
+        phong = await _phong(db_session)
+        nv = await _nhan_vien(db_session, phong.id)
+        await _ca(db_session, nv.id, phong.id, date(2026, 8, 3), time(8, 0), time(12, 0))
+
+        utc_3h = datetime(2026, 8, 3, 3, 0, tzinfo=UTC)
+        pool = HrmIdentityAgentPool(db_session, _Clock(utc_3h), timezone="Asia/Ho_Chi_Minh")
+        cands = {c.user_id: c for c in await pool.candidates_for_department(phong.id)}
+
+        assert cands[nv.id].on_shift is True
 
 
 class TestWaitingQueue:
