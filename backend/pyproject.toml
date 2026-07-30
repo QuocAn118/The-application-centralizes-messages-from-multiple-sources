@@ -93,6 +93,7 @@ source_modules = [
     "src.modules.inbox.domain",
     "src.modules.hrm.domain",
     "src.modules.keyword.domain",
+    "src.modules.assignment.domain",
 ]
 forbidden_modules = [
     "src.shared.infrastructure",
@@ -104,6 +105,8 @@ forbidden_modules = [
     "src.modules.hrm.presentation",
     "src.modules.keyword.infrastructure",
     "src.modules.keyword.presentation",
+    "src.modules.assignment.infrastructure",
+    "src.modules.assignment.presentation",
     "sqlalchemy",
     "fastapi",
     "pydantic",
@@ -118,6 +121,7 @@ source_modules = [
     "src.modules.inbox.application",
     "src.modules.hrm.application",
     "src.modules.keyword.application",
+    "src.modules.assignment.application",
 ]
 forbidden_modules = [
     "src.shared.infrastructure",
@@ -129,6 +133,8 @@ forbidden_modules = [
     "src.modules.hrm.presentation",
     "src.modules.keyword.infrastructure",
     "src.modules.keyword.presentation",
+    "src.modules.assignment.infrastructure",
+    "src.modules.assignment.presentation",
     "sqlalchemy",
     "fastapi",
 ]
@@ -229,3 +235,44 @@ source_modules = [
     "src.modules.identity",
 ]
 forbidden_modules = ["src.modules.keyword"]
+
+[[tool.importlinter.contracts]]
+name = "Cac layer assignment tuan thu thu tu mot chieu"
+type = "layers"
+layers = [
+    "src.modules.assignment.presentation",
+    "src.modules.assignment.infrastructure",
+    "src.modules.assignment.application",
+    "src.modules.assignment.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "assignment doc lap voi cac module khac - chi noi qua UUID va port"
+type = "forbidden"
+# assignment domain/application/presentation KHONG duoc cham inbox/hrm/identity/
+# keyword. Chi assignment.infrastructure (implementation IAgentPool,
+# IConversationAssigner, IWaitingQueue) moi duoc phep.
+source_modules = [
+    "src.modules.assignment.domain",
+    "src.modules.assignment.application",
+    "src.modules.assignment.presentation",
+]
+forbidden_modules = [
+    "src.modules.identity",
+    "src.modules.inbox",
+    "src.modules.hrm",
+    "src.modules.keyword",
+]
+
+[[tool.importlinter.contracts]]
+name = "cac module khac KHONG duoc phu thuoc assignment - #3 la ha nguon"
+type = "forbidden"
+# Chieu nguoc: giu #0/#1/#2/#4 nguyen ven, khong biet assignment ton tai.
+# assignment la ha nguon, chi no moi tham chieu chung (qua port + UUID + hook).
+source_modules = [
+    "src.modules.identity",
+    "src.modules.inbox",
+    "src.modules.hrm",
+    "src.modules.keyword",
+]
+forbidden_modules = ["src.modules.assignment"]
