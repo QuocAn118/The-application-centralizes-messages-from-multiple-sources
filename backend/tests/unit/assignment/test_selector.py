@@ -102,3 +102,12 @@ class TestChonNhanVien:
             )
         )
         assert chon == B
+
+    def test_hoa_hoan_toan_thi_tat_dinh_theo_user_id(self) -> None:
+        # Mọi tiêu chí bằng nhau (kể cả last_assigned_at=None, hệ thống mới) -> phá
+        # hoà theo user_id, KHÔNG phụ thuộc thứ tự đầu vào. A < B < C nên chọn A.
+        a = _cand(A, open_load=0, kpi_percent=None, last_assigned_at=None)
+        b = _cand(B, open_load=0, kpi_percent=None, last_assigned_at=None)
+        c = _cand(C, open_load=0, kpi_percent=None, last_assigned_at=None)
+        assert chon_nhan_vien((c, b, a)) == A
+        assert chon_nhan_vien((b, a, c)) == A  # đổi thứ tự vẫn ra A

@@ -14,6 +14,7 @@ from dataclasses import replace
 from uuid import UUID
 
 from src.modules.assignment.domain.ports import (
+    AssignResult,
     IAgentPool,
     IConversationAssigner,
     IWaitingQueue,
@@ -54,17 +55,21 @@ class PullDepartmentQueue:
             if chon is None:
                 # Không còn ai trong ca → phần còn lại của hàng đợi vẫn chờ.
                 break
-            if await self._assigner.assign_to_agent(conversation_id, chon):
+            ket_qua = await self._assigner.assign_to_agent(conversation_id, chon)
+            if ket_qua is AssignResult.ASSIGNED:
                 da_gan += 1
                 # Tăng tải người vừa nhận để lượt kế ưu tiên người khác.
                 cu = candidates[chon]
                 candidates[chon] = replace(cu, open_load=cu.open_load + 1)
             else:
+                # ALREADY_TAKEN (hội thoại vừa có người) hoặc REJECTED — bỏ qua hội
+                # thoại này, KHÔNG tăng tải người được chọn (họ chưa nhận thêm việc).
                 logger.info(
-                    "Kéo hàng đợi: gán bị khước từ, bỏ qua",
+                    "Kéo hàng đợi: không gán được, bỏ qua",
                     extra={
                         "conversation_id": str(conversation_id),
                         "user_id": str(chon),
+                        "ket_qua": ket_qua.value,
                     },
                 )
         return da_gan

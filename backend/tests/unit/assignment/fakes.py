@@ -2,6 +2,7 @@
 
 from uuid import UUID
 
+from src.modules.assignment.domain.ports import AssignResult
 from src.modules.assignment.domain.value_objects.candidate import AgentCandidate
 
 
@@ -18,15 +19,19 @@ class FakeAgentPool:
 
 
 class FakeConversationAssigner:
-    """``IConversationAssigner`` giả: ghi lại lời gán, cấu hình thành/bại."""
+    """``IConversationAssigner`` giả: ghi lại lời gán, cấu hình kết quả.
 
-    def __init__(self, succeed: bool = True) -> None:
-        self._succeed = succeed
+    ``succeed`` là lối tắt: True→ASSIGNED, False→REJECTED. Truyền ``result`` để
+    kiểm nhánh ALREADY_TAKEN.
+    """
+
+    def __init__(self, succeed: bool = True, result: AssignResult | None = None) -> None:
+        self._result = result or (AssignResult.ASSIGNED if succeed else AssignResult.REJECTED)
         self.assigned: list[tuple[UUID, UUID]] = []
 
-    async def assign_to_agent(self, conversation_id: UUID, user_id: UUID) -> bool:
+    async def assign_to_agent(self, conversation_id: UUID, user_id: UUID) -> AssignResult:
         self.assigned.append((conversation_id, user_id))
-        return self._succeed
+        return self._result
 
 
 class FakeWaitingQueue:

@@ -10,6 +10,7 @@ from uuid import UUID
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.modules.assignment.domain.ports import AssignResult
 from src.modules.assignment.infrastructure.agent_pool.hrm_identity_pool import (
     HrmIdentityAgentPool,
 )
@@ -250,15 +251,15 @@ class TestAssigner:
         )
 
         assigner = InboxConversationAssigner(db_session, FakeRealtimeNotifier(), _Clock())
-        ok = await assigner.assign_to_agent(conv.id, nv.id)
+        ket_qua = await assigner.assign_to_agent(conv.id, nv.id)
         await db_session.flush()
 
-        assert ok is True
+        assert ket_qua is AssignResult.ASSIGNED
         moi = await SqlAlchemyConversationRepository(db_session).get_by_id(conv.id)
         assert moi is not None
         assert moi.assigned_user_id == nv.id
 
-    async def test_gan_that_bai_khi_da_co_nguoi(self, db_session: AsyncSession) -> None:
+    async def test_da_co_nguoi_thi_already_taken(self, db_session: AsyncSession) -> None:
         from tests.unit.inbox.fakes import FakeRealtimeNotifier
 
         phong = await _phong(db_session)
@@ -266,10 +267,28 @@ class TestAssigner:
         conv = await _hoi_thoai(
             db_session,
             phong.id,
-            assigned_user_id=new_id(),
+            assigned_user_id=new_id(),  # đã có người khác
             status=ConversationStatus.DANG_MO,
             last_message_at=NOW,
         )
         assigner = InboxConversationAssigner(db_session, FakeRealtimeNotifier(), _Clock())
-        ok = await assigner.assign_to_agent(conv.id, nv.id)
-        assert ok is False  # #1 khước từ (đã có người), nuốt lỗi
+        ket_qua = await assigner.assign_to_agent(conv.id, nv.id)
+        # Race: hội thoại vừa có người -> ALREADY_TAKEN (đã ổn), không phải REJECTED.
+        assert ket_qua is AssignResult.ALREADY_TAKEN
+
+    async def test_nhan_vien_sai_phong_thi_rejected(self, db_session: AsyncSession) -> None:
+        from tests.unit.inbox.fakes import FakeRealtimeNotifier
+
+        phong = await _phong(db_session)
+        phong_khac = await _phong(db_session)
+        nv_khac = await _nhan_vien(db_session, phong_khac.id)  # thuộc phòng khác
+        conv = await _hoi_thoai(
+            db_session,
+            phong.id,
+            assigned_user_id=None,
+            status=ConversationStatus.DANG_MO,
+            last_message_at=NOW,
+        )
+        assigner = InboxConversationAssigner(db_session, FakeRealtimeNotifier(), _Clock())
+        ket_qua = await assigner.assign_to_agent(conv.id, nv_khac.id)
+        assert ket_qua is AssignResult.REJECTED

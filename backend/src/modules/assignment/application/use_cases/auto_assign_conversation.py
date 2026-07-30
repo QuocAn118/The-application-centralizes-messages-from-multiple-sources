@@ -11,7 +11,11 @@ luồng gọi).
 import logging
 from uuid import UUID
 
-from src.modules.assignment.domain.ports import IAgentPool, IConversationAssigner
+from src.modules.assignment.domain.ports import (
+    AssignResult,
+    IAgentPool,
+    IConversationAssigner,
+)
 from src.modules.assignment.domain.services.selector import chon_nhan_vien
 from src.modules.assignment.domain.value_objects.candidate import AssignmentOutcome
 
@@ -33,11 +37,14 @@ class AutoAssignConversation:
             # Không ai trong ca → hội thoại nằm trong hàng đợi phòng, chờ.
             return AssignmentOutcome.QUEUED
 
-        if await self._assigner.assign_to_agent(conversation_id, chon):
+        ket_qua = await self._assigner.assign_to_agent(conversation_id, chon)
+        if ket_qua is AssignResult.ASSIGNED:
             return AssignmentOutcome.ASSIGNED
+        if ket_qua is AssignResult.ALREADY_TAKEN:
+            # Hội thoại vừa có người khác nhận (race) — đã ổn, không phải hàng đợi.
+            return AssignmentOutcome.SKIPPED
 
-        # #1 khước từ (race: vừa có người nhận / không còn DANG_MO). Không cướp
-        # việc, không ném — để hàng đợi, lần kéo sau xử lý.
+        # #1 từ chối vì lý do khác (không còn DANG_MO…) — để hàng đợi, lần kéo sau.
         logger.info(
             "Tự gán bị khước từ — để hàng đợi",
             extra={"conversation_id": str(conversation_id), "user_id": str(chon)},

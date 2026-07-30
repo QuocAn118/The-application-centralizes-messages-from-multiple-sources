@@ -25,16 +25,17 @@ _TRUOC_NHAT = datetime.min.replace(tzinfo=UTC)
 _KPI_KHUYET = Decimal("-1")
 
 
-def _khoa_xep_hang(c: AgentCandidate) -> tuple[int, Decimal, datetime]:
+def _khoa_xep_hang(c: AgentCandidate) -> tuple[int, Decimal, datetime, str]:
     """Khoá sắp xếp: nhỏ hơn = ưu tiên hơn. Chỉ gọi với ứng viên đã trong ca.
 
     (open_load ↑, kpi_percent ↑ với None thấp nhất, last_assigned_at ↑ với None
-    sớm nhất). Tie hoàn toàn (mọi khoá bằng) hiếm; ``min`` giữ ứng viên xuất hiện
-    trước — đầu vào nên có thứ tự ổn định (ví dụ theo user_id) để tất định.
+    sớm nhất, rồi ``user_id`` để phá hoà cuối cùng). Khoá ``user_id`` bảo đảm kết
+    quả TẤT ĐỊNH kể cả khi mọi tiêu chí bằng nhau (ví dụ hệ thống mới, mọi ứng
+    viên chưa từng nhận việc), không phụ thuộc thứ tự caller truyền vào.
     """
     kpi = c.kpi_percent if c.kpi_percent is not None else _KPI_KHUYET
     lan_gan_nhat = c.last_assigned_at if c.last_assigned_at is not None else _TRUOC_NHAT
-    return (c.open_load, kpi, lan_gan_nhat)
+    return (c.open_load, kpi, lan_gan_nhat, str(c.user_id))
 
 
 def chon_nhan_vien(candidates: tuple[AgentCandidate, ...]) -> UUID | None:
