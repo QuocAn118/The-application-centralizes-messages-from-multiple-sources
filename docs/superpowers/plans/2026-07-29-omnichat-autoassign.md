@@ -58,13 +58,13 @@ Kế thừa toàn bộ Global Constraints #0–#4 (event loop Windows, UUID v7 `
 | 4 | `AutoAssignConversation` (nhận conversation_id + department_id; RB-1 chỉ khi chưa gán; lấy candidates từ IAgentPool; selector chọn; gán qua IConversationAssigner; không ai → để hàng đợi; nuốt lỗi) | Unit: gán người hợp lệ; không ai trong ca → không gán, không lỗi; đã có người → bỏ qua; race gán-thất-bại → không ném |
 | 5 | `PullDepartmentQueue` (cho một hoặc nhiều người rảnh: lấy hàng đợi phòng chờ lâu nhất, gán lần lượt tới khi hết người/hết việc) | Unit: kéo đúng thứ tự chờ; dừng khi hết ứng viên |
 
-### Giai đoạn 3 — Hạ tầng: use case #1 mới + cầu nối
+### Giai đoạn 3 — Hạ tầng: use case #1 mới + cầu nối ✅ XONG
 
 | Task | Nội dung | Deliverable |
 |---|---|---|
-| 6 | **#1**: `AssignConversationToAgent` use case (Manager/Admin/hệ thống gán một nhân viên vào hội thoại `DANG_MO`; kiểm agent thuộc phòng hội thoại + active qua directory; dùng `assign_to_agent`; notify). e2e/unit của #1. | Unit #1: gán được; chặn khác phòng; chặn khi đã có người |
-| 7 | `HrmIdentityAgentPool` (`IAgentPool`): liệt kê nhân viên active của phòng (identity) → mỗi người: on_shift (đọc shift #4 hôm nay bao giờ hiện tại), open_load (đếm hội thoại DANG_MO gán họ, qua repo #1), kpi_percent (KpiProgress #4), last_assigned_at (mốc gán gần nhất từ #1) | Integration: đúng dữ liệu trên PostgreSQL thật |
-| 8 | `InboxConversationAssigner` (`IConversationAssigner`, gọi `AssignConversationToAgent` #1 với actor hệ thống, nuốt lỗi→False) + `InboxWaitingQueue` (`IWaitingQueue`, đọc hội thoại DANG_MO chưa gán của phòng, sắp theo chờ lâu nhất) | Integration: gán được; hàng đợi đúng thứ tự |
+| 6 ✅ | **#1**: `AssignConversationToAgent` use case (Manager/Admin/hệ thống gán một nhân viên vào hội thoại `DANG_MO`; kiểm agent active + đúng phòng hội thoại qua directory; dùng `assign_to_agent`; notify) | 9 unit test #1: gán được; Staff 403; khác phòng chặn; nhân viên sai phòng/không active chặn; đã có người chặn |
+| 7 ✅ | `HrmIdentityAgentPool` (`IAgentPool`): STAFF+MANAGER active của phòng (identity) → on_shift (shift #4 hôm nay bao giờ hiện tại), open_load (đếm DANG_MO gán họ — #1), last_assigned_at (max updated_at hội thoại đã gán họ — #1). **kpi_percent = None (NỢ)**: KPI đủ nghĩa cần chốt chỉ số/kỳ/nguồn (quyết định nghiệp vụ chưa có); selector xử None trung tính | Integration: gom đúng on_shift + tải trên PostgreSQL thật |
+| 8 ✅ | `InboxConversationAssigner` (gọi `AssignConversationToAgent` #1 với actor hệ thống ADMIN, nuốt DomainError/ApplicationError→False) + `InboxWaitingQueue` (đọc DANG_MO chưa gán của phòng, sắp chờ-lâu-nhất-trước theo last_message_at) | Integration: gán được; khước từ khi đã có người→False; hàng đợi đúng thứ tự |
 
 ### Giai đoạn 4 — HTTP + wiring + trigger
 
@@ -80,7 +80,8 @@ Kế thừa toàn bộ Global Constraints #0–#4 (event loop Windows, UUID v7 `
   - *Đóng hội thoại:* thêm `post_close_hooks` mà `CloseConversation` (hoặc webhook/HTTP router gọi close) kích hoạt. Cân nhắc: có thể cần một điểm hook mỏng ở composition. Ghi rõ khi làm.
 - **Actor hệ thống:** `InboxConversationAssigner` gọi use case #1 với `InboxActor` vai ADMIN (giống #2). Ghi rõ đây là hành động tự động của #3.
 - **F1 nợ #2 GĐ4 (quyền định tuyến):** #3 auto-assign CHỈ trong phòng của hội thoại (RB-2). Endpoint kéo hàng đợi giới hạn Manager theo phòng mình / Admin toàn cục — thống nhất mô hình quyền, ghi rõ ở task 9.
-- **Round-robin bản đầu:** suy `last_assigned_at` từ hội thoại đã gán gần nhất của mỗi nhân viên (query #1). Không tạo `assignment_log`; nợ cho #5 nếu cần.
+- **Round-robin bản đầu:** suy `last_assigned_at` từ `max(updated_at)` hội thoại đã gán mỗi nhân viên (query #1). Không tạo `assignment_log`; nợ cho #5 nếu cần chính xác tuyệt đối.
+- **NỢ KPI (chốt GĐ3):** `HrmIdentityAgentPool` để `kpi_percent = None`. Tính KPI đủ nghĩa cần chốt *một chỉ số định tuyến chuẩn* + kỳ + nguồn hiệu suất — quyết định nghiệp vụ chưa có, và `GetKpiProgress` #4 đòi metric_type/period/actor cụ thể (quá nặng cho một quyết định routing per-hội-thoại). KPI là tiêu chí phá hoà **thứ 3**; `None` được selector xử như thấp nhất (trung tính giữa các ứng viên hoà tải) nên bỏ trống vẫn giữ đúng thứ tự ưu tiên ca→tải→(kpi)→round-robin. Nối KPI thật khi nghiệp vụ chốt chỉ số chuẩn.
 - **Tải (open_load):** đếm hội thoại `DANG_MO` có `assigned_user_id = agent` — cần một truy vấn đếm-theo-agent (bổ sung ở bridge hoặc repo #1 nếu thiếu; ưu tiên đọc qua repo có sẵn, không đổi hợp đồng #1 nếu tránh được).
 - **Đồng bộ:** trigger chạy trong request (webhook/close) — kế thừa nợ "xử lý đồng bộ" của #2; tách hàng đợi nền để sau.
 
