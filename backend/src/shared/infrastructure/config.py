@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-5"
 
+    # Múi giờ nghiệp vụ: giờ ca làm (#4) và các so sánh "đang trong ca" (#3) diễn
+    # ra theo giờ địa phương này, dù hệ thống lưu mọi mốc thời gian ở UTC. Nhân
+    # viên nhập "ca sáng 08:00" theo giờ VN, không phải UTC.
+    app_timezone: str = "Asia/Ho_Chi_Minh"
+
     app_env: str = "development"
     log_level: str = "INFO"
 
