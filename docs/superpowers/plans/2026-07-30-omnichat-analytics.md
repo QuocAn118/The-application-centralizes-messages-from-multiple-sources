@@ -51,13 +51,15 @@ Kế thừa toàn bộ #0–#4 (event loop Windows, UUID v7 `new_id()`, `timesta
 
 ## Danh sách Task
 
-### Giai đoạn 1 — Domain analytics (thuần, không I/O)
+### Giai đoạn 1 — Domain analytics (thuần, không I/O) ✅ XONG
 
 | Task | Nội dung | Deliverable |
 |---|---|---|
-| 1 | VO metrics (`DailyConversationMetric`, `DailyAgentMetric`, `ConversationVolume`, `AgentPerformance`) + `DateRange` (from ≤ to) | Unit test bất biến |
-| 2 | `aggregation`: cộng delta, gộp nhiều ngày, trung bình `sum/samples` (chia 0 → None) | Unit: gộp đúng; mẫu 0 → không lỗi |
-| 3 | Ports (`IConversationStatsSource`, `IWorkforceStatsSource`, `IRequestStatsSource`, `IRollupRepository`) + fakes; import-linter cấm analytics→(mọi module) + chiều ngược | Fake dùng được; contract xanh |
+| 1 ✅ | VO metrics (`DailyConversationMetric`, `DailyAgentMetric`, `ConversationVolume`, `AgentPerformance`) + `DateRange` (from ≤ to) | Unit test bất biến |
+| 2 ✅ | `aggregation`: gộp nhiều ngày, trung bình `sum/samples` (chia 0 → None) | Unit: gộp đúng; mẫu 0 → không lỗi |
+| 3 ✅ | Ports (`IConversationStatsSource`, `IWorkforceStatsSource`, `IRequestStatsSource`, `IRollupRepository`) + `EventKind` + DTO trung lập + fakes; import-linter cấm analytics→(mọi module) + chiều ngược | Fake dùng được; 16 kept |
+
+**Review GĐ1 (1 fix — F-A):** rollup agent khoá `(work_date, user_id)` KHÔNG mang `department_id` nhưng `doc_agent(khoang, department_ids)` lại nhận tham số lọc phòng (fake âm thầm bỏ qua) → Manager sẽ thấy nhân viên MỌI phòng (rò quyền RB-4) hoặc GĐ3 phải join identity (phá thiết kế "rollup chỉ #1"). **Chốt: thêm `department_id` vào `DailyAgentMetric` + khoá bảng agent** (chụp lúc xử lý, giống rollup conversation) → `doc_agent` lọc phòng THẬT, không join identity. Đã sửa VO + fake (`bump_agent`/`ghi_de_agent_ngay` khoá 3 phần, `doc_agent` lọc phòng thật) + test. **GĐ3: bảng `analytics_daily_agent` PHẢI có cột `department_id` trong PK; GĐ4 hook CLOSED/ASSIGNED phải điền department_id của hội thoại.**
 
 ### Giai đoạn 2 — Use case (application, dùng fake)
 

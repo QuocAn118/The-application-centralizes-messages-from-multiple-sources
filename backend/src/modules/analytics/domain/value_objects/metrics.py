@@ -53,13 +53,20 @@ class DailyConversationMetric:
 class DailyAgentMetric:
     """Một dòng rollup hiệu suất của một ngày theo nhân viên (#1 + #3).
 
-    Khoá tự nhiên: ``(work_date, user_id)``. Thời gian phản hồi/đóng lưu **tổng
-    giây + số mẫu** để tính trung bình chuẩn khi gộp nhiều ngày; hội thoại chưa
-    phản hồi/chưa đóng không vào mẫu (không kéo trung bình sai).
+    Khoá tự nhiên: ``(work_date, user_id, department_id)``. ``department_id`` được
+    **chụp lại lúc xử lý** (phòng của hội thoại nhân viên phụ trách) — giống rollup
+    khối lượng đã mang phòng — để ``doc_agent`` lọc theo phòng THẬT (Manager chỉ
+    xem phòng mình, RB-4) mà KHÔNG phải join sang identity. ``None`` khi hội thoại
+    chưa phân phòng (bất thường với việc đã gán, nhưng giữ để không mất dữ liệu).
+
+    Thời gian phản hồi/đóng lưu **tổng giây + số mẫu** để tính trung bình chuẩn khi
+    gộp nhiều ngày; hội thoại chưa phản hồi/chưa đóng không vào mẫu (không kéo trung
+    bình sai).
     """
 
     work_date: date
     user_id: UUID
+    department_id: UUID | None = None
     handled_count: int = 0
     assigned_count: int = 0
     sum_first_response_seconds: int = 0

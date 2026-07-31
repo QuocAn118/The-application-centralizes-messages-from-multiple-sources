@@ -33,7 +33,7 @@ class FakeRollupRepository:
 
     def __init__(self) -> None:
         self.conv: dict[tuple[date, UUID | None, str], DailyConversationMetric] = {}
-        self.agent: dict[tuple[date, UUID], DailyAgentMetric] = {}
+        self.agent: dict[tuple[date, UUID, UUID | None], DailyAgentMetric] = {}
 
     async def bump_conversation(self, delta: DailyConversationMetric) -> None:
         key = (delta.work_date, delta.department_id, delta.channel_platform)
@@ -52,7 +52,7 @@ class FakeRollupRepository:
         )
 
     async def bump_agent(self, delta: DailyAgentMetric) -> None:
-        key = (delta.work_date, delta.user_id)
+        key = (delta.work_date, delta.user_id, delta.department_id)
         cu = self.agent.get(key)
         if cu is None:
             self.agent[key] = delta
@@ -60,6 +60,7 @@ class FakeRollupRepository:
         self.agent[key] = DailyAgentMetric(
             work_date=delta.work_date,
             user_id=delta.user_id,
+            department_id=delta.department_id,
             handled_count=cu.handled_count + delta.handled_count,
             assigned_count=cu.assigned_count + delta.assigned_count,
             sum_first_response_seconds=cu.sum_first_response_seconds
@@ -79,7 +80,7 @@ class FakeRollupRepository:
     async def ghi_de_agent_ngay(self, work_date: date, rows: tuple[DailyAgentMetric, ...]) -> None:
         self.agent = {k: v for k, v in self.agent.items() if k[0] != work_date}
         for r in rows:
-            self.agent[(r.work_date, r.user_id)] = r
+            self.agent[(r.work_date, r.user_id, r.department_id)] = r
 
     async def doc_conversation(
         self, khoang: DateRange, department_ids: tuple[UUID, ...] | None
@@ -90,9 +91,13 @@ class FakeRollupRepository:
     async def doc_agent(
         self, khoang: DateRange, department_ids: tuple[UUID, ...] | None
     ) -> tuple[DailyAgentMetric, ...]:
-        # Agent rollup không mang department_id; lọc phòng do use case xử qua danh
-        # sách user. Ở fake này bỏ qua department_ids (trả theo khoảng ngày).
-        return tuple(v for k, v in self.agent.items() if khoang.from_date <= k[0] <= khoang.to_date)
+        trong = tuple(
+            v for k, v in self.agent.items() if khoang.from_date <= k[0] <= khoang.to_date
+        )
+        if department_ids is None:
+            return trong
+        keep = set(department_ids)
+        return tuple(r for r in trong if r.department_id in keep)
 
 
 class FakeConversationStatsSource:
