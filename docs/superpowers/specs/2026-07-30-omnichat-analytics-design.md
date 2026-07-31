@@ -46,7 +46,7 @@ Bản đầu dùng **rollup theo ngày (daily grain)**, đủ cho mọi chiều 
 **CHỐT với user:** chỉ **rollup #1** (conversation + agent) vào bảng riêng của #5; **ca/KPI (#4) và đơn từ (#4) đọc THẲNG bảng nguồn của #4 qua port khi query** (dữ liệu #4 vốn đã ở dạng tổng hợp — `KpiTarget`, `ShiftAssignment`, `Request` — không cần rollup lại). → chỉ **2 bảng rollup**:
 
 - `analytics_daily_conversation` — khoá `(work_date, department_id, channel_platform)`: `inbound_count`, `outbound_count`, `opened_count`, `closed_count`.
-- `analytics_daily_agent` — khoá `(work_date, user_id)`: `handled_count` (đóng), `sum_first_response_seconds`, `sum_resolution_seconds`, `response_samples` (để tính trung bình chuẩn xác), `assigned_count`.
+- `analytics_daily_agent` — khoá `(work_date, user_id, department_id)`: `handled_count` (đóng), `sum_first_response_seconds`, `sum_resolution_seconds`, `response_samples` (để tính trung bình chuẩn xác), `assigned_count`. **`department_id` chụp lúc xử lý** (phòng của hội thoại) để lọc phòng thật cho báo cáo hiệu suất (RB-4) mà không phải join identity — chốt ở review GĐ1.
 
 `GET /analytics/workforce` và `GET /analytics/requests` KHÔNG dùng bảng rollup — chúng gọi port đọc thẳng #4, tổng hợp (GROUP BY) tại query time.
 

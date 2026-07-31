@@ -51,6 +51,13 @@ class TestDailyMetrics:
         m = DailyAgentMetric(work_date=date(2026, 7, 1), user_id=U)
         assert m.handled_count == 0
         assert m.first_response_samples == 0
+        assert m.department_id is None
+
+    def test_agent_mang_department_de_loc_phong(self) -> None:
+        m = DailyAgentMetric(
+            work_date=date(2026, 7, 1), user_id=U, department_id=D, handled_count=2
+        )
+        assert m.department_id == D
 
     def test_frozen_khong_sua_duoc(self) -> None:
         m = DailyConversationMetric(
