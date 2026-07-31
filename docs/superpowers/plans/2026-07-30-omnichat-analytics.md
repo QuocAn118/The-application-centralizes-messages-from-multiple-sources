@@ -61,12 +61,14 @@ Kế thừa toàn bộ #0–#4 (event loop Windows, UUID v7 `new_id()`, `timesta
 
 **Review GĐ1 (1 fix — F-A):** rollup agent khoá `(work_date, user_id)` KHÔNG mang `department_id` nhưng `doc_agent(khoang, department_ids)` lại nhận tham số lọc phòng (fake âm thầm bỏ qua) → Manager sẽ thấy nhân viên MỌI phòng (rò quyền RB-4) hoặc GĐ3 phải join identity (phá thiết kế "rollup chỉ #1"). **Chốt: thêm `department_id` vào `DailyAgentMetric` + khoá bảng agent** (chụp lúc xử lý, giống rollup conversation) → `doc_agent` lọc phòng THẬT, không join identity. Đã sửa VO + fake (`bump_agent`/`ghi_de_agent_ngay` khoá 3 phần, `doc_agent` lọc phòng thật) + test. **GĐ3: bảng `analytics_daily_agent` PHẢI có cột `department_id` trong PK; GĐ4 hook CLOSED/ASSIGNED phải điền department_id của hội thoại.**
 
-### Giai đoạn 2 — Use case (application, dùng fake)
+### Giai đoạn 2 — Use case (application, dùng fake) ✅ XONG
 
 | Task | Nội dung | Deliverable |
 |---|---|---|
-| 4 | `ApplyEventDelta` (cộng một sự kiện vào rollup ngày; xác định work_date theo tz) + `RebuildDailyRollup` (quét nguồn → ghi đè) | Unit: cộng đúng; rebuild ghi đè idempotent |
-| 5 | `GetConversationReport`, `GetAgentReport` (đọc rollup); `GetWorkforceReport`, `GetRequestReport` (đọc thẳng #4 qua port) + authorization (Manager ép phòng mình, Staff chặn) | Unit: lọc phòng đúng; Manager không thấy phòng khác; Staff 403 |
+| 4 ✅ | `ApplyEventDelta` (nhận `EventKind` + `EventContext`; dựng delta conversation/agent theo loại; OUTBOUND chỉ tính mẫu first_response khi có `seconds`=tin đầu; CLOSED +handled, +resolution nếu có seconds; ASSIGNED +assigned) + `RebuildDailyRollup` (lặp từng ngày, ghi đè tuyệt đối kể cả nguồn rỗng) | Unit: cộng đúng từng loại; rebuild ghi đè idempotent, nguồn rỗng xoá số cũ |
+| 5 ✅ | `GetConversationReport` (nhóm theo phòng/kênh rồi `gop_khoi_luong`), `GetAgentReport` (`gop_hieu_suat_nhan_vien`) đọc rollup; `GetWorkforceReport`, `GetRequestReport` đọc thẳng #4; `actor.py` + `authorization` (`bao_dam_xem_bao_cao`, `pham_vi_phong_bao_cao` — Manager ép phòng mình, Admin lọc tuỳ chọn, Staff/Manager-không-phòng chặn) | Unit: Admin thấy mọi phòng; Manager ép phòng mình dù truyền phòng khác; Staff `PermissionDeniedError` |
+
+44 unit test analytics; 817 passed/1 skipped; ruff/format/mypy strict; import-linter 16 kept.
 
 ### Giai đoạn 3 — Hạ tầng: bảng rollup + source + migration
 
