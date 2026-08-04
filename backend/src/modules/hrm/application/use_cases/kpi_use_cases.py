@@ -18,6 +18,7 @@ from src.modules.hrm.domain.ports import IPerformanceSource, IWorkforceDirectory
 from src.modules.hrm.domain.repositories.kpi_target_repository import (
     IKpiTargetRepository,
 )
+from src.modules.hrm.domain.services.kpi_achievement import tinh_phan_tram_kpi
 from src.modules.hrm.domain.value_objects.kpi import (
     KpiMetricType,
     KpiPeriod,
@@ -25,10 +26,6 @@ from src.modules.hrm.domain.value_objects.kpi import (
 )
 from src.shared.application.exceptions import NotFoundError, PermissionDeniedError
 from src.shared.application.ports import IClock
-
-# Các chỉ số mà "càng thấp càng tốt" — đạt mục tiêu là thực đạt <= mục tiêu.
-# Mọi chỉ số khác mặc định "càng cao càng tốt" (thực đạt >= mục tiêu).
-_METRIC_THAP_LA_TOT: frozenset[KpiMetricType] = frozenset({KpiMetricType.AVG_RESPONSE_MINUTES})
 
 
 def _target_view(t: KpiTarget) -> KpiTargetView:
@@ -41,30 +38,6 @@ def _target_view(t: KpiTarget) -> KpiTargetView:
         period=t.period,
         target_value=t.target_value,
     )
-
-
-def _tinh_phan_tram(
-    metric_type: KpiMetricType, target: Decimal, actual: Decimal | None
-) -> Decimal | None:
-    """Phần trăm hoàn thành, tính theo *chiều* của chỉ số.
-
-    - Chỉ số càng-cao-càng-tốt (mặc định): ``actual / target * 100``.
-    - Chỉ số càng-thấp-càng-tốt (thời gian phản hồi): ``target / actual * 100`` —
-      trả lời nhanh hơn mục tiêu cho ra > 100%, chậm hơn cho ra < 100%.
-
-    Trả ``None`` khi chưa có thực đạt hoặc mẫu số bằng 0 (không xác định được).
-    """
-    if actual is None:
-        return None
-
-    if metric_type in _METRIC_THAP_LA_TOT:
-        if actual == 0:
-            return None
-        return (target / actual * 100).quantize(Decimal("0.1"))
-
-    if target == 0:
-        return None
-    return (actual / target * 100).quantize(Decimal("0.1"))
 
 
 class SetKpiTarget:
@@ -201,7 +174,7 @@ class GetKpiProgress:
             period=period,
             target_value=target.target_value,
             actual_value=actual,
-            achievement_percent=_tinh_phan_tram(metric_type, target.target_value, actual),
+            achievement_percent=tinh_phan_tram_kpi(metric_type, target.target_value, actual),
         )
 
     async def _bao_dam_xem_duoc(

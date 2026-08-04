@@ -78,3 +78,38 @@ xảy ra:
 - "Hôm nay" trên dashboard có thể trễ tới lần `RebuildDailyRollup` gần nhất cho các
   metric proxy (assigned_count, closed/resolution backfill). Chấp nhận cho báo cáo.
 - Không thêm hạ tầng vận hành (worker/queue) chưa cần thiết.
+
+---
+
+## 3. KPI routing metric — ĐỊNH NGHĨA + NỐI (ĐÃ LÀM, bổ sung cùng ngày)
+
+### Vấn đề
+`kpi_percent` ở #3 (pool định tuyến, tiebreaker thứ 3) và #5 (báo cáo ca & KPI) đều
+để `None` vì **chưa chốt định nghĩa** KPI định tuyến: đo chỉ số nào, kỳ nào, thiếu
+target thì sao. #4 đã có đủ máy KPI (target + thực đạt + % theo chiều) nhưng hai
+consumer này chưa nối.
+
+### Quyết định (chốt nghiệp vụ)
+- **Chỉ số**: `CONVERSATIONS_CLOSED` (% hoàn thành mục tiêu số hội thoại đóng). Người
+  DƯỚI target được ưu tiên nhận thêm việc để đạt KPI — đúng tinh thần roadmap #3.
+- **Kỳ**:
+  - #3 pool: **tháng hiện tại** (theo `app_timezone`, thời điểm gán).
+  - #5 workforce: **tháng của `to_date`** (kỳ KPI hiện hành ở cuối khoảng báo cáo);
+    `period` ghi rõ `YYYY-MM`.
+- **Thiếu target tháng đó** → `kpi_percent = None`. Ở #3, selector xử `None` như thấp
+  nhất (trung tính giữa các ứng viên hoà tải) — giữ nguyên logic phá hoà.
+
+### Thực hiện (không phá ranh giới module)
+- Tách domain service `hrm.domain.services.kpi_achievement.tinh_phan_tram_kpi`
+  (công thức % theo *chiều* chỉ số) — dùng CHUNG bởi `GetKpiProgress` (#4), pool
+  (#3), workforce source (#5). Không nhân bản logic.
+- #3 pool và #5 source dựng `SqlAlchemyKpiTargetRepository` + `InboxPerformanceSource`
+  từ session sẵn có (như pool đã dựng shift repo) — wiring composition root KHÔNG đổi.
+- import-linter vẫn 16 kept (assignment/analytics.infrastructure vốn được phép chạm
+  #4).
+
+### Nợ còn (kế thừa, KHÔNG phát sinh mới)
+- Thực đạt `CONVERSATIONS_CLOSED` dùng `updated_at` proxy làm "mốc đóng" (nợ #4/#1,
+  spec §10) — cần `closed_at` ở inbox mới chính xác tuyệt đối.
+- `AVG_RESPONSE_MINUTES` thực đạt vẫn `None` ở #4 (`InboxPerformanceSource` chưa tính)
+  — không dùng cho định tuyến nên không chặn.
