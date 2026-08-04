@@ -9,6 +9,7 @@ Kiểm chỗ fake in-memory không kiểm được:
 """
 
 from datetime import UTC, date, datetime, time
+from decimal import Decimal
 from uuid import UUID
 
 import pytest
@@ -27,6 +28,7 @@ from src.modules.analytics.infrastructure.sources.inbox_stats_source import Inbo
 from src.modules.assignment.infrastructure.persistence.assignment_log_model import (
     AssignmentLogModel,
 )
+from src.modules.hrm.infrastructure.models.kpi_target_model import KpiTargetModel
 from src.modules.hrm.infrastructure.models.request_model import RequestModel
 from src.modules.hrm.infrastructure.models.shift_assignment_model import (
     ShiftAssignmentModel,
@@ -398,7 +400,49 @@ class TestHrmStatsSource:
         assert len(u1) == 1
         assert u1[0].shift_count == 2
         assert u1[0].worked_seconds == 2 * 4 * 3600  # 2 ca x 4 giờ
-        assert u1[0].kpi_percent is None  # nợ
+        assert u1[0].kpi_percent is None  # chưa đặt target tháng to_date
+        assert u1[0].period is None
+
+    async def test_workforce_kpi_theo_thang_cua_to_date(self, session: AsyncSession) -> None:
+        # Khoảng báo cáo kết ở tháng 7/2026 → KPI lấy kỳ 2026-07. NV có target
+        # CONVERSATIONS_CLOSED=5 và đóng 3 hội thoại trong tháng 7 → 60%.
+        await _shift_assignment(session, U1, D1, date(2026, 7, 3), time(8, 0), time(12, 0))
+        session.add(
+            KpiTargetModel(
+                id=new_id(),
+                subject_type="USER",
+                subject_id=U1,
+                department_id=D1,
+                metric_type="CONVERSATIONS_CLOSED",
+                period_year=2026,
+                period_month=7,
+                target_value=Decimal(5),
+                created_at=datetime(2026, 7, 1, tzinfo=UTC),
+                updated_at=datetime(2026, 7, 1, tzinfo=UTC),
+            )
+        )
+        ch = await _channel(session, "ZALO", D1)
+        kh = await _customer(session, ch)
+        for _ in range(3):
+            await _conversation(
+                session,
+                ch,
+                kh,
+                dept=D1,
+                status="DA_DONG",
+                assigned=U1,
+                created_at=datetime(2026, 7, 10, 3, 0, tzinfo=UTC),
+                updated_at=datetime(2026, 7, 10, 5, 0, tzinfo=UTC),  # đóng trong tháng 7
+            )
+        await session.flush()
+
+        rows = await HrmStatsSource(session).workforce_rows(
+            DateRange(date(2026, 7, 1), date(2026, 7, 31)), (D1,)
+        )
+        u1 = [r for r in rows if r.user_id == U1]
+        assert len(u1) == 1
+        assert u1[0].kpi_percent == Decimal("60.0")
+        assert u1[0].period == "2026-07"
 
     async def test_request_gop_theo_loai_trang_thai(self, session: AsyncSession) -> None:
         # 1 đơn đã duyệt (tính thời gian), 1 đơn chờ (không tính mẫu).
