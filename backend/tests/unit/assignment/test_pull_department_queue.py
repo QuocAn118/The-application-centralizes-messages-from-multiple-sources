@@ -47,8 +47,8 @@ class TestPullQueue:
 
         assert da_gan == 3
         # Hội thoại theo thứ tự chờ; người luân phiên A/B/A.
-        assert [conv for conv, _ in assigner.assigned] == [C1, C2, C3]
-        nguoi = [u for _, u in assigner.assigned]
+        assert [conv for conv, _, _ in assigner.assigned] == [C1, C2, C3]
+        nguoi = [u for _, u, _ in assigner.assigned]
         assert nguoi == [A, B, A]
 
     async def test_dung_khi_het_nguoi_trong_ca(self) -> None:

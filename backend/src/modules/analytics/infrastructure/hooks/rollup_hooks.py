@@ -14,8 +14,8 @@ Hai hợp đồng chốt ở review (bắt buộc để incremental khớp backf
 An toàn: mỗi hook chạy trên **session riêng**, SAU khi #1 commit; **nuốt mọi lỗi**
 (rollup lỗi không được làm hỏng luồng chính — RB-1). ``RebuildDailyRollup`` sửa lệch.
 
-NỢ: ``assigned_count`` chưa có hook (thiếu điểm móc sạch + ``assignment_log`` #3) →
-bản đầu ``assigned_count`` = 0. Nối khi có assignment_log.
+``assigned_count`` KHÔNG có hook incremental (chốt: assignment_log #3 là nguồn sự
+thật, backfill ``RebuildDailyRollup`` đếm từ đó — xem ``InboxStatsSource``).
 """
 
 import logging
