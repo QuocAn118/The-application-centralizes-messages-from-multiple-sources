@@ -16,13 +16,13 @@ An toàn theo thiết kế:
 
 import logging
 from collections.abc import Awaitable, Callable
-from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.modules.assignment.application.use_cases.pull_department_queue import (
     PullDepartmentQueue,
 )
+from src.modules.inbox.domain.ports import ClosedConversation
 
 logger = logging.getLogger(__name__)
 
@@ -30,25 +30,26 @@ logger = logging.getLogger(__name__)
 def make_post_close_hook(
     session_factory_provider: Callable[[], async_sessionmaker[AsyncSession]],
     pull_queue_factory: Callable[[AsyncSession], PullDepartmentQueue],
-) -> Callable[[UUID | None], Awaitable[None]]:
+) -> Callable[[ClosedConversation], Awaitable[None]]:
     """Tạo hook post-close kéo hàng đợi phòng.
 
-    Nhận ``department_id`` của hội thoại vừa đóng (``None`` nếu chưa phân phòng —
-    khi đó bỏ qua). ``session_factory_provider`` đọc **lười** session factory.
+    Nhận ``ClosedConversation`` (payload chung của mọi hook post-close); chỉ dùng
+    ``department_id`` — ``None`` (chưa phân phòng) thì bỏ qua. ``session_factory_provider``
+    đọc **lười** session factory.
     """
 
-    async def hook(department_id: UUID | None) -> None:
-        if department_id is None:
+    async def hook(closed: ClosedConversation) -> None:
+        if closed.department_id is None:
             return
         try:
             session_factory = session_factory_provider()
             async with session_factory() as session:
-                await pull_queue_factory(session).execute(department_id)
+                await pull_queue_factory(session).execute(closed.department_id)
                 await session.commit()
         except Exception:
             logger.exception(
                 "Hook kéo hàng đợi sau đóng hội thoại lỗi — bỏ qua",
-                extra={"department_id": str(department_id)},
+                extra={"department_id": str(closed.department_id)},
             )
 
     return hook

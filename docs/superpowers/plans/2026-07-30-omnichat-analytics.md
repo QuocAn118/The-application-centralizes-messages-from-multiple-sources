@@ -86,12 +86,18 @@ Kế thừa toàn bộ #0–#4 (event loop Windows, UUID v7 `new_id()`, `timesta
 
 **Review GĐ3 (0 lỗi code, 1 hợp đồng làm tường minh — F-A):** backfill gán số liệu theo `conversations.department_id` HIỆN TẠI, còn incremental (nếu ghi INBOUND theo phòng-lúc-sự-kiện) sẽ gán NULL khi hội thoại còn CHO_PHAN → **rebuild dời số giữa NULL và phòng**. **Chốt: cả hai đường gán theo phòng HIỆN TẠI của hội thoại** (backfill đã đúng; nguồn #1 không lưu lịch sử phòng nên "phòng lúc sự kiện" không tái dựng được). **GĐ4 hook incremental PHẢI đọc `conversation.department_id` hiện tại khi ghi — kể cả INBOUND — không ghi NULL lúc CHO_PHAN.** Đã ghi hợp đồng vào docstring `InboxStatsSource` + spec.
 
-### Giai đoạn 4 — HTTP + wiring + trigger
+### Giai đoạn 4 — HTTP + wiring + trigger ✅ XONG
 
 | Task | Nội dung | Deliverable |
 |---|---|---|
-| 9 | `analytics_router` 5 endpoint (`/analytics/conversations|agents|workforce|requests`, `POST /analytics/rollups/rebuild`) + schemas + dependencies (actor trung lập, factory) | e2e: Manager phòng mình xem được; Staff 403; Manager phòng khác bị ép phạm vi |
-| 10 | **Wiring + trigger**: `_wire_analytics` (đọc `settings.app_timezone`); đăng ký hook incremental vào `post_ingest`/`post_close`/`post_reply`(MỚI)/`post_assign_agent`(MỚI) — #1 KHÔNG import #5; thêm 2 list hook mới + điểm gọi ở inbox router (reply/gán). import-linter contract. | e2e: khách nhắn → rollup inbound +1; nhân viên trả lời → outbound +1; đóng → closed/handled +1; rebuild khớp incremental |
+| 9 ✅ | `analytics_router` 5 endpoint (`/analytics/conversations\|agents\|workforce\|requests`, `POST /analytics/rollups/rebuild`) + schemas + dependencies (actor trung lập qua token_service + directory factory; use case qua factory app.state); rebuild **chỉ Admin + cap range** `_REBUILD_MAX_NGAY=460` (nợ GĐ2) | e2e: chuỗi báo cáo; Staff 403; Manager ép phòng; rebuild Admin-only + range dài → 400 |
+| 10 ✅ | **Wiring + trigger**: `_wire_analytics` (truyền `settings.app_timezone` vào mọi hook/source); 3 hook `rollup_hooks.py` đăng ký vào `post_ingest` (SAU #2/#3 → thấy phòng đã phân), `post_reply`(list MỚI), `post_close`. Payload **`ClosedConversation`** (VO mới ở `inbox.domain.ports`) chung cho mọi hook post-close — #3 dùng `department_id`, #5 dùng `assigned_user_id`/`closed_at`; #1/#2/#3 KHÔNG import #5. Router reply/close bọc try/except (F-C). | e2e: khách nhắn → inbound +1; trả lời → outbound +1; đóng → closed/handled +1 (đọc qua báo cáo) |
+
+4 e2e analytics; 831 passed/1 skipped; ruff/format/mypy strict (435 files); import-linter 16 kept.
+
+**Chốt GĐ4 (điểm quan trọng):** (a) **hook đọc phòng HIỆN TẠI** của hội thoại (`_phong_va_kenh`) — đúng hợp đồng F-A GĐ3, kể cả INBOUND. (b) **event-time**: post_ingest lấy `max(created_at)` tin INBOUND (InboundEvent không mang mốc), post_reply/close lấy `view.created_at`/`clock.now()` — đều quy đổi `app_timezone`. (c) first_response chỉ tính khi là tin OUTBOUND ĐẦU (`count(outbound)==1`). (d) `ClosedConversation` gộp một luồng hook post-close chung thay vì fork 2 list — #3 hook đổi signature nhận payload, chỉ dùng `department_id`.
+
+**Nợ GĐ4:** `assigned_count` chưa nối hook (thiếu điểm móc sạch cho sự kiện gán + `assignment_log` #3) → luôn 0 bản đầu. `post_assign_agent_hooks` HOÃN (ghi nợ), nối khi có assignment_log.
 
 ## Ghi chú thực hiện
 

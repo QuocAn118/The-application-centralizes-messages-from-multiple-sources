@@ -6,6 +6,7 @@ biết các hợp đồng này.
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -37,6 +38,22 @@ class SentMessageRef:
     """Kết quả gửi tin đi: mã tin do nền tảng cấp (nếu có)."""
 
     external_message_id: str | None = None
+
+
+@dataclass(frozen=True)
+class ClosedConversation:
+    """Payload phát cho các hook ``post_close`` khi một hội thoại vừa đóng.
+
+    Trung lập, đủ để hạ nguồn (assignment #3 kéo hàng đợi theo ``department_id``;
+    analytics #5 cộng rollup theo ``assigned_user_id``/``closed_at``) mà không phải
+    tự đọc lại hội thoại. Các module hạ nguồn KHÔNG import lẫn nhau — chỉ cùng phụ
+    thuộc kiểu này của inbox.
+    """
+
+    conversation_id: UUID
+    department_id: UUID | None
+    assigned_user_id: UUID | None
+    closed_at: datetime
 
 
 class IChannelAdapter(Protocol):
