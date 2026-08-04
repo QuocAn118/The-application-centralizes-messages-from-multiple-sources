@@ -24,10 +24,13 @@ from src.modules.analytics.domain.value_objects.metrics import (
 class EventContext:
     """Bối cảnh một sự kiện để quy về đúng dòng rollup.
 
-    ``work_date`` đã là **ngày nghiệp vụ địa phương** (hook quy đổi theo
-    ``app_timezone`` trước khi gọi — RB-5). ``channel_platform`` cần cho rollup
-    khối lượng; ``user_id``/``department_id`` cho rollup hiệu suất. ``seconds`` là
-    thời gian phản hồi (OUTBOUND đầu) hoặc xử lý (CLOSED) khi có.
+    ``work_date`` đã là **ngày nghiệp vụ địa phương của CHÍNH SỰ KIỆN** (hook quy
+    đổi theo ``app_timezone`` trước khi gọi — RB-5). Quy tắc gắn ngày là
+    **event-time**: ngày của hành động (tin khách / tin trả lời đầu / lúc đóng),
+    KHÔNG phải ngày mở hội thoại — để backfill (``IConversationStatsSource``) khớp
+    ở ca qua nửa đêm. ``channel_platform`` cần cho rollup khối lượng;
+    ``user_id``/``department_id`` cho rollup hiệu suất. ``seconds`` là thời gian
+    phản hồi (OUTBOUND đầu) hoặc xử lý (CLOSED) khi có.
     """
 
     work_date: date

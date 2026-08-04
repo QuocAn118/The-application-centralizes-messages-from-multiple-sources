@@ -108,6 +108,16 @@ class IConversationStatsSource(Protocol):
 
     Trả các dòng rollup của đúng ngày ``work_date`` (giờ địa phương) tính lại từ
     tin/hội thoại thật — nguồn sự thật để đối chiếu incremental.
+
+    **HỢP ĐỒNG QUAN TRỌNG — quy tắc gắn ngày (event-time, chốt review GĐ2):** mỗi
+    số liệu gắn theo ngày của **hành động sinh ra nó**, KHÔNG phải ngày mở hội
+    thoại: ``inbound`` theo ngày tin của khách; ``outbound`` + mẫu first_response
+    theo ngày tin trả lời ĐẦU; ``closed``/``handled``/mẫu resolution theo ngày
+    ĐÓNG. Implementation PHẢI group theo timestamp (đã quy đổi ``app_timezone``)
+    của TỪNG bản ghi nguồn — nếu group theo ngày mở hội thoại, backfill sẽ lệch
+    incremental ở ca qua nửa đêm (khách nhắn 23:00 ngày 1, trả lời 01:00 ngày 2 →
+    first_response thuộc NGÀY 2). ``ApplyEventDelta`` gắn đúng như vậy vì mỗi hook
+    chạy ở thời điểm sự kiện.
     """
 
     async def conversation_metrics_cho_ngay(
