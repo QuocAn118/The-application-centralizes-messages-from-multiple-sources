@@ -5,6 +5,7 @@ waiting queue sắp đúng thứ tự chờ — chỗ fake in-memory không ki�
 """
 
 from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal
 from uuid import UUID
 
 import pytest
@@ -27,8 +28,17 @@ from src.modules.assignment.infrastructure.persistence.assignment_log_model impo
 from src.modules.assignment.infrastructure.persistence.assignment_log_repository import (
     SqlAlchemyAssignmentLog,
 )
+from src.modules.hrm.domain.entities.kpi_target import KpiTarget
 from src.modules.hrm.domain.entities.shift import Shift
 from src.modules.hrm.domain.entities.shift_assignment import ShiftAssignment
+from src.modules.hrm.domain.value_objects.kpi import (
+    KpiMetricType,
+    KpiPeriod,
+    KpiSubjectType,
+)
+from src.modules.hrm.infrastructure.repositories.kpi_target_repository import (
+    SqlAlchemyKpiTargetRepository,
+)
 from src.modules.hrm.infrastructure.repositories.shift_assignment_repository import (
     SqlAlchemyShiftAssignmentRepository,
 )
@@ -195,7 +205,65 @@ class TestAgentPool:
         assert cands[trong_ca.id].open_load == 2
         assert cands[ngoai_ca.id].on_shift is False
         assert cands[ngoai_ca.id].open_load == 0
-        assert cands[trong_ca.id].kpi_percent is None  # nợ KPI
+        assert cands[trong_ca.id].kpi_percent is None  # chưa đặt target tháng này
+
+    async def test_kpi_percent_ghep_target_thuc_dat_thang_hien_tai(
+        self, db_session: AsyncSession
+    ) -> None:
+        # Kỳ hiện tại theo NOW = tháng 8/2026. NV có target CONVERSATIONS_CLOSED=10
+        # và đã đóng 4 hội thoại trong tháng (updated_at trong kỳ) → 40%.
+        phong = await _phong(db_session)
+        nv = await _nhan_vien(db_session, phong.id)
+        await _ca(db_session, nv.id, phong.id, HOM_NAY, time(8, 0), time(12, 0))
+        await SqlAlchemyKpiTargetRepository(db_session).add(
+            KpiTarget.set_target(
+                subject_type=KpiSubjectType.USER,
+                subject_id=nv.id,
+                department_id=phong.id,
+                metric_type=KpiMetricType.CONVERSATIONS_CLOSED,
+                period=KpiPeriod(year=2026, month=8),
+                target_value=Decimal(10),
+                now=NOW,
+            )
+        )
+        await db_session.flush()
+        for _ in range(4):
+            await _hoi_thoai(
+                db_session,
+                phong.id,
+                assigned_user_id=nv.id,
+                status=ConversationStatus.DA_DONG,
+                last_message_at=NOW,
+            )
+
+        pool = HrmIdentityAgentPool(db_session, _Clock(), timezone="UTC")
+        cands = {c.user_id: c for c in await pool.candidates_for_department(phong.id)}
+        assert cands[nv.id].kpi_percent == Decimal("40.0")
+
+    async def test_last_assigned_at_lay_tu_assignment_log(
+        self, db_session: AsyncSession
+    ) -> None:
+        # Mốc gán gần nhất đọc từ assignment_log, không phải updated_at hội thoại.
+        phong = await _phong(db_session)
+        nv = await _nhan_vien(db_session, phong.id)
+        await _ca(db_session, nv.id, phong.id, HOM_NAY, time(8, 0), time(12, 0))
+        moc_cu = datetime(2026, 8, 1, 2, 0, tzinfo=UTC)
+        moc_moi = datetime(2026, 8, 2, 2, 0, tzinfo=UTC)
+        for moc in (moc_cu, moc_moi):
+            db_session.add(
+                AssignmentLogModel(
+                    id=new_id(),
+                    conversation_id=new_id(),
+                    user_id=nv.id,
+                    department_id=phong.id,
+                    assigned_at=moc,
+                )
+            )
+        await db_session.flush()
+
+        pool = HrmIdentityAgentPool(db_session, _Clock(), timezone="UTC")
+        cands = {c.user_id: c for c in await pool.candidates_for_department(phong.id)}
+        assert cands[nv.id].last_assigned_at == moc_moi  # mốc GẦN NHẤT
 
     async def test_on_shift_quy_doi_ve_gio_dia_phuong(self, db_session: AsyncSession) -> None:
         # Regression F1: giờ ca lưu theo giờ VN. now() = 03:00 UTC ~ 10:00 VN, phải
