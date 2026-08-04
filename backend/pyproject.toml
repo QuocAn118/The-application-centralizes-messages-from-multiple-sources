@@ -94,6 +94,7 @@ source_modules = [
     "src.modules.hrm.domain",
     "src.modules.keyword.domain",
     "src.modules.assignment.domain",
+    "src.modules.analytics.domain",
 ]
 forbidden_modules = [
     "src.shared.infrastructure",
@@ -107,6 +108,8 @@ forbidden_modules = [
     "src.modules.keyword.presentation",
     "src.modules.assignment.infrastructure",
     "src.modules.assignment.presentation",
+    "src.modules.analytics.infrastructure",
+    "src.modules.analytics.presentation",
     "sqlalchemy",
     "fastapi",
     "pydantic",
@@ -122,6 +125,7 @@ source_modules = [
     "src.modules.hrm.application",
     "src.modules.keyword.application",
     "src.modules.assignment.application",
+    "src.modules.analytics.application",
 ]
 forbidden_modules = [
     "src.shared.infrastructure",
@@ -135,6 +139,8 @@ forbidden_modules = [
     "src.modules.keyword.presentation",
     "src.modules.assignment.infrastructure",
     "src.modules.assignment.presentation",
+    "src.modules.analytics.infrastructure",
+    "src.modules.analytics.presentation",
     "sqlalchemy",
     "fastapi",
 ]
@@ -276,3 +282,46 @@ source_modules = [
     "src.modules.keyword",
 ]
 forbidden_modules = ["src.modules.assignment"]
+
+[[tool.importlinter.contracts]]
+name = "Cac layer analytics tuan thu thu tu mot chieu"
+type = "layers"
+layers = [
+    "src.modules.analytics.presentation",
+    "src.modules.analytics.infrastructure",
+    "src.modules.analytics.application",
+    "src.modules.analytics.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "analytics doc lap voi cac module khac - chi noi qua UUID va port"
+type = "forbidden"
+# analytics domain/application/presentation KHONG duoc cham inbox/hrm/identity/
+# keyword/assignment. Chi analytics.infrastructure (implementation cac source +
+# rollup repo) moi duoc phep doc nguon.
+source_modules = [
+    "src.modules.analytics.domain",
+    "src.modules.analytics.application",
+    "src.modules.analytics.presentation",
+]
+forbidden_modules = [
+    "src.modules.identity",
+    "src.modules.inbox",
+    "src.modules.hrm",
+    "src.modules.keyword",
+    "src.modules.assignment",
+]
+
+[[tool.importlinter.contracts]]
+name = "cac module khac KHONG duoc phu thuoc analytics - #5 la ha nguon cuoi"
+type = "forbidden"
+# Chieu nguoc: giu #0-#4 nguyen ven, khong biet analytics ton tai. analytics doc
+# moi module (qua port + UUID + hook) nhung khong ai doc no.
+source_modules = [
+    "src.modules.identity",
+    "src.modules.inbox",
+    "src.modules.hrm",
+    "src.modules.keyword",
+    "src.modules.assignment",
+]
+forbidden_modules = ["src.modules.analytics"]
