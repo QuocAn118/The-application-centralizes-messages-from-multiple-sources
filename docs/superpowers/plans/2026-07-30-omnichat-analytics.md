@@ -70,6 +70,8 @@ Kế thừa toàn bộ #0–#4 (event loop Windows, UUID v7 `new_id()`, `timesta
 
 44 unit test analytics; 817 passed/1 skipped; ruff/format/mypy strict; import-linter 16 kept.
 
+**Review GĐ2 (0 lỗi code, 1 hợp đồng làm tường minh — F-A):** incremental & backfill PHẢI gắn ngày y hệt nhau, nếu không "sửa lệch" lại tạo số khác. **Chốt: quy tắc event-time** — mỗi metric gắn ngày của HÀNH ĐỘNG sinh ra nó (inbound=ngày tin khách; first_response/outbound=ngày tin trả lời đầu; closed/handled/resolution=ngày đóng), KHÔNG phải ngày mở hội thoại. `ApplyEventDelta` vốn đã đúng (hook chạy ở thời điểm sự kiện); đã ghi rõ hợp đồng vào docstring `IConversationStatsSource` + `EventContext` + thêm test cross-midnight (`test_event_time_qua_nua_dem_gan_dung_ngay_su_kien`). **GĐ3 `InboxStatsSource` PHẢI group nguồn theo timestamp (đã đổi tz) của TỪNG bản ghi — không group theo `conversations.created_at`.** Ghi nhận thêm (không sửa): (a) OUTBOUND phải kèm `channel_platform` thật để không rơi vào bucket rỗng lệch backfill — GĐ4 hook phải điền; (b) `RebuildDailyRollup` nhận range không chặn — GĐ4 endpoint (Admin) nên cap độ dài range. 45 unit test.
+
 ### Giai đoạn 3 — Hạ tầng: bảng rollup + source + migration
 
 | Task | Nội dung | Deliverable |

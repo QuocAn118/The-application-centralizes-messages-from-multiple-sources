@@ -66,6 +66,8 @@ Bản đầu dùng **rollup theo ngày (daily grain)**, đủ cho mọi chiều 
 
 2. **Backfill/recompute (dựng lại)** — use case `RebuildDailyRollup(work_date | range)` quét bảng nguồn qua port và **ghi đè** rollup ngày đó. Dùng khi: khởi tạo #5 trên dữ liệu cũ, hook lỡ sự kiện, hoặc số liệu lệch. Đây là **nguồn sự thật để đối chiếu**; incremental chỉ là tối ưu độ trễ.
 
+**Quy tắc gắn ngày = event-time (chốt review GĐ2):** để incremental và backfill KHỚP nhau, mỗi số liệu gắn ngày của **hành động sinh ra nó**, không phải ngày mở hội thoại — `inbound` theo ngày tin khách; `outbound`/mẫu first_response theo ngày tin trả lời ĐẦU; `closed`/`handled`/mẫu resolution theo ngày ĐÓNG (đều đã quy đổi `app_timezone`). Ca qua nửa đêm: khách nhắn 23:00 ngày 1, trả lời 01:00 ngày 2 → first_response thuộc NGÀY 2. `InboxStatsSource` (GĐ3) phải group nguồn theo timestamp từng bản ghi, KHÔNG theo `conversations.created_at`.
+
 **Số liệu "hôm nay":** rollup incremental cập nhật gần thời gian thực; nếu lo lệch, endpoint có thể tính phần **ngày hiện tại** trực tiếp từ nguồn và cộng với rollup các ngày đã đóng — chốt ở plan (đơn giản trước: đọc thẳng rollup, có `RebuildDailyRollup` chạy tay/định kỳ).
 
 ## 6. API (JSON, đọc-chỉ)

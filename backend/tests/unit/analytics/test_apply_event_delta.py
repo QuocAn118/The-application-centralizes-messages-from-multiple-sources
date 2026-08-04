@@ -100,3 +100,28 @@ async def test_assigned_cong_assigned_count() -> None:
     assert repo.conv == {}
     (ag,) = repo.agent.values()
     assert ag.assigned_count == 1
+
+
+async def test_event_time_qua_nua_dem_gan_dung_ngay_su_kien() -> None:
+    # HỢP ĐỒNG (chốt review GĐ2): metric gắn theo NGÀY SỰ KIỆN, không phải ngày
+    # mở hội thoại. Khách nhắn 23:00 ngày 1 (INBOUND ngày 1); nhân viên trả lời
+    # 01:00 ngày 2 (OUTBOUND + mẫu first_response ngày 2). Hai metric phải nằm ở
+    # HAI ngày khác nhau — GĐ3 InboxStatsSource phải group theo timestamp bản ghi.
+    ngay1, ngay2 = date(2026, 7, 1), date(2026, 7, 2)
+    repo = FakeRollupRepository()
+    await ApplyEventDelta(repo).execute(
+        EventKind.INBOUND, EventContext(work_date=ngay1, channel_platform="ZALO", department_id=D)
+    )
+    await ApplyEventDelta(repo).execute(
+        EventKind.OUTBOUND,
+        EventContext(
+            work_date=ngay2, channel_platform="ZALO", department_id=D, user_id=U, seconds=7200
+        ),
+    )
+    # Khối lượng: inbound ở ngày 1, outbound ở ngày 2 — hai dòng conv khác ngày.
+    inbound_ngay1 = repo.conv[(ngay1, D, "ZALO")].inbound_count
+    outbound_ngay2 = repo.conv[(ngay2, D, "ZALO")].outbound_count
+    assert (inbound_ngay1, outbound_ngay2) == (1, 1)
+    # Mẫu first_response thuộc NGÀY 2 (ngày tin trả lời), không phải ngày 1.
+    assert repo.agent[(ngay2, U, D)].first_response_samples == 1
+    assert (ngay1, U, D) not in repo.agent
