@@ -17,6 +17,7 @@ from src.modules.inbox.application.use_cases.reply_to_conversation import (
 )
 from src.modules.inbox.application.use_cases.take_conversation import TakeConversation
 from src.modules.inbox.domain.entities.conversation import ConversationStatus
+from src.modules.inbox.domain.ports import ClosedConversation
 from src.modules.inbox.domain.value_objects.message_content import MessageContent
 from src.modules.inbox.infrastructure.repositories.channel_repository import (
     SqlAlchemyChannelRepository,
@@ -103,6 +104,7 @@ async def tra_loi(
     store: AttachmentStore,
     notifier: Notifier,
     clock: Clock,
+    request: Request,
 ) -> MessageResponse:
     use_case = ReplyToConversation(
         conversation_repo=SqlAlchemyConversationRepository(session),
@@ -120,6 +122,21 @@ async def tra_loi(
         conversation_id=conversation_id,
         content=MessageContent(text=du_lieu.text),
     )
+
+    # Tin outbound vừa gửi (đã commit) → hook hạ nguồn (analytics #5) cộng rollup.
+    # Router chỉ gọi callable app.state; không import analytics. Bọc try/except để
+    # hook không làm hỏng phản hồi (nhất quán F-C).
+    await session.commit()
+    post_reply_hooks = getattr(request.app.state, "post_reply_hooks", ())
+    for hook in post_reply_hooks:
+        try:
+            await hook(conversation_id, actor.user_id, view.created_at)
+        except Exception:
+            logger.exception(
+                "Hook post-reply lỗi — bỏ qua",
+                extra={"conversation_id": str(conversation_id)},
+            )
+
     return MessageResponse.from_dto(view)
 
 
@@ -186,11 +203,18 @@ async def dong_hoi_thoai(
     ).execute(actor=actor, conversation_id=conversation_id)
     phan_hoi = await _tra_ve_hoi_thoai(conversation_id, actor, session)
 
-    # Nhân viên vừa rảnh ra → hook hạ nguồn (assignment #3) kéo hàng đợi phòng cho
-    # người trong ca. Composition root đăng ký callable vào app.state; router chỉ
-    # gọi (không import assignment — giữ inbox ⊥ assignment). Commit thao tác đóng
-    # TRƯỚC khi chạy hook: hook chạy trên session RIÊNG nên cần dữ liệu đã thấy được.
+    # Nhân viên vừa rảnh ra → các hook hạ nguồn (assignment #3 kéo hàng đợi;
+    # analytics #5 cộng rollup). Composition root đăng ký callable vào app.state;
+    # router chỉ gọi (không import assignment/analytics — giữ inbox ⊥ hạ nguồn).
+    # Commit thao tác đóng TRƯỚC khi chạy hook: hook chạy trên session RIÊNG nên cần
+    # dữ liệu đã thấy được. Payload ClosedConversation chung cho mọi hook post-close.
     await session.commit()
+    closed = ClosedConversation(
+        conversation_id=conversation.id,
+        department_id=conversation.department_id,
+        assigned_user_id=conversation.assigned_user_id,
+        closed_at=clock.now(),
+    )
 
     # Đóng đã hoàn tất (commit + notify). Lỗi hook KHÔNG được biến thành 500 cho
     # thao tác đã thành công — bọc try/except ở đây thay vì tin mọi hook tự nuốt
@@ -198,7 +222,7 @@ async def dong_hoi_thoai(
     post_close_hooks = getattr(request.app.state, "post_close_hooks", ())
     for hook in post_close_hooks:
         try:
-            await hook(conversation.department_id)
+            await hook(closed)
         except Exception:
             logger.exception(
                 "Hook post-close lỗi — bỏ qua, hội thoại vẫn đã đóng",
