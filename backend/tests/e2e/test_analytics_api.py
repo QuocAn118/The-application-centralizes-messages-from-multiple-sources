@@ -245,7 +245,7 @@ class TestRebuildEndpoint:
         r = await client_an.post(
             "/api/v1/analytics/rollups/rebuild",
             headers=_bearer(tok_m),
-            params={"from_date": HOM_NAY, "to_date": HOM_NAY},
+            params={"from": HOM_NAY, "to": HOM_NAY},
         )
         assert r.status_code == 403, r.text
 
@@ -254,7 +254,7 @@ class TestRebuildEndpoint:
         r = await client_an.post(
             "/api/v1/analytics/rollups/rebuild",
             headers=_bearer(admin),
-            params={"from_date": HOM_NAY, "to_date": HOM_NAY},
+            params={"from": HOM_NAY, "to": HOM_NAY},
         )
         assert r.status_code == 200, r.text
         assert r.json()["days_rebuilt"] == 1
@@ -263,6 +263,6 @@ class TestRebuildEndpoint:
         r = await client_an.post(
             "/api/v1/analytics/rollups/rebuild",
             headers=_bearer(admin),
-            params={"from_date": "2020-01-01", "to_date": "2026-12-31"},
+            params={"from": "2020-01-01", "to": "2026-12-31"},
         )
         assert r.status_code == 400, r.text
