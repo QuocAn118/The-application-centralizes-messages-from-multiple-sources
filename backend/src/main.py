@@ -208,11 +208,13 @@ def create_app() -> FastAPI:
     # #3 (tự gán) để #3 thấy phòng #2 vừa gán.
     app.state.post_ingest_hooks = []
     app.state.post_close_hooks = []
+    app.state.post_reply_hooks = []
 
     _wire_inbox(app, settings)
     _wire_hrm(app, settings)
     _wire_keyword(app, settings)
     _wire_assignment(app, settings)
+    _wire_analytics(app, settings)
 
     return app
 
@@ -507,6 +509,79 @@ def _wire_assignment(app: FastAPI, settings: Settings) -> None:
     )
 
     app.include_router(assignment_router, prefix="/api/v1")
+
+
+def _wire_analytics(app: FastAPI, settings: Settings) -> None:
+    """Ghép nối module analytics (#5): directory actor, factory use case, 3 hook.
+
+    Composition root nên được biết identity (directory dựng actor), inbox (nguồn +
+    hook) và hrm (nguồn) cùng lúc (contract chỉ cấm tầng analytics.presentation).
+    Đặt factory ở ``app.state`` để presentation ráp use case mà không import
+    implementation.
+
+    Ba trigger incremental — nối qua ``app.state`` để #1 KHÔNG import #5:
+    - ``post_ingest`` (tin khách) → +1 inbound. Đăng ký SAU #2/#3 để thấy phòng đã
+      phân (đọc ``conversation.department_id`` HIỆN TẠI — nợ F-A review GĐ3).
+    - ``post_reply`` (nhân viên trả lời) → +1 outbound + mẫu first_response (tin đầu).
+    - ``post_close`` (đóng hội thoại) → +1 closed/handled + mẫu resolution.
+
+    NỢ: ``assigned_count`` chưa có hook (thiếu điểm móc + assignment_log #3) = 0.
+    Timezone (``app_timezone``) truyền vào mọi hook + source (event-time, nợ F1 #3).
+    """
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from src.modules.analytics.application.use_cases.apply_event_delta import (
+        ApplyEventDelta,
+    )
+    from src.modules.analytics.application.use_cases.rebuild_daily_rollup import (
+        RebuildDailyRollup,
+    )
+    from src.modules.analytics.infrastructure.hooks.rollup_hooks import (
+        make_post_close_hook,
+        make_post_ingest_hook,
+        make_post_reply_hook,
+    )
+    from src.modules.analytics.infrastructure.repositories.rollup_repository import (
+        SqlAlchemyRollupRepository,
+    )
+    from src.modules.analytics.infrastructure.sources.hrm_stats_source import (
+        HrmStatsSource,
+    )
+    from src.modules.analytics.infrastructure.sources.inbox_stats_source import (
+        InboxStatsSource,
+    )
+    from src.modules.analytics.presentation.routers.analytics_router import (
+        router as analytics_router,
+    )
+    from src.modules.identity.presentation.dependencies import get_token_service
+    from src.modules.inbox.infrastructure.directory.workforce_directory import (
+        IdentityWorkforceDirectory,
+    )
+
+    app.state.token_service = get_token_service(settings)
+    app.state.analytics_directory_factory = IdentityWorkforceDirectory
+    app.state.analytics_rollup_repo_factory = SqlAlchemyRollupRepository
+    app.state.analytics_hrm_source_factory = HrmStatsSource
+
+    tz = settings.app_timezone
+
+    def rebuild_factory(session: AsyncSession) -> RebuildDailyRollup:
+        return RebuildDailyRollup(
+            InboxStatsSource(session, tz), SqlAlchemyRollupRepository(session)
+        )
+
+    app.state.analytics_rebuild_factory = rebuild_factory
+
+    def apply_factory(session: AsyncSession) -> ApplyEventDelta:
+        return ApplyEventDelta(SqlAlchemyRollupRepository(session))
+
+    provider = lambda: app.state.session_factory  # noqa: E731
+    # post_ingest #5 đăng ký SAU #2 (phân tích) + #3 (tự gán) để thấy phòng đã phân.
+    app.state.post_ingest_hooks.append(make_post_ingest_hook(provider, apply_factory, tz))
+    app.state.post_reply_hooks.append(make_post_reply_hook(provider, apply_factory, tz))
+    app.state.post_close_hooks.append(make_post_close_hook(provider, apply_factory, tz))
+
+    app.include_router(analytics_router, prefix="/api/v1")
 
 
 app = create_app()
