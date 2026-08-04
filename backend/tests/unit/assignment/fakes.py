@@ -3,7 +3,10 @@
 from uuid import UUID
 
 from src.modules.assignment.domain.ports import AssignResult
-from src.modules.assignment.domain.value_objects.candidate import AgentCandidate
+from src.modules.assignment.domain.value_objects.candidate import (
+    AgentCandidate,
+    AssignmentEvent,
+)
 
 
 class FakeAgentPool:
@@ -27,11 +30,23 @@ class FakeConversationAssigner:
 
     def __init__(self, succeed: bool = True, result: AssignResult | None = None) -> None:
         self._result = result or (AssignResult.ASSIGNED if succeed else AssignResult.REJECTED)
-        self.assigned: list[tuple[UUID, UUID]] = []
+        self.assigned: list[tuple[UUID, UUID, UUID | None]] = []
 
-    async def assign_to_agent(self, conversation_id: UUID, user_id: UUID) -> AssignResult:
-        self.assigned.append((conversation_id, user_id))
+    async def assign_to_agent(
+        self, conversation_id: UUID, user_id: UUID, department_id: UUID | None
+    ) -> AssignResult:
+        self.assigned.append((conversation_id, user_id, department_id))
         return self._result
+
+
+class FakeAssignmentLog:
+    """``IAssignmentLog`` giả: gom các sự kiện gán đã ghi để kiểm tra."""
+
+    def __init__(self) -> None:
+        self.events: list[AssignmentEvent] = []
+
+    async def ghi(self, su_kien: AssignmentEvent) -> None:
+        self.events.append(su_kien)
 
 
 class FakeWaitingQueue:

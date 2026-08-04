@@ -24,6 +24,9 @@ from src.modules.analytics.infrastructure.repositories.rollup_repository import 
 )
 from src.modules.analytics.infrastructure.sources.hrm_stats_source import HrmStatsSource
 from src.modules.analytics.infrastructure.sources.inbox_stats_source import InboxStatsSource
+from src.modules.assignment.infrastructure.persistence.assignment_log_model import (
+    AssignmentLogModel,
+)
 from src.modules.hrm.infrastructure.models.request_model import RequestModel
 from src.modules.hrm.infrastructure.models.shift_assignment_model import (
     ShiftAssignmentModel,
@@ -207,6 +210,24 @@ async def _message(
     )
 
 
+async def _assignment_log(
+    session: AsyncSession,
+    conversation_id: UUID,
+    user_id: UUID,
+    dept: UUID | None,
+    assigned_at: datetime,
+) -> None:
+    session.add(
+        AssignmentLogModel(
+            id=new_id(),
+            conversation_id=conversation_id,
+            user_id=user_id,
+            department_id=dept,
+            assigned_at=assigned_at,
+        )
+    )
+
+
 class TestInboxStatsSource:
     async def test_inbound_outbound_theo_ngay_dia_phuong(self, session: AsyncSession) -> None:
         ch = await _channel(session, "ZALO", D1)
@@ -280,6 +301,57 @@ class TestInboxStatsSource:
         assert u1[0].handled_count == 1  # đóng trong ngày
         assert u1[0].resolution_samples == 1
         assert u1[0].department_id == D1
+
+    async def test_assigned_count_dem_tu_log_theo_phong_hien_tai(
+        self, session: AsyncSession
+    ) -> None:
+        # Hội thoại thuộc phòng D1 HIỆN TẠI. Được gán 2 lần trong ngày (một dòng
+        # log ghi phòng cũ D2 — mô phỏng chuyển phòng): backfill phải đếm ĐỦ 2 lần
+        # và gán theo phòng HIỆN TẠI D1 (quy tắc GĐ3), KHÔNG theo phòng trong log.
+        ch = await _channel(session, "ZALO", D1)
+        kh = await _customer(session, ch)
+        conv = await _conversation(
+            session,
+            ch,
+            kh,
+            dept=D1,
+            status="DANG_MO",
+            assigned=U1,
+            created_at=datetime(2026, 7, 1, 3, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 7, 1, 3, 0, tzinfo=UTC),
+        )
+        # 10:00 và 11:00 giờ VN ngày 1 (03:00, 04:00 UTC) → cùng ngày 1 local.
+        await _assignment_log(session, conv, U1, D2, datetime(2026, 7, 1, 3, 0, tzinfo=UTC))
+        await _assignment_log(session, conv, U1, D1, datetime(2026, 7, 1, 4, 0, tzinfo=UTC))
+        await session.flush()
+
+        agents = await InboxStatsSource(session, TZ).agent_metrics_cho_ngay(date(2026, 7, 1))
+        u1 = [a for a in agents if a.user_id == U1]
+        assert len(u1) == 1
+        assert u1[0].assigned_count == 2  # đếm đủ cả hai lần gán
+        assert u1[0].department_id == D1  # phòng hiện tại của hội thoại, không phải D2
+
+    async def test_assigned_count_qua_nua_dem_gan_dung_ngay(self, session: AsyncSession) -> None:
+        # 18:00 UTC ngày 1 = 01:00 VN ngày 2 → lần gán thuộc NGÀY 2 local.
+        ch = await _channel(session, "ZALO", D1)
+        kh = await _customer(session, ch)
+        conv = await _conversation(
+            session,
+            ch,
+            kh,
+            dept=D1,
+            status="DANG_MO",
+            assigned=U1,
+            created_at=datetime(2026, 7, 1, 3, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 7, 1, 3, 0, tzinfo=UTC),
+        )
+        await _assignment_log(session, conv, U1, D1, datetime(2026, 7, 1, 18, 0, tzinfo=UTC))
+        await session.flush()
+
+        ngay1 = await InboxStatsSource(session, TZ).agent_metrics_cho_ngay(date(2026, 7, 1))
+        ngay2 = await InboxStatsSource(session, TZ).agent_metrics_cho_ngay(date(2026, 7, 2))
+        assert sum(a.assigned_count for a in ngay1) == 0  # không thuộc ngày 1
+        assert sum(a.assigned_count for a in ngay2) == 1  # thuộc ngày 2
 
 
 # ----- HrmStatsSource (đọc thẳng #4) -----

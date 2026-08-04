@@ -46,3 +46,23 @@ class AgentCandidate:
     open_load: int
     kpi_percent: Decimal | None = None
     last_assigned_at: datetime | None = None
+
+
+@dataclass(frozen=True)
+class AssignmentEvent:
+    """Một lần gán thành công một hội thoại cho một nhân viên — bản ghi lịch sử.
+
+    Ghi khi (và chỉ khi) inbox chấp nhận gán (``AssignResult.ASSIGNED``). Đây là
+    nguồn sự thật cho "được gán bao nhiêu lần" (khác ``conversations.assigned_user_id``
+    chỉ giữ NGƯỜI CUỐI): một hội thoại có thể được gán lại nhiều lần, và #5 cần đếm
+    đủ mọi lần để dựng ``assigned_count``.
+
+    - ``department_id``: phòng của hội thoại tại thời điểm gán (có thể ``None`` nếu
+      hội thoại chưa phân phòng — hiếm, vì auto-assign chạy sau khi đã có phòng).
+    - ``assigned_at``: thời điểm gán (UTC-aware), do clock hệ thống cấp.
+    """
+
+    conversation_id: UUID
+    user_id: UUID
+    department_id: UUID | None
+    assigned_at: datetime
