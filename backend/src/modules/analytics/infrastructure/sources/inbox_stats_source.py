@@ -5,8 +5,18 @@ review GĐ2): mỗi số liệu gắn ngày của hành động sinh ra nó, quy
 (``app_timezone``) rồi lấy ``::date`` trên timestamp của TỪNG bản ghi — KHÔNG group
 theo ngày mở hội thoại — để khớp incremental.
 
+**Quy tắc gán phòng (chốt review GĐ3):** mọi số liệu gán theo ``conversations.
+department_id`` **HIỆN TẠI** của hội thoại — KHÔNG phải phòng lúc từng tin. Vậy
+tin INBOUND đến khi hội thoại còn ``CHO_PHAN`` (chưa phân phòng) sẽ được tính cho
+phòng SAU KHI #2/Manager phân (dồn về phòng cuối). GĐ4 hook incremental PHẢI đọc
+``conversation.department_id`` hiện tại khi ghi (kể cả INBOUND) để khớp backfill —
+nếu hook ghi theo NULL lúc CHO_PHAN thì rebuild sẽ dời số giữa NULL và phòng.
+Nguồn #1 không lưu lịch sử phòng nên "phòng lúc sự kiện" không tái dựng được;
+"phòng hiện tại" là mốc chung nhất quán cho cả hai đường.
+
 Ranh giới chính xác của backfill (nguồn #1 không lưu nhật ký sự kiện):
-- **inbound/outbound**: CHÍNH XÁC — đếm từ ``messages`` theo ``created_at`` của tin.
+- **inbound/outbound**: đếm từ ``messages`` theo ``created_at`` của tin (event-time),
+  gán theo phòng hiện tại của hội thoại.
 - **opened**: đếm hội thoại có phòng theo ``created_at`` (proxy: mở ≈ tạo).
 - **closed/handled/resolution**: dùng ``updated_at`` của hội thoại ``DA_DONG`` làm
   mốc đóng (proxy thô như #3; với hội thoại đã đóng, lần cập nhật cuối thường là

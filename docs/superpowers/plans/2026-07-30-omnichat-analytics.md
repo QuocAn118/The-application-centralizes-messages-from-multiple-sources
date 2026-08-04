@@ -84,6 +84,8 @@ Kế thừa toàn bộ #0–#4 (event loop Windows, UUID v7 `new_id()`, `timesta
 
 **Nợ ghi rõ (GĐ3):** (a) backfill closed/resolution xấp xỉ bằng `updated_at` (proxy như #3) trong khi incremental có mốc đóng chính xác → lệch nhẹ; `assignment_log` (#5 nợ) mới chính xác. (b) backfill KHÔNG dựng `assigned_count` (thiếu assignment_log) — chỉ incremental cộng khi có sự kiện ASSIGNED. (c) KPI (`kpi_percent`/`period`) = None (nợ #3 kế thừa).
 
+**Review GĐ3 (0 lỗi code, 1 hợp đồng làm tường minh — F-A):** backfill gán số liệu theo `conversations.department_id` HIỆN TẠI, còn incremental (nếu ghi INBOUND theo phòng-lúc-sự-kiện) sẽ gán NULL khi hội thoại còn CHO_PHAN → **rebuild dời số giữa NULL và phòng**. **Chốt: cả hai đường gán theo phòng HIỆN TẠI của hội thoại** (backfill đã đúng; nguồn #1 không lưu lịch sử phòng nên "phòng lúc sự kiện" không tái dựng được). **GĐ4 hook incremental PHẢI đọc `conversation.department_id` hiện tại khi ghi — kể cả INBOUND — không ghi NULL lúc CHO_PHAN.** Đã ghi hợp đồng vào docstring `InboxStatsSource` + spec.
+
 ### Giai đoạn 4 — HTTP + wiring + trigger
 
 | Task | Nội dung | Deliverable |

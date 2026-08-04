@@ -68,6 +68,8 @@ Bản đầu dùng **rollup theo ngày (daily grain)**, đủ cho mọi chiều 
 
 **Quy tắc gắn ngày = event-time (chốt review GĐ2):** để incremental và backfill KHỚP nhau, mỗi số liệu gắn ngày của **hành động sinh ra nó**, không phải ngày mở hội thoại — `inbound` theo ngày tin khách; `outbound`/mẫu first_response theo ngày tin trả lời ĐẦU; `closed`/`handled`/mẫu resolution theo ngày ĐÓNG (đều đã quy đổi `app_timezone`). Ca qua nửa đêm: khách nhắn 23:00 ngày 1, trả lời 01:00 ngày 2 → first_response thuộc NGÀY 2. `InboxStatsSource` (GĐ3) phải group nguồn theo timestamp từng bản ghi, KHÔNG theo `conversations.created_at`.
 
+**Quy tắc gán phòng (chốt review GĐ3):** mọi số liệu gán theo `conversations.department_id` **HIỆN TẠI** của hội thoại (cả incremental lẫn backfill), KHÔNG phải phòng lúc từng tin. Tin INBOUND đến khi hội thoại còn CHO_PHAN được tính cho phòng SAU KHI phân (dồn về phòng cuối) — nguồn #1 không lưu lịch sử phòng nên đây là mốc chung nhất quán. GĐ4 hook incremental đọc `conversation.department_id` hiện tại khi ghi, kể cả INBOUND.
+
 **Số liệu "hôm nay":** rollup incremental cập nhật gần thời gian thực; nếu lo lệch, endpoint có thể tính phần **ngày hiện tại** trực tiếp từ nguồn và cộng với rollup các ngày đã đóng — chốt ở plan (đơn giản trước: đọc thẳng rollup, có `RebuildDailyRollup` chạy tay/định kỳ).
 
 ## 6. API (JSON, đọc-chỉ)
