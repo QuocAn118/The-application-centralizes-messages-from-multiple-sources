@@ -5,13 +5,11 @@ vi phòng (``pham_vi_phong_bao_cao``). ``POST /rollups/rebuild`` là công cụ 
 hành chỉ cho Admin, chặn khoảng ngày quá dài.
 """
 
-from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Request
 
 from src.modules.analytics.application.actor import ActorRole
-from src.modules.analytics.domain.value_objects.metrics import DateRange
 from src.modules.analytics.presentation.dependencies import (
     Actor,
     DateRangeParam,
@@ -94,17 +92,18 @@ async def bao_cao_don_tu(
 async def chay_backfill(
     actor: Actor,
     session: DbSession,
+    khoang: DateRangeParam,
     request: Request,
-    from_date: date,
-    to_date: date,
 ) -> RebuildResponse:
-    """Dựng lại rollup một khoảng ngày (vận hành) — CHỈ Admin, chặn range quá dài."""
+    """Dựng lại rollup một khoảng ngày (vận hành) — CHỈ Admin, chặn range quá dài.
+
+    Dùng chung query ``from``/``to`` như các endpoint báo cáo (nhất quán API).
+    """
     if actor.role is not ActorRole.ADMIN:
         raise PermissionDeniedError(
             "Chỉ quản trị viên được chạy dựng lại rollup.",
             code="ANALYTICS_REBUILD_ADMIN_ONLY",
         )
-    khoang = DateRange(from_date=from_date, to_date=to_date)
     if (khoang.to_date - khoang.from_date).days + 1 > _REBUILD_MAX_NGAY:
         raise ApplicationError(
             f"Khoảng ngày quá dài (tối đa {_REBUILD_MAX_NGAY} ngày một lần).",

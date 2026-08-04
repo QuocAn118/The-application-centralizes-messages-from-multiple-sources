@@ -99,6 +99,8 @@ Kế thừa toàn bộ #0–#4 (event loop Windows, UUID v7 `new_id()`, `timesta
 
 **Nợ GĐ4:** `assigned_count` chưa nối hook (thiếu điểm móc sạch cho sự kiện gán + `assignment_log` #3) → luôn 0 bản đầu. `post_assign_agent_hooks` HOÃN (ghi nợ), nối khi có assignment_log.
 
+**Review GĐ4 (0 lỗi code, 1 nhất quán API):** soi idempotency (inbound được webhook guard `ket_qua is not None` bảo vệ khỏi double-count khi nền tảng gửi lại; reply retry cộng outbound đúng vì thật sự gửi 2 tin, first_response không double vì `so_outbound==1`), khớp incremental↔backfill (first_response incremental = `occurred_at - min(inbound)` khi outbound đầu ≡ backfill `min(outbound)-min(inbound)`), ranh giới giao dịch reply (commit tin TRƯỚC hook, hook session riêng, `view.created_at` là event-time đúng) — tất cả AN TOÀN. Fix duy nhất: `POST /rollups/rebuild` đổi từ `from_date`/`to_date` sang **`from`/`to`** (dùng chung `DateRangeParam`) cho nhất quán với 4 endpoint báo cáo. Cập nhật e2e.
+
 ## Ghi chú thực hiện
 
 - **Điểm móc trigger (rủi ro nhất, như #2/#3 GĐ4):** `post_reply_hooks` + `post_assign_agent_hooks` là điểm mới ở inbox router; theo đúng pattern `post_close_hooks` (GĐ4 #3): router gọi callable app.state trong try/except, KHÔNG import analytics. Nếu `post_assign_agent` khó nối sạch (gán xảy ra ở nhiều đường: TakeConversation, AssignConversationToAgent), cân nhắc chỉ rollup `assigned_count` qua backfill (suy từ `assigned_user_id`) và HOÃN hook gán — ghi nợ. Chốt khi làm GĐ4.
