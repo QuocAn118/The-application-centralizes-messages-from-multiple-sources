@@ -5,11 +5,13 @@ Nếu một port đổi chữ ký mà fake không theo, phép gán dưới đây
 
 from src.modules.assignment.domain.ports import (
     IAgentPool,
+    IAssignmentLog,
     IConversationAssigner,
     IWaitingQueue,
 )
 from tests.unit.assignment.fakes import (
     FakeAgentPool,
+    FakeAssignmentLog,
     FakeConversationAssigner,
     FakeWaitingQueue,
 )
@@ -19,4 +21,5 @@ def test_fake_khop_hop_dong_port() -> None:
     _pool: IAgentPool = FakeAgentPool()
     _assigner: IConversationAssigner = FakeConversationAssigner()
     _queue: IWaitingQueue = FakeWaitingQueue()
-    assert all(obj is not None for obj in (_pool, _assigner, _queue))
+    _log: IAssignmentLog = FakeAssignmentLog()
+    assert all(obj is not None for obj in (_pool, _assigner, _queue, _log))

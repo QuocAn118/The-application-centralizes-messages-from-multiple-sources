@@ -525,7 +525,8 @@ def _wire_analytics(app: FastAPI, settings: Settings) -> None:
     - ``post_reply`` (nhân viên trả lời) → +1 outbound + mẫu first_response (tin đầu).
     - ``post_close`` (đóng hội thoại) → +1 closed/handled + mẫu resolution.
 
-    NỢ: ``assigned_count`` chưa có hook (thiếu điểm móc + assignment_log #3) = 0.
+    ``assigned_count`` dựng từ ``assignment_log`` (#3) qua backfill — không hook
+    incremental (chốt: log là nguồn sự thật, rebuild định kỳ cập nhật "hôm nay").
     Timezone (``app_timezone``) truyền vào mọi hook + source (event-time, nợ F1 #3).
     """
     from sqlalchemy.ext.asyncio import AsyncSession

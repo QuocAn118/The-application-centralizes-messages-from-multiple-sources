@@ -202,8 +202,13 @@ class TestRollupQuaWebhookVaBaoCao:
             params={"from": HOM_NAY, "to": HOM_NAY},
         )
         assert r.status_code == 200
-        handled = {row["user_id"]: row["handled_count"] for row in r.json()}
+        rows = r.json()
+        handled = {row["user_id"]: row["handled_count"] for row in rows}
         assert handled.get(ids["admin"]) == 1
+        # Nhận việc thủ công (/take) KHÔNG phải auto-assign → không có dòng
+        # assignment_log → assigned_count = 0 (chỉ auto-assign #3 mới ghi log).
+        assigned = {row["user_id"]: row["assigned_count"] for row in rows}
+        assert assigned.get(ids["admin"]) == 0
 
     async def test_staff_khong_xem_bao_cao(
         self, client_an: AsyncClient, engine: AsyncEngine

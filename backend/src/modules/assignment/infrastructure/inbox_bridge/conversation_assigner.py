@@ -16,7 +16,8 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.modules.assignment.domain.ports import AssignResult
+from src.modules.assignment.domain.ports import AssignResult, IAssignmentLog
+from src.modules.assignment.domain.value_objects.candidate import AssignmentEvent
 from src.modules.inbox.application.actor import ActorRole, InboxActor
 from src.modules.inbox.application.use_cases.assign_conversation_to_agent import (
     AssignConversationToAgent,
@@ -48,15 +49,25 @@ _SYSTEM_ACTOR = InboxActor(
 class InboxConversationAssigner:
     """Giao hội thoại cho nhân viên qua use case của inbox, actor hệ thống."""
 
-    def __init__(self, session: AsyncSession, notifier: IRealtimeNotifier, clock: IClock) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        notifier: IRealtimeNotifier,
+        clock: IClock,
+        log: IAssignmentLog,
+    ) -> None:
         self._assign = AssignConversationToAgent(
             conversation_repo=SqlAlchemyConversationRepository(session),
             directory=IdentityWorkforceDirectory(session),
             notifier=notifier,
             clock=clock,
         )
+        self._log = log
+        self._clock = clock
 
-    async def assign_to_agent(self, conversation_id: UUID, user_id: UUID) -> AssignResult:
+    async def assign_to_agent(
+        self, conversation_id: UUID, user_id: UUID, department_id: UUID | None
+    ) -> AssignResult:
         try:
             await self._assign.execute(_SYSTEM_ACTOR, conversation_id, user_id)
         except AlreadyAssignedError:
@@ -72,4 +83,14 @@ class InboxConversationAssigner:
                 extra={"conversation_id": str(conversation_id), "user_id": str(user_id)},
             )
             return AssignResult.REJECTED
+        # Gán thành công → ghi một dòng lịch sử (nguồn sự thật cho assigned_count #5).
+        # Cùng session/giao dịch với việc gán: hoặc cùng commit, hoặc cùng rollback.
+        await self._log.ghi(
+            AssignmentEvent(
+                conversation_id=conversation_id,
+                user_id=user_id,
+                department_id=department_id,
+                assigned_at=self._clock.now(),
+            )
+        )
         return AssignResult.ASSIGNED

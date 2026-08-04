@@ -8,6 +8,7 @@ from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.assignment.domain.ports import AssignResult
@@ -19,6 +20,12 @@ from src.modules.assignment.infrastructure.inbox_bridge.conversation_assigner im
 )
 from src.modules.assignment.infrastructure.inbox_bridge.waiting_queue import (
     InboxWaitingQueue,
+)
+from src.modules.assignment.infrastructure.persistence.assignment_log_model import (
+    AssignmentLogModel,
+)
+from src.modules.assignment.infrastructure.persistence.assignment_log_repository import (
+    SqlAlchemyAssignmentLog,
 )
 from src.modules.hrm.domain.entities.shift import Shift
 from src.modules.hrm.domain.entities.shift_assignment import ShiftAssignment
@@ -250,14 +257,27 @@ class TestAssigner:
             last_message_at=NOW,
         )
 
-        assigner = InboxConversationAssigner(db_session, FakeRealtimeNotifier(), _Clock())
-        ket_qua = await assigner.assign_to_agent(conv.id, nv.id)
+        assigner = InboxConversationAssigner(
+            db_session, FakeRealtimeNotifier(), _Clock(), SqlAlchemyAssignmentLog(db_session)
+        )
+        ket_qua = await assigner.assign_to_agent(conv.id, nv.id, phong.id)
         await db_session.flush()
 
         assert ket_qua is AssignResult.ASSIGNED
         moi = await SqlAlchemyConversationRepository(db_session).get_by_id(conv.id)
         assert moi is not None
         assert moi.assigned_user_id == nv.id
+        # Gán thành công → đúng một dòng assignment_log, đúng phòng hội thoại.
+        logs = list(
+            (
+                await db_session.execute(
+                    select(AssignmentLogModel).where(AssignmentLogModel.conversation_id == conv.id)
+                )
+            ).scalars()
+        )
+        assert len(logs) == 1
+        assert logs[0].user_id == nv.id
+        assert logs[0].department_id == phong.id
 
     async def test_da_co_nguoi_thi_already_taken(self, db_session: AsyncSession) -> None:
         from tests.unit.inbox.fakes import FakeRealtimeNotifier
@@ -271,10 +291,14 @@ class TestAssigner:
             status=ConversationStatus.DANG_MO,
             last_message_at=NOW,
         )
-        assigner = InboxConversationAssigner(db_session, FakeRealtimeNotifier(), _Clock())
-        ket_qua = await assigner.assign_to_agent(conv.id, nv.id)
+        assigner = InboxConversationAssigner(
+            db_session, FakeRealtimeNotifier(), _Clock(), SqlAlchemyAssignmentLog(db_session)
+        )
+        ket_qua = await assigner.assign_to_agent(conv.id, nv.id, phong.id)
         # Race: hội thoại vừa có người -> ALREADY_TAKEN (đã ổn), không phải REJECTED.
         assert ket_qua is AssignResult.ALREADY_TAKEN
+        # Không gán được → KHÔNG ghi log.
+        assert (await db_session.execute(select(AssignmentLogModel))).first() is None
 
     async def test_nhan_vien_sai_phong_thi_rejected(self, db_session: AsyncSession) -> None:
         from tests.unit.inbox.fakes import FakeRealtimeNotifier
@@ -289,6 +313,10 @@ class TestAssigner:
             status=ConversationStatus.DANG_MO,
             last_message_at=NOW,
         )
-        assigner = InboxConversationAssigner(db_session, FakeRealtimeNotifier(), _Clock())
-        ket_qua = await assigner.assign_to_agent(conv.id, nv_khac.id)
+        assigner = InboxConversationAssigner(
+            db_session, FakeRealtimeNotifier(), _Clock(), SqlAlchemyAssignmentLog(db_session)
+        )
+        ket_qua = await assigner.assign_to_agent(conv.id, nv_khac.id, phong.id)
         assert ket_qua is AssignResult.REJECTED
+        # Bị khước từ → KHÔNG ghi log.
+        assert (await db_session.execute(select(AssignmentLogModel))).first() is None

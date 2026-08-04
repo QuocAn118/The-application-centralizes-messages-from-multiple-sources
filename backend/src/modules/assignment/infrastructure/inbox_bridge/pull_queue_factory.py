@@ -28,6 +28,9 @@ from src.modules.assignment.infrastructure.inbox_bridge.conversation_assigner im
 from src.modules.assignment.infrastructure.inbox_bridge.waiting_queue import (
     InboxWaitingQueue,
 )
+from src.modules.assignment.infrastructure.persistence.assignment_log_repository import (
+    SqlAlchemyAssignmentLog,
+)
 from src.modules.inbox.domain.ports import IRealtimeNotifier
 from src.shared.application.ports import IClock
 
@@ -48,7 +51,9 @@ def build_pull_department_queue(
     return PullDepartmentQueue(
         agent_pool=HrmIdentityAgentPool(session, clock, timezone),
         waiting_queue=InboxWaitingQueue(session),
-        assigner=InboxConversationAssigner(session, notifier, clock),
+        assigner=InboxConversationAssigner(
+            session, notifier, clock, SqlAlchemyAssignmentLog(session)
+        ),
     )
 
 
@@ -66,5 +71,7 @@ def build_auto_assign_conversation(
     """
     return AutoAssignConversation(
         agent_pool=HrmIdentityAgentPool(session, clock, timezone),
-        assigner=InboxConversationAssigner(session, notifier, clock),
+        assigner=InboxConversationAssigner(
+            session, notifier, clock, SqlAlchemyAssignmentLog(session)
+        ),
     )

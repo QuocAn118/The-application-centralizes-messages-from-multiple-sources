@@ -44,6 +44,7 @@ async def don_du_lieu(engine: AsyncEngine) -> AsyncIterator[None]:
         await conn.execute(
             text(
                 "TRUNCATE analytics_daily_conversation, analytics_daily_agent, "
+                "assignment_log, "
                 "conversation_analyses, keywords, "
                 "shift_assignments, shifts, kpi_targets, requests, "
                 "attachments, messages, conversations, customers, channels, "
