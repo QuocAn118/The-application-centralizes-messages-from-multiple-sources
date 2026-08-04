@@ -37,7 +37,7 @@ class AutoAssignConversation:
             # Không ai trong ca → hội thoại nằm trong hàng đợi phòng, chờ.
             return AssignmentOutcome.QUEUED
 
-        ket_qua = await self._assigner.assign_to_agent(conversation_id, chon)
+        ket_qua = await self._assigner.assign_to_agent(conversation_id, chon, department_id)
         if ket_qua is AssignResult.ASSIGNED:
             return AssignmentOutcome.ASSIGNED
         if ket_qua is AssignResult.ALREADY_TAKEN:

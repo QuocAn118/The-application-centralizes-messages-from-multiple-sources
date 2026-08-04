@@ -33,7 +33,7 @@ class TestAutoAssign:
         outcome = await AutoAssignConversation(pool, assigner).execute(CONV, PHONG)
 
         assert outcome is AssignmentOutcome.ASSIGNED
-        assert assigner.assigned == [(CONV, B)]
+        assert assigner.assigned == [(CONV, B, PHONG)]
 
     async def test_khong_ai_trong_ca_thi_queued(self) -> None:
         pool = FakeAgentPool({PHONG: (AgentCandidate(user_id=A, on_shift=False, open_load=0),)})
@@ -58,7 +58,7 @@ class TestAutoAssign:
         outcome = await AutoAssignConversation(pool, assigner).execute(CONV, PHONG)
 
         assert outcome is AssignmentOutcome.QUEUED
-        assert assigner.assigned == [(CONV, A)]  # có thử gán
+        assert assigner.assigned == [(CONV, A, PHONG)]  # có thử gán
 
     async def test_vua_co_nguoi_nhan_thi_skipped(self) -> None:
         # ALREADY_TAKEN (race: hội thoại vừa có người khác nhận) -> SKIPPED, KHÔNG

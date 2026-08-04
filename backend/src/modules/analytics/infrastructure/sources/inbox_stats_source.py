@@ -24,10 +24,15 @@ Ranh giới chính xác của backfill (nguồn #1 không lưu nhật ký sự k
 - **first_response**: giây từ tin INBOUND đầu tới tin OUTBOUND đầu của mỗi hội
   thoại, gắn ngày của tin OUTBOUND đầu.
 
+- **assigned_count**: đếm dòng ``assignment_log`` (#3) theo ``assigned_at`` local,
+  gán theo phòng HIỆN TẠI của hội thoại (join ``conversations``, nhất quán GĐ3).
+  Mỗi lần gán thực sự là một dòng — đếm ĐỦ số lần gán (khác ``assigned_user_id``
+  chỉ giữ người cuối).
+
 NỢ (ghi ở plan): incremental có mốc đóng chính xác (thời điểm hook) còn backfill
 xấp xỉ bằng ``updated_at`` → có thể lệch nhẹ ở closed/resolution. ``assigned_count``
-KHÔNG dựng lại từ backfill (thiếu ``assignment_log`` #3) — chỉ incremental cộng khi
-có sự kiện ASSIGNED.
+CHỈ dựng từ backfill (không có hook incremental — chốt: assignment_log là nguồn sự
+thật, "hôm nay" cập nhật qua RebuildDailyRollup định kỳ như các metric proxy khác).
 """
 
 from datetime import date
@@ -42,6 +47,9 @@ from sqlalchemy.sql import ColumnElement
 from src.modules.analytics.domain.value_objects.metrics import (
     DailyAgentMetric,
     DailyConversationMetric,
+)
+from src.modules.assignment.infrastructure.persistence.assignment_log_model import (
+    AssignmentLogModel,
 )
 from src.modules.inbox.infrastructure.models.channel_model import ChannelModel
 from src.modules.inbox.infrastructure.models.conversation_model import ConversationModel
@@ -155,7 +163,7 @@ class InboxStatsSource:
         def _o(user_id: UUID, dept: UUID | None) -> dict[str, int]:
             return acc.setdefault(
                 (user_id, dept),
-                {"handled": 0, "res_sum": 0, "res_n": 0, "fr_sum": 0, "fr_n": 0},
+                {"handled": 0, "res_sum": 0, "res_n": 0, "fr_sum": 0, "fr_n": 0, "assigned": 0},
             )
 
         # handled + resolution: hội thoại DA_DONG có người nhận, mốc đóng =
@@ -226,13 +234,33 @@ class InboxStatsSource:
             o["fr_sum"] += int(r_fr.giay)
             o["fr_n"] += 1
 
+        # assigned_count: mỗi dòng assignment_log (#3) là một lần gán thực sự, gắn
+        # ngày local của assigned_at (event-time). Gán theo phòng HIỆN TẠI của hội
+        # thoại (join conversations) — KHÔNG dùng department_id trong log — để nhất
+        # quán với mọi metric nhân viên khác (quy tắc GĐ3). Hội thoại có thể đã bị
+        # xoá tham chiếu? Không: log giữ conversation_id, join trả phòng hiện tại
+        # (NULL nếu chưa phân phòng).
+        cau_gan = (
+            select(
+                AssignmentLogModel.user_id.label("uid"),
+                ConversationModel.department_id.label("dept"),
+                func.count().label("so_luong"),
+            )
+            .join(ConversationModel, ConversationModel.id == AssignmentLogModel.conversation_id)
+            .where(self._ngay_local(AssignmentLogModel.assigned_at) == work_date)
+            .group_by(AssignmentLogModel.user_id, ConversationModel.department_id)
+        )
+        for r_gan in await self._session.execute(cau_gan):
+            o = _o(r_gan.uid, r_gan.dept)
+            o["assigned"] += int(r_gan.so_luong)
+
         return tuple(
             DailyAgentMetric(
                 work_date=work_date,
                 user_id=uid,
                 department_id=dept,
                 handled_count=v["handled"],
-                assigned_count=0,  # backfill không dựng assigned (thiếu assignment_log)
+                assigned_count=v["assigned"],  # từ assignment_log #3 (mỗi lần gán)
                 sum_first_response_seconds=v["fr_sum"],
                 first_response_samples=v["fr_n"],
                 sum_resolution_seconds=v["res_sum"],

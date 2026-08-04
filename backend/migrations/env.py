@@ -12,6 +12,9 @@ from src.modules.analytics.infrastructure.models.rollup_models import (  # noqa:
     AnalyticsDailyAgentModel,
     AnalyticsDailyConversationModel,
 )
+from src.modules.assignment.infrastructure.persistence.assignment_log_model import (  # noqa: F401
+    AssignmentLogModel,
+)
 from src.modules.hrm.infrastructure.models.kpi_target_model import (  # noqa: F401
     KpiTargetModel,
 )

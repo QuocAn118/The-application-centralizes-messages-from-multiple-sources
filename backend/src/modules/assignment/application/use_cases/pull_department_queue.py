@@ -55,7 +55,7 @@ class PullDepartmentQueue:
             if chon is None:
                 # Không còn ai trong ca → phần còn lại của hàng đợi vẫn chờ.
                 break
-            ket_qua = await self._assigner.assign_to_agent(conversation_id, chon)
+            ket_qua = await self._assigner.assign_to_agent(conversation_id, chon, department_id)
             if ket_qua is AssignResult.ASSIGNED:
                 da_gan += 1
                 # Tăng tải người vừa nhận để lượt kế ưu tiên người khác.

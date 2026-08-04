@@ -9,7 +9,10 @@ from enum import StrEnum
 from typing import Protocol
 from uuid import UUID
 
-from src.modules.assignment.domain.value_objects.candidate import AgentCandidate
+from src.modules.assignment.domain.value_objects.candidate import (
+    AgentCandidate,
+    AssignmentEvent,
+)
 
 
 class AssignResult(StrEnum):
@@ -48,9 +51,28 @@ class IConversationAssigner(Protocol):
     thống, nên máy trạng thái/phân quyền/realtime của inbox giữ nguyên. Trả
     ``AssignResult`` phân biệt gán được / vừa có người (đã ổn) / bị từ chối —
     auto-assign thất bại không được làm hỏng luồng gọi (không ném lỗi).
+
+    ``department_id`` (phòng hội thoại tại thời điểm gán) đi kèm để implementation
+    ghi ``assignment_log`` đúng phòng — chỉ ghi khi kết quả là ``ASSIGNED``.
     """
 
-    async def assign_to_agent(self, conversation_id: UUID, user_id: UUID) -> AssignResult: ...
+    async def assign_to_agent(
+        self, conversation_id: UUID, user_id: UUID, department_id: UUID | None
+    ) -> AssignResult: ...
+
+
+class IAssignmentLog(Protocol):
+    """Ghi lịch sử mỗi lần gán thành công (nguồn sự thật cho ``assigned_count`` #5).
+
+    ``conversations.assigned_user_id`` chỉ giữ NGƯỜI CUỐI của hội thoại, nên không
+    đếm được đủ số lần gán khi một hội thoại được gán lại. Log này giữ mọi lần gán
+    thực sự xảy ra. Implementation ở infrastructure ghi vào bảng ``assignment_log``.
+
+    Ghi log KHÔNG được làm hỏng luồng gán: implementation nuốt lỗi ghi (đã gán xong
+    ở inbox rồi — mất một dòng log không được rollback việc gán).
+    """
+
+    async def ghi(self, su_kien: AssignmentEvent) -> None: ...
 
 
 class IWaitingQueue(Protocol):
