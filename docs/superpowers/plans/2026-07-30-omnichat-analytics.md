@@ -72,13 +72,17 @@ Kế thừa toàn bộ #0–#4 (event loop Windows, UUID v7 `new_id()`, `timesta
 
 **Review GĐ2 (0 lỗi code, 1 hợp đồng làm tường minh — F-A):** incremental & backfill PHẢI gắn ngày y hệt nhau, nếu không "sửa lệch" lại tạo số khác. **Chốt: quy tắc event-time** — mỗi metric gắn ngày của HÀNH ĐỘNG sinh ra nó (inbound=ngày tin khách; first_response/outbound=ngày tin trả lời đầu; closed/handled/resolution=ngày đóng), KHÔNG phải ngày mở hội thoại. `ApplyEventDelta` vốn đã đúng (hook chạy ở thời điểm sự kiện); đã ghi rõ hợp đồng vào docstring `IConversationStatsSource` + `EventContext` + thêm test cross-midnight (`test_event_time_qua_nua_dem_gan_dung_ngay_su_kien`). **GĐ3 `InboxStatsSource` PHẢI group nguồn theo timestamp (đã đổi tz) của TỪNG bản ghi — không group theo `conversations.created_at`.** Ghi nhận thêm (không sửa): (a) OUTBOUND phải kèm `channel_platform` thật để không rơi vào bucket rỗng lệch backfill — GĐ4 hook phải điền; (b) `RebuildDailyRollup` nhận range không chặn — GĐ4 endpoint (Admin) nên cap độ dài range. 45 unit test.
 
-### Giai đoạn 3 — Hạ tầng: bảng rollup + source + migration
+### Giai đoạn 3 — Hạ tầng: bảng rollup + source + migration ✅ XONG
 
 | Task | Nội dung | Deliverable |
 |---|---|---|
-| 6 | 2 model rollup + migration alembic (chạy `upgrade head` trên DB test) | Migration lên/xuống sạch |
-| 7 | `SqlAlchemyRollupRepository` (UPSERT cộng-delta qua `ON CONFLICT DO UPDATE SET col = col + :delta`; ghi-đè; đọc theo range) | Integration trên PostgreSQL thật: cộng-delta + ghi-đè đúng |
-| 8 | `InboxStatsSource` (quét #1 cho backfill: đếm tin/hội thoại/mốc theo ngày local) + `HrmStatsSource` (đọc thẳng ShiftAssignment/KpiTarget/Request, GROUP BY) | Integration: backfill khớp; đọc #4 đúng |
+| 6 ✅ | 2 model rollup (`rollup_models.py`) + migration `a1b2c3d4e5f6` (unique index `NULLS NOT DISTINCT` cho khoá có department_id NULL; BigInteger cho tổng giây); env.py đăng ký model | Migration up/down/up sạch trên DB test |
+| 7 ✅ | `SqlAlchemyRollupRepository`: `bump_*` = `pg_insert().on_conflict_do_update(set_={col: col + excluded.col})`; `ghi_de_*_ngay` = delete-ngày + insert; `doc_*` đọc theo range + lọc phòng `.in_()` | Integration: cộng-delta cộng dồn; NULLS NOT DISTINCT gộp dòng department NULL; ghi-đè không cộng dồn; lọc phòng đúng |
+| 8 ✅ | `InboxStatsSource` (backfill **event-time**: bucket theo `date(timezone(tz, created_at))` từng bản ghi; first_response từ tin đầu mỗi chiều — sender lấy `array_agg(... ORDER BY created_at)[1]` vì Postgres không có `min(uuid)`; closed/resolution theo `updated_at` proxy) + `HrmStatsSource` (đọc thẳng #4: đếm ca + giờ công từ ShiftAssignment; đơn GROUP BY loại/trạng thái, thời gian duyệt cho đơn đã quyết; **KPI=None nợ** như #3) | Integration (9 test): inbound/outbound + cross-midnight event-time; first_response 300s; ca/đơn đọc #4 đúng |
+
+10 integration test analytics; 827 passed/1 skipped; ruff/format/mypy strict; import-linter 16 kept.
+
+**Nợ ghi rõ (GĐ3):** (a) backfill closed/resolution xấp xỉ bằng `updated_at` (proxy như #3) trong khi incremental có mốc đóng chính xác → lệch nhẹ; `assignment_log` (#5 nợ) mới chính xác. (b) backfill KHÔNG dựng `assigned_count` (thiếu assignment_log) — chỉ incremental cộng khi có sự kiện ASSIGNED. (c) KPI (`kpi_percent`/`period`) = None (nợ #3 kế thừa).
 
 ### Giai đoạn 4 — HTTP + wiring + trigger
 
