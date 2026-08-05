@@ -41,6 +41,9 @@ class ConversationModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+    # Mốc đóng chính xác (NULL nếu chưa đóng / đã mở lại). Nguồn sự thật cho KPI #4
+    # và backfill closed/resolution #5 thay cho proxy updated_at.
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         CheckConstraint(
