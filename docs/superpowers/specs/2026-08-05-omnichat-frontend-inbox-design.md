@@ -75,10 +75,11 @@ Reply: khoá ô nhập → `POST reply` → thêm tin từ response → mở kho
 
 | Việc | Method + path | Body/Query | Response |
 |---|---|---|---|
-| Đăng nhập | `POST /api/v1/login` | `{email, password}` | `{access_token, refresh_token, token_type, expires_in}` |
-| Làm mới token | `POST /api/v1/refresh` | `{refresh_token}` | như trên |
-| Đăng xuất | `POST /api/v1/logout` | `{refresh_token}` | 204 |
-| Tôi là ai | `GET /api/v1/me` | — | `{id, email, full_name, phone, role, department_id}` |
+| Đăng nhập | `POST /api/v1/auth/login` | `{email, password}` | `{access_token, refresh_token, token_type, expires_in, must_change_password}` |
+| Làm mới token | `POST /api/v1/auth/refresh` | `{refresh_token}` | như trên |
+| Đăng xuất | `POST /api/v1/auth/logout` | `{refresh_token}` | 204 (cần Bearer) |
+| Đổi mật khẩu | `POST /api/v1/auth/change-password` | `{current_password, new_password}` | 204 |
+| Tôi là ai | `GET /api/v1/auth/me` | — | `UserResponse` (xem kiểu chính) |
 | Danh sách inbox | `GET /api/v1/inbox` | `status?, limit≤100, offset` | `PageResponse<InboxItem>` |
 | Chi tiết hội thoại | `GET /api/v1/inbox/{id}` | `limit≤200, offset` | `Conversation` (kèm `messages[]`) |
 | Trả lời | `POST /api/v1/inbox/{id}/reply` | `{text}` (≤8000, không rỗng) | `Message` |
@@ -87,7 +88,12 @@ Reply: khoá ô nhập → `POST reply` → thêm tin từ response → mở kho
 | Đóng | `POST /api/v1/inbox/{id}/close` | — | `Conversation` |
 | Realtime | `WS /ws/inbox?token=<access>` | — | tín hiệu `{conversation_id, change, department_id}` |
 
+> **Đã đối chiếu mã nguồn backend 2026-08-05 (trước khi code GĐ1).** Hai điểm spec bản đầu ghi sai/thiếu, nay đã sửa ở bảng trên:
+> 1. **Nhóm auth nằm dưới `/api/v1/auth/...`**, không phải `/api/v1/...` — `auth_router` khai báo `prefix="/auth"` rồi mới được `main.py` gắn `prefix="/api/v1"`. Các endpoint inbox thì đúng như spec (`/api/v1/inbox`), WS cũng đúng (`/ws/inbox`, không có tiền tố `/api/v1`).
+> 2. **`login`/`refresh` trả thêm `must_change_password`.** Khi `true`, người dùng phải đổi mật khẩu trước khi làm việc — FE điều hướng sang màn đổi mật khẩu (`/api/v1/auth/change-password`). Bản đầu xử lý tối thiểu: hiện thông báo + cho đổi mật khẩu, không bỏ qua cờ này.
+
 **Kiểu chính (rút từ schema backend):**
+- `UserResponse` (`/auth/me`, `/auth/login`): `id, email, full_name, phone?, role, department_id?, is_active, must_change_password, last_login_at?, created_at`.
 - `InboxItem`: `conversation_id, channel_id, platform, customer_id, customer_display_name?, status, department_id?, assigned_user_id?, last_message_at`.
 - `Conversation`: các trường của InboxItem (trừ tên trường lặp) + `messages: Message[]`.
 - `Message`: `id, direction, text?, created_at, sender_user_id?, attachments: Attachment[]`.

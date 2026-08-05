@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+/**
+ * Token màu của design system "OmniChat Light Blue" (mockup Stitch 2026-08-05).
+ *
+ * Cố ý KHÔNG có `prefers-color-scheme: dark`: bản đầu chốt giao diện sáng, để
+ * chế độ tối tự bật sẽ làm sai màu badge kênh/trạng thái vốn được chọn theo nền
+ * sáng. Nếu sau này làm dark mode thì phải chọn lại cả bộ màu badge.
+ */
+:root {
+  --background: #ffffff;
+  --foreground: #101828;
+
+  /* Nền và đường kẻ */
+  --surface: #f5f7fa;
+  --border: #e3e8ef;
+  --muted: #667085;
+  --muted-soft: #98a2b3;
+
+  /* Màu chủ đạo */
+  --primary: #1d6ff2;
+  --primary-soft: #eff5ff;
+
+  /* Badge kênh */
+  --zalo-bg: #e7f0ff;
+  --zalo-fg: #0068ff;
+  --facebook-bg: #e8eefb;
+  --facebook-fg: #1877f2;
+  --instagram-bg: #fdecef;
+  --instagram-fg: #c1358a;
+
+  /* Badge trạng thái hội thoại */
+  --cho-phan-bg: #fff4e5;
+  --cho-phan-fg: #b54708;
+  --dang-mo-bg: #e7f6ec;
+  --dang-mo-fg: #067647;
+  --da-dong-bg: #f2f4f7;
+  --da-dong-fg: #475467;
+
+  /* Lỗi */
+  --danger-bg: #fef3f2;
+  --danger-border: #fda29b;
+  --danger-fg: #b42318;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-border-subtle: var(--border);
+  --color-muted: var(--muted);
+  --color-muted-soft: var(--muted-soft);
+  --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
+
+  --color-zalo-bg: var(--zalo-bg);
+  --color-zalo-fg: var(--zalo-fg);
+  --color-facebook-bg: var(--facebook-bg);
+  --color-facebook-fg: var(--facebook-fg);
+  --color-instagram-bg: var(--instagram-bg);
+  --color-instagram-fg: var(--instagram-fg);
+
+  --color-cho-phan-bg: var(--cho-phan-bg);
+  --color-cho-phan-fg: var(--cho-phan-fg);
+  --color-dang-mo-bg: var(--dang-mo-bg);
+  --color-dang-mo-fg: var(--dang-mo-fg);
+  --color-da-dong-bg: var(--da-dong-bg);
+  --color-da-dong-fg: var(--da-dong-fg);
+
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-border: var(--danger-border);
+  --color-danger-fg: var(--danger-fg);
+
+  --font-sans: var(--font-be-vietnam-pro);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-be-vietnam-pro), system-ui, sans-serif;
+}

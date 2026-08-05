@@ -10,14 +10,14 @@
 - **Server là trọng tài quyền** (RB-3): FE ẩn/hiện nút cho UX, nhưng luôn xử lý 403/404/409/422 tử tế.
 - Mỗi giai đoạn có tiêu chí "xong" quan sát được; review trước khi sang giai đoạn sau (theo nhịp backend).
 
-## Quyết định cần chốt khi bắt đầu GĐ1 (ghi để không đoán)
+## Quyết định GĐ1 — ĐÃ CHỐT (2026-08-05)
 
-| Vấn đề | Hướng ưu tiên | Chốt ở |
-|---|---|---|
-| Thư viện data-fetching/cache | React Query (TanStack) — có invalidate theo tín hiệu WS gọn | GĐ1 |
-| Lưu refresh token | Cookie httpOnly qua Route Handler của Next (giảm XSS) vs localStorage | GĐ1 |
-| Styling | (chốt với user: Tailwind / CSS Modules / thư viện component) | GĐ1 |
-| Vị trí thư mục FE | `frontend/` cạnh `backend/` (monorepo nhẹ) | GĐ1 |
+| Vấn đề | Chốt |
+|---|---|
+| Styling | **Tailwind CSS** (Stitch xuất được Tailwind — thuận cho bước mockup) |
+| Lưu refresh token | **Cookie httpOnly qua Route Handler của Next** (access token giữ trong bộ nhớ) |
+| Vị trí thư mục FE | **`frontend/` cạnh `backend/`** (monorepo nhẹ) |
+| Thư viện data-fetching/cache | React Query (TanStack) — invalidate theo tín hiệu WS gọn (xác nhận khi khởi tạo GĐ1) |
 
 ## Giai đoạn
 
@@ -39,7 +39,34 @@
 
 ## Sau khi plan chốt
 
-1. (Tuỳ chọn) **Mockup UI bằng Stitch** từ spec — gọi khi user đồng ý. Cho Stitch: layout hai cột inbox, khung chat, form đăng nhập; bảng màu + component do user chọn.
-2. Code theo giai đoạn 1→5, review từng giai đoạn.
+1. ~~(Tuỳ chọn) Mockup UI bằng Stitch~~ — **XONG 2026-08-05.** Xem mục Mockup bên dưới.
+2. Code theo giai đoạn 1→5, review từng giai đoạn. **Đang làm: GĐ1.**
+
+## Mockup Stitch — XONG (2026-08-05)
+
+- **Project:** `projects/5926030180396822885` — "OmniChat FE #F1 — Inbox & Reply".
+- **Design system:** `assets/11208640140243586743` — "OmniChat Light Blue": primary `#1D6FF2`, nền panel `#F5F7FA`, viền `#E3E8EF`, font Be Vietnam Pro, bo góc 8px. Đã nạp sẵn quy ước màu badge kênh + badge 3 trạng thái + quy tắc bong bóng chat, nên các màn nhất quán.
+- **6 màn:** Đăng nhập · Hộp thư `DANG_MO` (bản chính) · Hộp thư `CHO_PHAN` (vai Manager) · Hộp thư `DA_DONG` · Dialog Phân phòng. (Ba bản Hộp thư trùng do tool timeout-nhưng-vẫn-sinh; user đã giữ bản ưng nhất và xoá 2 bản thừa.)
+- **Mockup phản ánh đúng ràng buộc spec:** ảnh đính kèm vẽ dưới dạng placeholder "[ảnh đính kèm]" (nợ (b) — chưa có route phục vụ ảnh); ô soạn tin khoá kèm dòng gợi ý ở cả `CHO_PHAN` lẫn `DA_DONG` (RB-5); nút hành động đổi theo vai + trạng thái (§3).
+- **Mockup là tham chiếu thị giác, không phải nguồn sự thật.** Khi lệch, spec §6 (hợp đồng API) và §3 (quyền) thắng.
+
+## Chi tiết GĐ1 — Khung & Auth
+
+**Bối cảnh đã xác minh:** `frontend/` rỗng; Node v25.8.0, npm 11.11.0; backend chạy ở `/api/v1`.
+
+**Sửa hợp đồng (đã cập nhật vào spec §6):** nhóm auth thật là `/api/v1/auth/{login,refresh,logout,me,change-password}` — spec bản đầu ghi thiếu đoạn `/auth`. `login`/`refresh` trả thêm `must_change_password`.
+
+| # | Task | Xong khi |
+|---|---|---|
+| 1 | Khởi tạo Next.js (App Router, TS, Tailwind, ESLint) trong `frontend/`; `.env.example` với `NEXT_PUBLIC_API_BASE_URL`, `API_BASE_URL` | `npm run dev` chạy, `npm run build` sạch |
+| 2 | `lib/types.ts` — khai báo type khớp schema backend (UserResponse, InboxItem, Conversation, Message, Attachment, PageResponse, TokenResponse) | Type khớp §6; một nguồn duy nhất |
+| 3 | `lib/api-client.ts` — fetch bọc: base `/api/v1`, tự gắn Bearer, **refresh single-flight** 401→refresh→retry một lần, ném `ApiError{status, code, message}` | Test: nhiều 401 đồng thời chỉ gọi refresh MỘT lần (RB-4/IT-4) |
+| 4 | Route Handlers `app/api/session/*` — đặt/xoá/đọc refresh token trong **cookie httpOnly** (`SameSite=Lax`, `Secure` khi production) | Refresh token không lộ ra JS; access token chỉ ở bộ nhớ |
+| 5 | `AuthContext` — `login`/`logout`/`me`, giữ actor + access token trong bộ nhớ, khởi động thì thử refresh từ cookie | F5 vẫn giữ phiên; refresh hỏng → `/login` |
+| 6 | Màn `/login` theo mockup + guard `/inbox*` (chưa đăng nhập → `/login`) | Đăng nhập được, `/me` hiện, route được bảo vệ |
+| 7 | Layout có nav trái (Hộp thư active; Nhân sự/Báo cáo/Cấu hình để chỗ cho #4/#5/#2) | Khớp mockup, chưa cần chạy các mục sau |
+| 8 | Xử lý `must_change_password` tối thiểu: báo + cho đổi qua `/auth/change-password` | Người dùng mật khẩu tạm không bị kẹt |
+
+**Rủi ro cao nhất của GĐ1:** refresh single-flight (task 3) — viết test trước, vì GĐ5 (WS token xoay) dựng trên nó.
 
 Chi tiết từng task (files/interfaces/steps) viết khi bắt đầu mỗi giai đoạn, như cách backend #0–#5.
