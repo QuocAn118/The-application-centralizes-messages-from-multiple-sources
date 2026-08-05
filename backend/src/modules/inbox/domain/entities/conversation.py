@@ -70,6 +70,10 @@ class Conversation(AggregateRoot):
     last_message_at: datetime
     department_id: UUID | None = None
     assigned_user_id: UUID | None = None
+    # Mốc đóng CHÍNH XÁC lần gần nhất (đặt khi ``close``, xoá khi mở lại). Trước đây
+    # #4 KPI / #5 backfill suy mốc đóng từ ``updated_at`` (proxy lệch khi hội thoại
+    # bị cập nhật vì lý do khác). ``None`` = chưa từng đóng (hoặc đã mở lại).
+    closed_at: datetime | None = None
 
     @classmethod
     def start(
@@ -120,12 +124,16 @@ class Conversation(AggregateRoot):
         if self.status is not ConversationStatus.DANG_MO:
             raise NotOpenError
         self.status = ConversationStatus.DA_DONG
+        self.closed_at = now
         self.updated_at = now
 
     def register_incoming(self, now: datetime) -> None:
         """Ghi nhận có tin đến. Nếu đang đóng thì mở lại; giữ nguyên người đã gán."""
         if self.status is ConversationStatus.DA_DONG:
             self.status = ConversationStatus.DANG_MO
+            # Mở lại → không còn là "đã đóng"; xoá mốc đóng để KPI/báo cáo không
+            # đếm nhầm hội thoại đang mở là đã xử lý xong.
+            self.closed_at = None
         # Webhook đến trễ hoặc lệch đồng hồ không được kéo mốc lùi về quá khứ —
         # nếu không, sort inbox theo last_message_at sẽ sai thứ tự.
         self.last_message_at = max(self.last_message_at, now)

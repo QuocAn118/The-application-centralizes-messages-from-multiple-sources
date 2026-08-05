@@ -18,9 +18,10 @@ Ranh giới chính xác của backfill (nguồn #1 không lưu nhật ký sự k
 - **inbound/outbound**: đếm từ ``messages`` theo ``created_at`` của tin (event-time),
   gán theo phòng hiện tại của hội thoại.
 - **opened**: đếm hội thoại có phòng theo ``created_at`` (proxy: mở ≈ tạo).
-- **closed/handled/resolution**: dùng ``updated_at`` của hội thoại ``DA_DONG`` làm
-  mốc đóng (proxy thô như #3; với hội thoại đã đóng, lần cập nhật cuối thường là
-  lúc đóng). ``resolution`` = ``updated_at - created_at`` (giây).
+- **closed/handled/resolution**: mốc đóng CHÍNH XÁC = ``closed_at`` (đặt khi
+  ``close()``, xoá khi mở lại), fallback ``updated_at`` cho dòng cũ đã backfill.
+  ``resolution`` = ``closed_at - created_at`` (giây). Khớp incremental (hook đọc
+  ``ClosedConversation.closed_at`` = đúng mốc đó).
 - **first_response**: giây từ tin INBOUND đầu tới tin OUTBOUND đầu của mỗi hội
   thoại, gắn ngày của tin OUTBOUND đầu.
 
@@ -29,10 +30,10 @@ Ranh giới chính xác của backfill (nguồn #1 không lưu nhật ký sự k
   Mỗi lần gán thực sự là một dòng — đếm ĐỦ số lần gán (khác ``assigned_user_id``
   chỉ giữ người cuối).
 
-NỢ (ghi ở plan): incremental có mốc đóng chính xác (thời điểm hook) còn backfill
-xấp xỉ bằng ``updated_at`` → có thể lệch nhẹ ở closed/resolution. ``assigned_count``
-CHỈ dựng từ backfill (không có hook incremental — chốt: assignment_log là nguồn sự
-thật, "hôm nay" cập nhật qua RebuildDailyRollup định kỳ như các metric proxy khác).
+closed/resolution nay dùng ``closed_at`` chính xác nên backfill KHỚP incremental
+(hook đọc cùng mốc). ``assigned_count`` CHỈ dựng từ backfill (không có hook
+incremental — chốt: assignment_log là nguồn sự thật, "hôm nay" cập nhật qua
+RebuildDailyRollup định kỳ). ``opened`` vẫn xấp xỉ ``created_at`` (mở ≈ tạo — sát).
 """
 
 from datetime import date
@@ -72,6 +73,12 @@ class InboxStatsSource:
         """
         result: ColumnElement[date] = func.date(func.timezone(self._tz, cot))
         return result
+
+    @property
+    def _moc_dong(self) -> Any:
+        """Mốc đóng chính xác của hội thoại = ``closed_at``, fallback ``updated_at``
+        cho dòng cũ (đã backfill = updated_at). Dùng cho closed/handled/resolution."""
+        return func.coalesce(ConversationModel.closed_at, ConversationModel.updated_at)
 
     async def conversation_metrics_cho_ngay(
         self, work_date: date
@@ -122,7 +129,7 @@ class InboxStatsSource:
             )
             o["opened"] += r_mo.opened
 
-        # closed: hội thoại DA_DONG, theo ngày updated_at (proxy mốc đóng).
+        # closed: hội thoại DA_DONG, theo ngày mốc đóng chính xác (closed_at).
         cau_dong = (
             select(
                 ConversationModel.department_id.label("dept"),
@@ -132,7 +139,7 @@ class InboxStatsSource:
             .select_from(ConversationModel)
             .join(ChannelModel, ChannelModel.id == ConversationModel.channel_id)
             .where(
-                self._ngay_local(ConversationModel.updated_at) == work_date,
+                self._ngay_local(self._moc_dong) == work_date,
                 ConversationModel.status == "DA_DONG",
             )
             .group_by(ConversationModel.department_id, ChannelModel.platform)
@@ -166,10 +173,11 @@ class InboxStatsSource:
                 {"handled": 0, "res_sum": 0, "res_n": 0, "fr_sum": 0, "fr_n": 0, "assigned": 0},
             )
 
-        # handled + resolution: hội thoại DA_DONG có người nhận, mốc đóng =
-        # updated_at (proxy), gắn ngày updated_at local.
+        # handled + resolution: hội thoại DA_DONG có người nhận, mốc đóng chính xác
+        # = closed_at (fallback updated_at cho dòng cũ), gắn ngày mốc đóng local.
+        # resolution = closed_at - created_at.
         giay_xu_ly = cast(
-            func.extract("epoch", ConversationModel.updated_at)
+            func.extract("epoch", self._moc_dong)
             - func.extract("epoch", ConversationModel.created_at),
             Integer,
         )
@@ -178,7 +186,7 @@ class InboxStatsSource:
             ConversationModel.department_id.label("dept"),
             giay_xu_ly.label("giay"),
         ).where(
-            self._ngay_local(ConversationModel.updated_at) == work_date,
+            self._ngay_local(self._moc_dong) == work_date,
             ConversationModel.status == "DA_DONG",
             ConversationModel.assigned_user_id.isnot(None),
         )
