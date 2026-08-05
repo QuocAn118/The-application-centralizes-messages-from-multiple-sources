@@ -69,4 +69,31 @@
 
 **Rủi ro cao nhất của GĐ1:** refresh single-flight (task 3) — viết test trước, vì GĐ5 (WS token xoay) dựng trên nó.
 
+**GĐ1 XONG** (commit `052e4378`). Build/tsc/eslint sạch, 11/11 test đạt.
+
+## Chi tiết GĐ2 — Inbox list: XONG
+
+| # | Task | Trạng thái |
+|---|---|---|
+| 1 | `lib/inbox-api.ts` — lời gọi `GET /inbox` + khoá cache tập trung (GĐ5 cần để invalidate) | xong |
+| 2 | `lib/hien-thi.ts` — nhãn tiếng Việt cho enum, lớp màu badge, định dạng mốc thời gian (+7 test) | xong |
+| 3 | `components/badges.tsx`, `dong-hoi-thoai.tsx` — badge kênh/trạng thái, dòng danh sách | xong |
+| 4 | `components/danh-sach-inbox.tsx` — chip lọc + phân trang + trạng thái tải/lỗi/rỗng | xong |
+| 5 | Danh sách đặt ở `inbox/layout.tsx` để không dựng lại khi đổi hội thoại; route `/inbox/[id]` | xong |
+
+**Bộ lọc và trang giữ trên URL** (`?status=&offset=`) thay vì state: tải lại trang / chia sẻ link vẫn đúng chỗ, nút lùi trình duyệt hoạt động.
+
+**Kiểm chứng đầu-cuối (backend thật + trình duyệt thật):** 12/12 PASS với vai MANAGER và 12/12 với vai STAFF — guard, đăng nhập, danh sách, phân trang, badge, lọc, mở hội thoại, dòng đang chọn, không lỗi console. Manager thấy 15 hội thoại (có `CHO_PHAN`), Staff thấy 11 (không có) — phạm vi quyền do **server** quyết, đúng RB-3.
+
+### Ba vấn đề môi trường phát hiện khi chạy thật (không phải lỗi GĐ2)
+
+1. **DB thiếu 3 migration** (`closed_at` chưa có) → đã `alembic upgrade head`.
+2. **Backend không chạy được bằng `uvicorn` CLI trên Python 3.13.** `cau_hinh_event_loop()` dùng `set_event_loop_policy`, nhưng 3.13 bỏ qua policy khi uvicorn tự dựng loop → psycopg ném `ProactorEventLoop`. Cách chạy được: `uv run python -c "import asyncio,selectors,uvicorn,src.main; asyncio.run(...(serve()), loop_factory=lambda: asyncio.SelectorEventLoop(selectors.SelectSelector()))"`. **Nợ backend: sửa `event_loop.py`/README cho Python 3.13.**
+3. **Backend chưa có CORS** → trình duyệt chặn preflight, `/auth/me` hỏng. **User chốt: thêm `CORSMiddleware` vào backend** (vượt RB-1 nhưng là quyết định của user). Origin đọc từ `CORS_ALLOW_ORIGINS`, mặc định localhost:3000; không dùng `"*"` vì có `allow_credentials`. Đã kiểm: origin hợp lệ được phép, origin lạ bị 400. Backend sau thay đổi: 646 unit + 128 integration đạt, mypy sạch, 16/16 contract giữ.
+
+### Nợ mới ghi ở GĐ2
+
+- **Preview tin cuối trong dòng danh sách:** mockup có vẽ, nhưng `GET /inbox` trả `InboxItem` KHÔNG kèm tin nhắn → muốn preview phải gọi thêm N request. Bản đầu bỏ preview (RB-1 thắng mockup). Nếu cần, mở nợ backend thêm `last_message_preview` vào `InboxItem`.
+- **Ô tìm kiếm** trong mockup chưa làm: backend không có tham số tìm kiếm ở `GET /inbox`.
+
 Chi tiết từng task (files/interfaces/steps) viết khi bắt đầu mỗi giai đoạn, như cách backend #0–#5.
