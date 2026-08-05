@@ -91,6 +91,25 @@
 2. **Backend không chạy được bằng `uvicorn` CLI trên Python 3.13.** `cau_hinh_event_loop()` dùng `set_event_loop_policy`, nhưng 3.13 bỏ qua policy khi uvicorn tự dựng loop → psycopg ném `ProactorEventLoop`. Cách chạy được: `uv run python -c "import asyncio,selectors,uvicorn,src.main; asyncio.run(...(serve()), loop_factory=lambda: asyncio.SelectorEventLoop(selectors.SelectSelector()))"`. **Nợ backend: sửa `event_loop.py`/README cho Python 3.13.**
 3. **Backend chưa có CORS** → trình duyệt chặn preflight, `/auth/me` hỏng. **User chốt: thêm `CORSMiddleware` vào backend** (vượt RB-1 nhưng là quyết định của user). Origin đọc từ `CORS_ALLOW_ORIGINS`, mặc định localhost:3000; không dùng `"*"` vì có `allow_credentials`. Đã kiểm: origin hợp lệ được phép, origin lạ bị 400. Backend sau thay đổi: 646 unit + 128 integration đạt, mypy sạch, 16/16 contract giữ.
 
+## Chi tiết GĐ3 — Khung chat & Reply: XONG
+
+| # | Task | Trạng thái |
+|---|---|---|
+| 1 | `inbox-api.ts`: `layChiTietHoiThoai` + `traLoiHoiThoai` | xong |
+| 2 | `bong-bong-tin.tsx` — INBOUND trái/trắng, OUTBOUND phải/xanh, mốc thời gian, **placeholder "[ảnh đính kèm]"** (nợ b) | xong |
+| 3 | `o-soan-tin.tsx` — khoá theo trạng thái (RB-5), Enter gửi / Shift+Enter xuống dòng, đếm ký tự gần trần 8000 (+4 test IT-2) | xong |
+| 4 | `khung-chat.tsx` — header + danh sách tin + reply; lỗi 409/422/403 thì refetch đồng bộ trạng thái | xong |
+| 5 | `/inbox/[id]` dùng `key={id}` để đổi hội thoại là dựng lại khung — không dính nội dung gõ dở sang hội thoại khác | xong |
+
+**Quyết định đáng lưu:** ô soạn khoá **chỉ theo trạng thái**, KHÔNG theo `assigned_user_id`. Đã đọc `ReplyToConversation`: backend chỉ đòi đúng phòng + `DANG_MO`, không đòi người gọi là người đang xử lý. Khoá thêm theo người xử lý sẽ chặn nhầm Manager và đồng nghiệp cùng phòng vốn được phép trả lời.
+
+**Kiểm chứng đầu-cuối (trình duyệt thật):**
+- Luồng chat 9/9 PASS: `DANG_MO` gõ+gửi được và tin hiện ra; `DA_DONG` và `CHO_PHAN` khoá ô kèm gợi ý đúng (IT-2).
+- **IT-5 6/6 PASS:** ép server trả 409 và ép mạng hỏng → nội dung đã gõ CÒN NGUYÊN, có báo lỗi rõ nghĩa; bỏ chặn gửi lại thì thành công và ô mới được xoá.
+- API thật: reply vào `DANG_MO` → 200; reply vào `DA_DONG` → **422 `CONVERSATION_NOT_OPEN`** (RB-5 do server ép, FE chỉ phản ánh).
+
+**Hạn chế kiểm thử:** adapter thật gọi API Zalo/Meta ngoài internet nên không chạy được ở máy dev (credential seed là giả → `InvalidToken`). Đã kiểm bằng một backend phụ ở cổng 8001 dùng **app thật**, chỉ thay adapter gửi tin + cipher bằng bản giả — quyền, máy trạng thái, DB, lưu tin vẫn là code thật. **Chưa từng gửi tin thật ra Zalo/Facebook.**
+
 ### Nợ mới ghi ở GĐ2
 
 - **Preview tin cuối trong dòng danh sách:** mockup có vẽ, nhưng `GET /inbox` trả `InboxItem` KHÔNG kèm tin nhắn → muốn preview phải gọi thêm N request. Bản đầu bỏ preview (RB-1 thắng mockup). Nếu cần, mở nợ backend thêm `last_message_preview` vào `InboxItem`.
