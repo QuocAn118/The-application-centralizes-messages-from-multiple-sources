@@ -6,7 +6,13 @@
  */
 
 import { api } from "./api-client";
-import type { Conversation, InboxItem, PageResponse, ConversationStatus } from "./types";
+import type {
+  Conversation,
+  InboxItem,
+  Message,
+  PageResponse,
+  ConversationStatus,
+} from "./types";
 
 /** Số hội thoại mỗi trang. Backend chặn trần ở 100. */
 export const KICH_THUOC_TRANG = 25;
@@ -46,12 +52,30 @@ export function layDanhSachInbox(
   );
 }
 
-/** Chi tiết một hội thoại kèm tin nhắn (dùng ở GĐ3). */
+/** Số tin tải mỗi lần xem hội thoại. Backend chặn trần ở 200. */
+export const SO_TIN_MOI_LAN = 100;
+
+/**
+ * Chi tiết một hội thoại kèm tin nhắn.
+ *
+ * Server trả tin theo `created_at` TĂNG DẦN (cũ trước, mới sau) — đúng chiều
+ * đọc của khung chat, nên FE giữ nguyên thứ tự.
+ */
 export function layChiTietHoiThoai(
   id: string,
-  limit = 50,
+  limit = SO_TIN_MOI_LAN,
   offset = 0,
   signal?: AbortSignal,
 ): Promise<Conversation> {
   return api.get<Conversation>(`/inbox/${id}`, { limit, offset }, signal);
+}
+
+/**
+ * Gửi tin trả lời.
+ *
+ * Backend chỉ chấp nhận khi hội thoại `DANG_MO`; ngược lại trả 4xx và FE phải
+ * đồng bộ lại trạng thái (RB-5, §7).
+ */
+export function traLoiHoiThoai(id: string, text: string): Promise<Message> {
+  return api.post<Message>(`/inbox/${id}/reply`, { text });
 }
