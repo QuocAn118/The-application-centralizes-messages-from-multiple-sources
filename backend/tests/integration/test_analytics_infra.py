@@ -173,6 +173,7 @@ async def _conversation(
     assigned: UUID | None,
     created_at: datetime,
     updated_at: datetime,
+    closed_at: datetime | None = None,
 ) -> UUID:
     cid = new_id()
     session.add(
@@ -186,6 +187,7 @@ async def _conversation(
             last_message_at=updated_at,
             created_at=created_at,
             updated_at=updated_at,
+            closed_at=closed_at,
         )
     )
     await session.flush()
@@ -303,6 +305,37 @@ class TestInboxStatsSource:
         assert u1[0].handled_count == 1  # đóng trong ngày
         assert u1[0].resolution_samples == 1
         assert u1[0].department_id == D1
+
+    async def test_closed_resolution_theo_closed_at_khong_phai_updated_at(
+        self, session: AsyncSession
+    ) -> None:
+        # closed_at = 12:00 VN ngày 1 (05:00 UTC); updated_at = ngày 3 (bị cập nhật
+        # sau khi đóng). closed/handled/resolution phải gắn NGÀY 1 theo closed_at.
+        ch = await _channel(session, "ZALO", D1)
+        kh = await _customer(session, ch)
+        await _conversation(
+            session,
+            ch,
+            kh,
+            dept=D1,
+            status="DA_DONG",
+            assigned=U1,
+            created_at=datetime(2026, 7, 1, 3, 0, tzinfo=UTC),  # 10:00 VN
+            updated_at=datetime(2026, 7, 3, 8, 0, tzinfo=UTC),  # cập nhật ngày 3
+            closed_at=datetime(2026, 7, 1, 5, 0, tzinfo=UTC),  # đóng 12:00 VN ngày 1
+        )
+        await session.flush()
+
+        # Ngày 1: có closed + handled + resolution = 2 giờ (10:00→12:00).
+        conv1 = await InboxStatsSource(session, TZ).conversation_metrics_cho_ngay(date(2026, 7, 1))
+        assert sum(r.closed_count for r in conv1) == 1
+        ag1 = await InboxStatsSource(session, TZ).agent_metrics_cho_ngay(date(2026, 7, 1))
+        u1 = [a for a in ag1 if a.user_id == U1]
+        assert u1[0].handled_count == 1
+        assert u1[0].sum_resolution_seconds == 2 * 3600  # closed_at - created_at
+        # Ngày 3 (updated_at) KHÔNG có closed/handled.
+        conv3 = await InboxStatsSource(session, TZ).conversation_metrics_cho_ngay(date(2026, 7, 3))
+        assert sum(r.closed_count for r in conv3) == 0
 
     async def test_assigned_count_dem_tu_log_theo_phong_hien_tai(
         self, session: AsyncSession

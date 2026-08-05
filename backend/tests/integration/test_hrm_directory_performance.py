@@ -91,8 +91,14 @@ async def _hoi_thoai_dong(
     assigned_user_id,
     updated_at: datetime,
     status: str = "DA_DONG",
-) -> None:
-    """Chèn thẳng một hội thoại inbox ở trạng thái cho trước để tính KPI."""
+    closed_at: datetime | None = None,
+    created_at: datetime = BAY_GIO,
+):
+    """Chèn thẳng một hội thoại inbox ở trạng thái cho trước để tính KPI.
+
+    ``closed_at`` None → cột NULL (mô phỏng dòng cũ, KPI dùng fallback updated_at).
+    Trả ``conversation_id`` để test thêm tin (tính AVG_RESPONSE_MINUTES).
+    """
     # Cần channel + customer vì conversations có FK. Tạo tối thiểu.
     ch = await session.execute(
         text(
@@ -112,11 +118,11 @@ async def _hoi_thoai_dong(
         {"ch": channel_id, "ext": f"c_{new_id().hex}", "bg": BAY_GIO},
     )
     customer_id = cu.scalar_one()
-    await session.execute(
+    conv = await session.execute(
         text(
             "INSERT INTO conversations (id, channel_id, customer_id, status, department_id, "
-            "assigned_user_id, last_message_at, created_at, updated_at) VALUES "
-            "(gen_random_uuid(), :ch, :cu, :st, :dept, :asg, :bg, :bg, :upd)"
+            "assigned_user_id, last_message_at, created_at, updated_at, closed_at) VALUES "
+            "(gen_random_uuid(), :ch, :cu, :st, :dept, :asg, :bg, :cre, :upd, :cl) RETURNING id"
         ),
         {
             "ch": channel_id,
@@ -125,7 +131,32 @@ async def _hoi_thoai_dong(
             "dept": str(department_id),
             "asg": str(assigned_user_id) if assigned_user_id else None,
             "bg": BAY_GIO,
+            "cre": created_at,
             "upd": updated_at,
+            "cl": closed_at,
+        },
+    )
+    return conv.scalar_one()
+
+
+async def _tin(
+    session: AsyncSession,
+    conversation_id,
+    direction: str,
+    created_at: datetime,
+    sender_user_id=None,
+) -> None:
+    await session.execute(
+        text(
+            "INSERT INTO messages (id, conversation_id, direction, text, external_message_id, "
+            "sender_user_id, created_at) VALUES "
+            "(gen_random_uuid(), :cid, :dir, 'hi', NULL, :snd, :cre)"
+        ),
+        {
+            "cid": conversation_id,
+            "dir": direction,
+            "snd": str(sender_user_id) if sender_user_id else None,
+            "cre": created_at,
         },
     )
 
@@ -186,9 +217,66 @@ class TestInboxPerformanceSource:
 
         assert so == Decimal("1")
 
-    async def test_avg_response_chua_lam_tra_none(self, db_session: AsyncSession) -> None:
+    async def test_closed_at_uu_tien_hon_updated_at(self, db_session: AsyncSession) -> None:
+        # closed_at ở tháng 8 (trong kỳ) nhưng updated_at ở tháng 9 (đã bị cập nhật
+        # sau khi đóng). Đếm phải theo closed_at → thuộc kỳ tháng 8.
+        source = InboxPerformanceSource(db_session)
+        phong, nv = new_id(), new_id()
+        await _hoi_thoai_dong(
+            db_session,
+            phong,
+            nv,
+            updated_at=datetime(2026, 9, 5, tzinfo=UTC),
+            closed_at=datetime(2026, 8, 20, tzinfo=UTC),
+        )
+        await db_session.flush()
+
+        so = await source.get_metric_for_user(nv, KpiMetricType.CONVERSATIONS_CLOSED, KY)
+        assert so == Decimal("1")  # theo closed_at (tháng 8), không phải updated_at
+
+    async def test_avg_response_khong_co_mau_tra_none(self, db_session: AsyncSession) -> None:
         source = InboxPerformanceSource(db_session)
 
         so = await source.get_metric_for_user(new_id(), KpiMetricType.AVG_RESPONSE_MINUTES, KY)
 
-        assert so is None
+        assert so is None  # chưa có hội thoại/tin nào
+
+    async def test_avg_response_tinh_phut_trung_binh(self, db_session: AsyncSession) -> None:
+        # NV phản hồi 2 hội thoại: 5 phút và 15 phút → trung bình 10.0 phút.
+        source = InboxPerformanceSource(db_session)
+        phong, nv = new_id(), new_id()
+        c1 = await _hoi_thoai_dong(
+            db_session, phong, nv, updated_at=datetime(2026, 8, 10, tzinfo=UTC)
+        )
+        await _tin(db_session, c1, "INBOUND", datetime(2026, 8, 10, 10, 0, tzinfo=UTC))
+        await _tin(db_session, c1, "OUTBOUND", datetime(2026, 8, 10, 10, 5, tzinfo=UTC), nv)
+        c2 = await _hoi_thoai_dong(
+            db_session, phong, nv, updated_at=datetime(2026, 8, 11, tzinfo=UTC)
+        )
+        await _tin(db_session, c2, "INBOUND", datetime(2026, 8, 11, 9, 0, tzinfo=UTC))
+        await _tin(db_session, c2, "OUTBOUND", datetime(2026, 8, 11, 9, 15, tzinfo=UTC), nv)
+        await db_session.flush()
+
+        so = await source.get_metric_for_user(nv, KpiMetricType.AVG_RESPONSE_MINUTES, KY)
+        assert so == Decimal("10.0")
+
+    async def test_avg_response_gan_dung_nguoi_phan_hoi(self, db_session: AsyncSession) -> None:
+        # Tin OUTBOUND đầu do NV khác gửi → quy cho người đó, không phải assigned.
+        source = InboxPerformanceSource(db_session)
+        phong, nv_gan, nv_tra = new_id(), new_id(), new_id()
+        c1 = await _hoi_thoai_dong(
+            db_session, phong, nv_gan, updated_at=datetime(2026, 8, 10, tzinfo=UTC)
+        )
+        await _tin(db_session, c1, "INBOUND", datetime(2026, 8, 10, 10, 0, tzinfo=UTC))
+        await _tin(db_session, c1, "OUTBOUND", datetime(2026, 8, 10, 10, 5, tzinfo=UTC), nv_tra)
+        await db_session.flush()
+
+        assert (
+            await source.get_metric_for_user(nv_tra, KpiMetricType.AVG_RESPONSE_MINUTES, KY)
+            == Decimal("5.0")
+        )
+        # Người được gán nhưng KHÔNG gửi tin đầu → không có mẫu.
+        assert (
+            await source.get_metric_for_user(nv_gan, KpiMetricType.AVG_RESPONSE_MINUTES, KY)
+            is None
+        )

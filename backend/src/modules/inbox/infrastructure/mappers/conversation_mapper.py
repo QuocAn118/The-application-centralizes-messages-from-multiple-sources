@@ -22,6 +22,7 @@ class ConversationMapper:
             last_message_at=model.last_message_at,
             created_at=model.created_at,
             updated_at=model.updated_at,
+            closed_at=model.closed_at,
         )
 
     @staticmethod
@@ -36,6 +37,7 @@ class ConversationMapper:
             last_message_at=entity.last_message_at,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
+            closed_at=entity.closed_at,
         )
 
     @staticmethod
@@ -45,3 +47,4 @@ class ConversationMapper:
         model.assigned_user_id = entity.assigned_user_id
         model.last_message_at = entity.last_message_at
         model.updated_at = entity.updated_at
+        model.closed_at = entity.closed_at
