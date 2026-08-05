@@ -18,6 +18,10 @@ Implementation ``IAgentPool`` — chỗ DUY NHẤT (cùng các bridge khác) ass
   Inbox) qua ``tinh_phan_tram_kpi``. Người dưới target (thấp hơn) được selector ưu
   tiên nhận thêm việc. Nhân viên **chưa đặt target** tháng này → ``None`` (selector
   xử như thấp nhất, trung tính). Kỳ lấy theo giờ địa phương ``timezone``.
+
+Hiệu năng: ba tín hiệu phổ biến (on_shift/open_load/last_assigned_at) tính bằng
+MỘT truy vấn theo phòng mỗi loại (gộp N+1 cũ). KPI thực đạt chỉ hỏi cho người CÓ
+target (thường ít) nên giữ per-user, bị chặn bởi số target không phải số nhân viên.
 """
 
 from datetime import date, datetime, time
@@ -32,6 +36,7 @@ from src.modules.assignment.domain.value_objects.candidate import AgentCandidate
 from src.modules.assignment.infrastructure.persistence.assignment_log_model import (
     AssignmentLogModel,
 )
+from src.modules.hrm.domain.entities.shift_assignment import ShiftAssignmentStatus
 from src.modules.hrm.domain.services.kpi_achievement import tinh_phan_tram_kpi
 from src.modules.hrm.domain.value_objects.kpi import (
     KpiMetricType,
@@ -91,6 +96,8 @@ class HrmIdentityAgentPool:
             ),
         ]
 
+        user_ids = [u.id for u in users]
+
         # Mục tiêu KPI định tuyến của phòng cho kỳ hiện tại — MỘT truy vấn, index
         # theo subject_id (user). Chỉ giữ mục tiêu cấp NHÂN VIÊN đúng chỉ số.
         muc_tieu = {
@@ -99,18 +106,23 @@ class HrmIdentityAgentPool:
             if t.subject_type is KpiSubjectType.USER and t.metric_type is _METRIC_DINH_TUYEN
         }
 
-        # N+1: vài truy vấn mỗi nhân viên (ca, tải, mốc gán, thực đạt KPI nếu có
-        # target). Chấp nhận ở bản đầu (phòng thường vài tới vài chục người); gộp
-        # thành truy vấn tổng hợp theo phòng là tối ưu để sau.
+        # Gộp N+1: ba tín hiệu phổ biến (đang trong ca / tải / mốc gán) tính bằng
+        # MỘT truy vấn theo phòng mỗi loại thay vì mỗi-nhân-viên-một-truy-vấn.
+        on_shift = await self._on_shift_theo_phong(user_ids, hom_nay, gio)
+        tai = await self._tai_theo_nguoi(user_ids)
+        moc_gan = await self._moc_gan_theo_nguoi(user_ids)
+
+        # KPI thực đạt chỉ cần cho người CÓ target (thường ít) → giữ per-user, bị
+        # chặn bởi số target chứ không phải số nhân viên.
         candidates: list[AgentCandidate] = []
         for user in users:
             candidates.append(
                 AgentCandidate(
                     user_id=user.id,
-                    on_shift=await self._dang_trong_ca(user.id, hom_nay, gio),
-                    open_load=await self._tai_dang_giu(user.id),
+                    on_shift=user.id in on_shift,
+                    open_load=tai.get(user.id, 0),
                     kpi_percent=await self._kpi_percent(user.id, muc_tieu.get(user.id), ky),
-                    last_assigned_at=await self._moc_gan_gan_nhat(user.id),
+                    last_assigned_at=moc_gan.get(user.id),
                 )
             )
         return tuple(candidates)
@@ -125,27 +137,45 @@ class HrmIdentityAgentPool:
         actual = await self._performance.get_metric_for_user(user_id, _METRIC_DINH_TUYEN, ky)
         return tinh_phan_tram_kpi(_METRIC_DINH_TUYEN, target, actual)
 
-    async def _dang_trong_ca(self, user_id: UUID, hom_nay: date, gio: time) -> bool:
-        buoi = await self._shift_repo.list_active_for_user_on_date(user_id, hom_nay)
-        return any(b.start_time <= gio <= b.end_time for b in buoi)
+    async def _on_shift_theo_phong(
+        self, user_ids: list[UUID], hom_nay: date, gio: time
+    ) -> set[UUID]:
+        """Tập user đang trong ca (một truy vấn ca ACTIVE hôm nay cho cả phòng)."""
+        if not user_ids:
+            return set()
+        buoi = await self._shift_repo.list_for_scope(
+            user_ids=user_ids, department_ids=None, date_from=hom_nay, date_to=hom_nay
+        )
+        return {
+            b.user_id
+            for b in buoi
+            if b.status == ShiftAssignmentStatus.ACTIVE and b.start_time <= gio <= b.end_time
+        }
 
-    async def _tai_dang_giu(self, user_id: UUID) -> int:
+    async def _tai_theo_nguoi(self, user_ids: list[UUID]) -> dict[UUID, int]:
+        """Số hội thoại DANG_MO mỗi người đang giữ (một truy vấn GROUP BY)."""
+        if not user_ids:
+            return {}
         ket_qua = await self._session.execute(
-            select(func.count())
-            .select_from(ConversationModel)
+            select(ConversationModel.assigned_user_id, func.count())
             .where(
-                ConversationModel.assigned_user_id == user_id,
+                ConversationModel.assigned_user_id.in_(user_ids),
                 ConversationModel.status == ConversationStatus.DANG_MO.value,
             )
+            .group_by(ConversationModel.assigned_user_id)
         )
-        return ket_qua.scalar_one()
+        return {uid: so for uid, so in ket_qua if uid is not None}
 
-    async def _moc_gan_gan_nhat(self, user_id: UUID) -> datetime | None:
-        # Mốc gán gần nhất CHÍNH XÁC từ assignment_log (#3) — nhật ký mỗi lần gán
-        # thật, không phải proxy updated_at (vốn bị bước bởi đóng/nhận-tin).
+    async def _moc_gan_theo_nguoi(self, user_ids: list[UUID]) -> dict[UUID, datetime]:
+        """Mốc gán gần nhất mỗi người từ assignment_log (một truy vấn GROUP BY)."""
+        if not user_ids:
+            return {}
         ket_qua = await self._session.execute(
-            select(func.max(AssignmentLogModel.assigned_at)).where(
-                AssignmentLogModel.user_id == user_id
+            select(
+                AssignmentLogModel.user_id,
+                func.max(AssignmentLogModel.assigned_at),
             )
+            .where(AssignmentLogModel.user_id.in_(user_ids))
+            .group_by(AssignmentLogModel.user_id)
         )
-        return ket_qua.scalar_one_or_none()
+        return dict(ket_qua.tuples().all())

@@ -104,6 +104,7 @@ class TestNhanVaDong:
         ht.close(now=SAU_5_PHUT)
 
         assert ht.status is ConversationStatus.DA_DONG
+        assert ht.closed_at == SAU_5_PHUT  # mốc đóng chính xác
 
     def test_khong_dong_duoc_khi_con_cho_phan(self) -> None:
         ht = _tao_cho_phan()
@@ -127,6 +128,7 @@ class TestTinDenVaMoLai:
         ht.register_incoming(now=SAU_5_PHUT)
 
         assert ht.status is ConversationStatus.DANG_MO
+        assert ht.closed_at is None  # mở lại xoá mốc đóng
 
     def test_tin_moi_khi_cho_phan_van_giu_cho_phan(self) -> None:
         """Khách nhắn thêm khi đang chờ phân không tự đẩy sang DANG_MO."""
