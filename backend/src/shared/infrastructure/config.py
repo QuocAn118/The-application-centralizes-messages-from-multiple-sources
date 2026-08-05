@@ -49,8 +49,22 @@ class Settings(BaseSettings):
     # viên nhập "ca sáng 08:00" theo giờ VN, không phải UTC.
     app_timezone: str = "Asia/Ho_Chi_Minh"
 
+    # CORS: các origin của frontend được phép gọi API từ trình duyệt. Danh sách
+    # ngăn cách bằng dấu phẩy. Trình duyệt chặn mọi lời gọi chéo origin nếu thiếu
+    # header cho phép, nên frontend chạy ở cổng khác BẮT BUỘC có mục ở đây.
+    #
+    # Cố ý KHÔNG nhận "*": API dùng Authorization header và cookie, mà chuẩn CORS
+    # cấm ghép wildcard với thông tin xác thực. Liệt kê origin cụ thể cũng giữ cho
+    # trang lạ không gọi API thay người dùng.
+    cors_allow_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+
     app_env: str = "development"
     log_level: str = "INFO"
+
+    @property
+    def danh_sach_cors_origin(self) -> list[str]:
+        """Tách ``cors_allow_origins`` thành danh sách, bỏ mục rỗng."""
+        return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]
 
 
 @lru_cache
