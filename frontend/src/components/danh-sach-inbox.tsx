@@ -1,0 +1,245 @@
+"use client";
+
+/**
+ * Cột trái: danh sách hội thoại có lọc trạng thái + phân trang (spec §4.2).
+ *
+ * Bộ lọc và trang giữ trên URL (`?status=&offset=`) thay vì trong state: người
+ * dùng tải lại trang hay chia sẻ link vẫn thấy đúng chỗ đang xem, và nút lùi
+ * của trình duyệt hoạt động đúng nghĩa.
+ */
+
+import { useQuery } from "@tanstack/react-query";
+import { useRouter, useSearchParams, useParams } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import { ApiError } from "@/lib/api-client";
+import {
+  KICH_THUOC_TRANG,
+  khoaInbox,
+  layDanhSachInbox,
+} from "@/lib/inbox-api";
+import { NHAN_TRANG_THAI } from "@/lib/hien-thi";
+import type { ConversationStatus } from "@/lib/types";
+import { DongHoiThoai } from "./dong-hoi-thoai";
+
+/** Các chip lọc. `undefined` = tất cả. */
+const BO_LOC: { nhan: string; giaTri?: ConversationStatus }[] = [
+  { nhan: "Tất cả" },
+  { nhan: NHAN_TRANG_THAI.CHO_PHAN, giaTri: "CHO_PHAN" },
+  { nhan: NHAN_TRANG_THAI.DANG_MO, giaTri: "DANG_MO" },
+  { nhan: NHAN_TRANG_THAI.DA_DONG, giaTri: "DA_DONG" },
+];
+
+function laTrangThaiHopLe(v: string | null): v is ConversationStatus {
+  return v === "CHO_PHAN" || v === "DANG_MO" || v === "DA_DONG";
+}
+
+export function DanhSachInbox() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const params = useParams<{ id?: string }>();
+  const { user } = useAuth();
+
+  const thamSoStatus = searchParams.get("status");
+  const status = laTrangThaiHopLe(thamSoStatus) ? thamSoStatus : undefined;
+  const offset = Math.max(0, Number(searchParams.get("offset") ?? 0) || 0);
+
+  const thamSo = { status, limit: KICH_THUOC_TRANG, offset };
+
+  const { data, isPending, isError, error, refetch, isFetching } = useQuery({
+    queryKey: khoaInbox.list(thamSo),
+    queryFn: ({ signal }) => layDanhSachInbox(thamSo, signal),
+  });
+
+  /**
+   * Staff không được server trả về hội thoại `CHO_PHAN` (use case ép phạm vi
+   * theo vai). Ẩn chip đó cho khỏi gây hiểu nhầm — nhưng đây chỉ là UX, dữ liệu
+   * vẫn do server lọc (RB-3).
+   */
+  const boLocHienThi = BO_LOC.filter(
+    (b) => !(b.giaTri === "CHO_PHAN" && user?.role === "STAFF"),
+  );
+
+  function dieuHuong(thayDoi: { status?: ConversationStatus; offset?: number }) {
+    const sp = new URLSearchParams(searchParams.toString());
+
+    if ("status" in thayDoi) {
+      if (thayDoi.status) sp.set("status", thayDoi.status);
+      else sp.delete("status");
+      // Đổi bộ lọc thì về trang đầu: giữ offset cũ dễ rơi vào trang trống.
+      sp.delete("offset");
+    }
+    if (thayDoi.offset !== undefined) {
+      if (thayDoi.offset > 0) sp.set("offset", String(thayDoi.offset));
+      else sp.delete("offset");
+    }
+
+    const duoi = sp.toString();
+    router.push(duoi ? `/inbox?${duoi}` : "/inbox");
+  }
+
+  const tong = data?.total ?? 0;
+  const tuSo = tong === 0 ? 0 : offset + 1;
+  const denSo = Math.min(offset + KICH_THUOC_TRANG, tong);
+  const conTrangTruoc = offset > 0;
+  const conTrangSau = offset + KICH_THUOC_TRANG < tong;
+
+  return (
+    <aside className="flex w-[360px] shrink-0 flex-col border-r border-border-subtle bg-white">
+      <div className="border-b border-border-subtle px-4 py-3">
+        <div className="flex items-center justify-between">
+          <h1 className="text-base font-semibold text-foreground">Hộp thư</h1>
+          {isFetching && !isPending && (
+            <span className="text-[11px] text-muted-soft">Đang cập nhật…</span>
+          )}
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {boLocHienThi.map((b) => {
+            const dangChon = status === b.giaTri;
+            return (
+              <button
+                key={b.nhan}
+                type="button"
+                onClick={() => dieuHuong({ status: b.giaTri })}
+                aria-pressed={dangChon}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                  dangChon
+                    ? "bg-primary text-white"
+                    : "bg-surface text-muted hover:bg-border-subtle"
+                }`}
+              >
+                {b.nhan}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {isPending && <KhungCho />}
+
+        {isError && (
+          <TrangThaiTrong
+            tieuDe="Không tải được danh sách"
+            moTa={
+              error instanceof ApiError
+                ? error.message
+                : "Không kết nối được máy chủ."
+            }
+            hanhDong={
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-95"
+              >
+                Thử lại
+              </button>
+            }
+          />
+        )}
+
+        {!isPending && !isError && data.items.length === 0 && (
+          <TrangThaiTrong
+            tieuDe="Chưa có hội thoại"
+            moTa={
+              status
+                ? `Không có hội thoại ở trạng thái "${NHAN_TRANG_THAI[status]}".`
+                : "Khi khách nhắn tới, hội thoại sẽ hiện ở đây."
+            }
+          />
+        )}
+
+        {!isPending &&
+          !isError &&
+          data.items.map((item) => (
+            <DongHoiThoai
+              key={item.conversation_id}
+              item={item}
+              dangChon={params?.id === item.conversation_id}
+            />
+          ))}
+      </div>
+
+      <div className="flex items-center justify-between border-t border-border-subtle px-4 py-2.5">
+        <span className="text-[11px] text-muted">
+          {tong === 0 ? "0 hội thoại" : `${tuSo}–${denSo} / ${tong}`}
+        </span>
+        <div className="flex gap-1">
+          <NutTrang
+            nhan="‹"
+            moTa="Trang trước"
+            tat={!conTrangTruoc}
+            onClick={() =>
+              dieuHuong({ offset: Math.max(0, offset - KICH_THUOC_TRANG) })
+            }
+          />
+          <NutTrang
+            nhan="›"
+            moTa="Trang sau"
+            tat={!conTrangSau}
+            onClick={() => dieuHuong({ offset: offset + KICH_THUOC_TRANG })}
+          />
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function NutTrang({
+  nhan,
+  moTa,
+  tat,
+  onClick,
+}: {
+  nhan: string;
+  moTa: string;
+  tat: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={tat}
+      aria-label={moTa}
+      className="flex h-7 w-7 items-center justify-center rounded-md border border-border-subtle text-sm text-muted transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      {nhan}
+    </button>
+  );
+}
+
+/** Khung xám nhấp nháy trong lúc chờ — đỡ giật hơn là hiện chữ "Đang tải". */
+function KhungCho() {
+  return (
+    <div className="space-y-3 p-4">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex animate-pulse gap-3">
+          <div className="h-9 w-9 shrink-0 rounded-full bg-surface" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 w-2/3 rounded bg-surface" />
+            <div className="h-3 w-1/3 rounded bg-surface" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TrangThaiTrong({
+  tieuDe,
+  moTa,
+  hanhDong,
+}: {
+  tieuDe: string;
+  moTa: string;
+  hanhDong?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
+      <p className="text-sm font-medium text-foreground">{tieuDe}</p>
+      <p className="text-xs text-muted">{moTa}</p>
+      {hanhDong}
+    </div>
+  );
+}
