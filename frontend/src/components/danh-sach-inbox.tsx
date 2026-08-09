@@ -8,9 +8,11 @@
  * của trình duyệt hoạt động đúng nghĩa.
  */
 
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useDebounce } from "@/lib/use-debounce";
 import { ApiError } from "@/lib/api-client";
 import {
   KICH_THUOC_TRANG,
@@ -42,8 +44,19 @@ export function DanhSachInbox() {
   const thamSoStatus = searchParams.get("status");
   const status = laTrangThaiHopLe(thamSoStatus) ? thamSoStatus : undefined;
   const offset = Math.max(0, Number(searchParams.get("offset") ?? 0) || 0);
+  const qTrenUrl = searchParams.get("q") ?? "";
 
-  const thamSo = { status, limit: KICH_THUOC_TRANG, offset };
+  // Ô tìm kiếm gõ tới đâu hiện tới đó, nhưng chỉ gọi API sau khi ngừng gõ —
+  // gọi mỗi ký tự vừa tốn vừa làm danh sách nhấp nháy.
+  const [oTimKiem, setOTimKiem] = useState(qTrenUrl);
+  const q = useDebounce(oTimKiem, 350);
+
+  const thamSo = {
+    status,
+    limit: KICH_THUOC_TRANG,
+    offset,
+    q: q.trim() || undefined,
+  };
 
   const { data, isPending, isError, error, refetch, isFetching } = useQuery({
     queryKey: khoaInbox.list(thamSo),
@@ -59,7 +72,11 @@ export function DanhSachInbox() {
     (b) => !(b.giaTri === "CHO_PHAN" && user?.role === "STAFF"),
   );
 
-  function dieuHuong(thayDoi: { status?: ConversationStatus; offset?: number }) {
+  function dieuHuong(thayDoi: {
+    status?: ConversationStatus;
+    offset?: number;
+    q?: string;
+  }) {
     const sp = new URLSearchParams(searchParams.toString());
 
     if ("status" in thayDoi) {
@@ -68,14 +85,34 @@ export function DanhSachInbox() {
       // Đổi bộ lọc thì về trang đầu: giữ offset cũ dễ rơi vào trang trống.
       sp.delete("offset");
     }
+    if ("q" in thayDoi) {
+      if (thayDoi.q) sp.set("q", thayDoi.q);
+      else sp.delete("q");
+      sp.delete("offset");
+    }
     if (thayDoi.offset !== undefined) {
       if (thayDoi.offset > 0) sp.set("offset", String(thayDoi.offset));
       else sp.delete("offset");
     }
 
     const duoi = sp.toString();
-    router.push(duoi ? `/inbox?${duoi}` : "/inbox");
+    // `replace` chứ không `push` cho tìm kiếm: mỗi nhịp gõ tạo một mục lịch sử
+    // sẽ khiến nút lùi phải bấm hàng chục lần mới thoát khỏi ô tìm kiếm.
+    const duong = duoi ? `/inbox?${duoi}` : "/inbox";
+    if ("q" in thayDoi) router.replace(duong);
+    else router.push(duong);
   }
+
+  // Đưa từ khoá đã ngừng gõ lên URL để tải lại trang / chia sẻ link vẫn giữ.
+  useEffect(() => {
+    const hienTai = searchParams.get("q") ?? "";
+    const moi = q.trim();
+    if (hienTai === moi) return;
+    dieuHuong({ q: moi });
+    // `dieuHuong` đọc searchParams mới mỗi lần render nên không đưa vào deps —
+    // đưa vào sẽ tạo vòng lặp cập nhật.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
 
   const tong = data?.total ?? 0;
   const tuSo = tong === 0 ? 0 : offset + 1;
@@ -90,6 +127,35 @@ export function DanhSachInbox() {
           <h1 className="text-base font-semibold text-foreground">Hộp thư</h1>
           {isFetching && !isPending && (
             <span className="text-[11px] text-muted-soft">Đang cập nhật…</span>
+          )}
+        </div>
+
+        <div className="relative mt-2.5">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-soft">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+          </span>
+          <input
+            type="search"
+            value={oTimKiem}
+            onChange={(e) => setOTimKiem(e.target.value)}
+            placeholder="Tìm theo tên khách…"
+            aria-label="Tìm theo tên khách"
+            className="w-full rounded-lg border border-border-subtle py-2 pl-9 pr-8 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+          />
+          {oTimKiem && (
+            <button
+              type="button"
+              onClick={() => setOTimKiem("")}
+              aria-label="Xoá tìm kiếm"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-soft transition hover:text-muted"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
           )}
         </div>
 
@@ -140,11 +206,24 @@ export function DanhSachInbox() {
 
         {!isPending && !isError && data.items.length === 0 && (
           <TrangThaiTrong
-            tieuDe="Chưa có hội thoại"
+            tieuDe={q.trim() ? "Không tìm thấy" : "Chưa có hội thoại"}
             moTa={
-              status
-                ? `Không có hội thoại ở trạng thái "${NHAN_TRANG_THAI[status]}".`
-                : "Khi khách nhắn tới, hội thoại sẽ hiện ở đây."
+              q.trim()
+                ? `Không có khách nào tên khớp "${q.trim()}".`
+                : status
+                  ? `Không có hội thoại ở trạng thái "${NHAN_TRANG_THAI[status]}".`
+                  : "Khi khách nhắn tới, hội thoại sẽ hiện ở đây."
+            }
+            hanhDong={
+              q.trim() ? (
+                <button
+                  type="button"
+                  onClick={() => setOTimKiem("")}
+                  className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-muted transition hover:bg-surface"
+                >
+                  Xoá tìm kiếm
+                </button>
+              ) : undefined
             }
           />
         )}

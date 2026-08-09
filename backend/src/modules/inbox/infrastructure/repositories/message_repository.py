@@ -63,3 +63,50 @@ class SqlAlchemyMessageRepository:
         )
         ket_qua = await self._session.execute(cau)
         return [AttachmentMapper.to_domain(m) for m in ket_qua.scalars()]
+
+    async def last_texts_for_conversations(self, conversation_ids: list[UUID]) -> dict[UUID, str]:
+        """Trả nội dung chữ của tin CUỐI mỗi hội thoại, cho cả danh sách.
+
+        Một truy vấn cho cả trang thay vì mỗi dòng một lần: danh sách 25 dòng
+        mà hỏi từng dòng là 25 vòng tới cơ sở dữ liệu chỉ để hiện dòng preview.
+
+        ``DISTINCT ON`` là cách của PostgreSQL để lấy hàng đầu tiên trong mỗi
+        nhóm — ở đây là tin mới nhất của mỗi hội thoại. Tin chỉ có ảnh (``text``
+        rỗng/NULL) bị loại, nên preview lấy tin có chữ gần nhất.
+        """
+        if not conversation_ids:
+            return {}
+
+        cau = (
+            select(MessageModel.conversation_id, MessageModel.text)
+            .where(
+                MessageModel.conversation_id.in_(conversation_ids),
+                MessageModel.text.isnot(None),
+                MessageModel.text != "",
+            )
+            .distinct(MessageModel.conversation_id)
+            .order_by(MessageModel.conversation_id, MessageModel.created_at.desc())
+        )
+        ket_qua = await self._session.execute(cau)
+        return {hang.conversation_id: hang.text for hang in ket_qua}
+
+    async def get_attachment_with_conversation(
+        self, attachment_id: UUID
+    ) -> tuple[Attachment, UUID] | None:
+        """Trả ``(tệp, conversation_id)`` — ``None`` nếu không có.
+
+        Trả kèm mã hội thoại trong CÙNG một truy vấn để nơi gọi kiểm được quyền
+        mà không phải tự nối bảng: người xin tệp phải có quyền trên đúng hội
+        thoại chứa nó.
+        """
+        cau = (
+            select(AttachmentModel, MessageModel.conversation_id)
+            .join(MessageModel, AttachmentModel.message_id == MessageModel.id)
+            .where(AttachmentModel.id == attachment_id)
+        )
+        ket_qua = await self._session.execute(cau)
+        hang = ket_qua.first()
+        if hang is None:
+            return None
+        model, conversation_id = hang
+        return AttachmentMapper.to_domain(model), conversation_id

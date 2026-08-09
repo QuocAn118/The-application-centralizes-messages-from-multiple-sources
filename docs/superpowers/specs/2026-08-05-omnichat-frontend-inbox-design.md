@@ -120,11 +120,13 @@ Reply: khoá ô nhập → `POST reply` → thêm tin từ response → mở kho
 
 ## 9. Nợ ghi sẵn (không làm bản đầu)
 
-(a) đính kèm ảnh khi trả lời (cần mở rộng `ReplyRequest` — backend, ghi nợ);
-(b) phục vụ ảnh attachment (`stored_path` → URL hiển thị — kiểm route ở plan);
-(c) các màn #4/#5/#2 (sub-project FE sau, spec riêng);
-(d) i18n/đa ngôn ngữ (bản đầu tiếng Việt);
-(e) mockup UI chi tiết bằng Stitch — **bước sau khi spec chốt**, gọi khi user đồng ý.
+(a) đính kèm ảnh khi trả lời (cần mở rộng `ReplyRequest` — backend, ghi nợ) — **CÒN NỢ**;
+(b) ~~phục vụ ảnh attachment~~ — **ĐÃ TRẢ 2026-08-09**: `GET /inbox/{cid}/attachments/{aid}` với URL ký HMAC hết hạn 300s (thẻ `<img>` không gửi được Bearer nên dùng chữ ký);
+(c) các màn #4/#5/#2 (sub-project FE sau, spec riêng) — **CÒN NỢ**;
+(d) i18n/đa ngôn ngữ (bản đầu tiếng Việt) — **CÒN NỢ**;
+(e) ~~mockup UI bằng Stitch~~ — **XONG 2026-08-05** (6 màn);
+(f) ~~preview tin cuối ở dòng danh sách~~ — **ĐÃ TRẢ**: `InboxItem.last_message_preview`, một truy vấn `DISTINCT ON` cho cả trang;
+(g) ~~ô tìm kiếm~~ — **ĐÃ TRẢ**: `GET /inbox?q=` lọc theo tên khách, **bỏ dấu** (`unaccent`) nên gõ không dấu vẫn khớp.
 
 ## 10. Bước tiếp (thứ tự)
 

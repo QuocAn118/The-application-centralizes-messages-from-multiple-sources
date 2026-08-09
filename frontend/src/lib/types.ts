@@ -70,9 +70,9 @@ export interface UserResponse {
 /**
  * Tệp đính kèm.
  *
- * `stored_path` là đường dẫn nội bộ của backend, KHÔNG phải URL hiển thị được:
- * hiện chưa có route phục vụ ảnh (nợ spec §9b). FE vẽ placeholder thay vì cố
- * dựng URL từ trường này.
+ * `url` là liên kết đã ký, hết hạn sau ít phút — dùng thẳng trong `<img>`.
+ * `stored_path` là đường dẫn nội bộ của backend, giữ để truy vết; **không dựng
+ * URL từ nó**. `url` có thể `null` với phản hồi cũ hoặc endpoint chưa cấp chữ ký.
  */
 export interface Attachment {
   id: string;
@@ -80,6 +80,7 @@ export interface Attachment {
   stored_path: string;
   content_type: string | null;
   size: number | null;
+  url: string | null;
 }
 
 export interface Message {
@@ -102,6 +103,8 @@ export interface InboxItem {
   department_id: string | null;
   assigned_user_id: string | null;
   last_message_at: string;
+  /** Trích ngắn tin cuối; `null` khi chưa có tin hoặc tin cuối chỉ có ảnh. */
+  last_message_preview?: string | null;
 }
 
 /** Chi tiết hội thoại — như `InboxItem` nhưng kèm danh sách tin. */

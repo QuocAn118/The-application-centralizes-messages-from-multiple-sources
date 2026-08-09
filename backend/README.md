@@ -57,10 +57,17 @@ uv run python -m scripts.seed_admin
 ## Chạy ứng dụng
 
 ```bash
-uv run uvicorn src.main:app --reload
+uv run python -m scripts.run_server              # cổng 8000
+uv run python -m scripts.run_server --reload     # tự nạp lại khi sửa mã
+uv run python -m scripts.run_server --port 8001
 ```
 
 Tài liệu API: http://localhost:8000/docs
+
+> **Đừng chạy `uvicorn src.main:app` trực tiếp trên Windows.** Lệnh đó dựng
+> event loop *trước* khi nạp ứng dụng nên bỏ qua cấu hình loop, và psycopg gặp
+> `ProactorEventLoop` — mọi request chạm cơ sở dữ liệu trả 500. Xem mục
+> "Ghi chú khi phát triển trên Windows".
 
 ## Migration
 
@@ -152,20 +159,31 @@ REST) — realtime đầy đủ và mốc đóng chính xác để #5.
 ## Ghi chú khi phát triển trên Windows
 
 psycopg không chạy được trên `ProactorEventLoop` — event loop mặc định của
-Windows từ Python 3.8. Vì vậy mọi entry point chạy code async đều gọi
-`cau_hinh_event_loop()` từ `src/shared/infrastructure/event_loop.py` trước khi
-mở kết nối: `tests/conftest.py`, `migrations/env.py`, `src/main.py`, và
-`scripts/seed_admin.py`.
+Windows từ Python 3.8. `src/shared/infrastructure/event_loop.py` cung cấp hai
+cách xử lý, dùng đúng cái cho đúng chỗ:
 
-Nếu bạn thêm một entry point async mới mà quên gọi hàm này, lỗi sẽ là:
+- **`chay_async(coro)`** — dùng cho mọi entry point async *tự chạy*: script và
+  lệnh khởi động server. Hàm này truyền thẳng `loop_factory` nên loop chắc chắn
+  đúng, không phụ thuộc policy. Dùng ở `scripts/run_server.py`,
+  `scripts/seed_admin.py`.
+- **`cau_hinh_event_loop()`** — chỉ đặt policy; đủ cho nơi mà thư viện khác gọi
+  `asyncio.run` sau đó: `tests/conftest.py`, `migrations/env.py`, `src/main.py`.
+
+**Vì sao cần cả hai (quan trọng từ Python 3.13):** đặt policy chỉ có tác dụng
+với code sau đó *hỏi* asyncio lấy loop. Chương trình tự dựng loop — như uvicorn
+khi chạy bằng lệnh `uvicorn` ở dòng lệnh — bỏ qua policy hoàn toàn. Đó là lý do
+`uv run uvicorn src.main:app` hỏng trên Windows dù `src/main.py` có gọi
+`cau_hinh_event_loop()`; hãy dùng `scripts/run_server.py`.
+
+Nếu bạn thêm một entry point async mới mà quên, lỗi sẽ là:
 
 ```
 psycopg.InterfaceError: Psycopg cannot use the 'ProactorEventLoop' to run in
-async mode. Please use a compatible event loop, for instance by setting
-'asyncio.set_event_loop_policy(WindowsSelectorEventLoopPolicy())'
+async mode. Please use a compatible event loop, for instance by running
+'asyncio.run(..., loop_factory=asyncio.SelectorEventLoop(selectors.SelectSelector()))'
 ```
 
-Trên Linux và macOS hàm này không làm gì.
+Trên Linux và macOS cả hai hàm đều không đổi gì.
 
 ## Giới hạn đã biết
 

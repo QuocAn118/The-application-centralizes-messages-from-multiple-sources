@@ -6,7 +6,6 @@ nên phải có một cách để tạo quản trị viên ban đầu. Đây ch�
 Chạy: uv run python -m scripts.seed_admin
 """
 
-import asyncio
 import getpass
 import sys
 
@@ -27,11 +26,10 @@ from src.modules.identity.infrastructure.security.password_hasher import (
 from src.shared.infrastructure.clock import SystemClock
 from src.shared.infrastructure.config import get_settings
 from src.shared.infrastructure.database import create_engine_and_session_factory
-from src.shared.infrastructure.event_loop import cau_hinh_event_loop
+from src.shared.infrastructure.event_loop import chay_async
 
 
 async def tao_quan_tri_vien(email: str, ho_ten: str, mat_khau: str) -> None:
-    cau_hinh_event_loop()
     settings = get_settings()
     engine, session_factory = create_engine_and_session_factory(settings.database_url)
 
@@ -91,7 +89,7 @@ def main() -> int:
         print("Họ và tên không được để trống.")
         return 1
 
-    asyncio.run(tao_quan_tri_vien(email, ho_ten, mat_khau))
+    chay_async(tao_quan_tri_vien(email, ho_ten, mat_khau))
     return 0
 
 

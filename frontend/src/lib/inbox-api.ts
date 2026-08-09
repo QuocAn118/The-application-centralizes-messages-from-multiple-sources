@@ -23,6 +23,8 @@ export interface ThamSoInbox {
   status?: ConversationStatus;
   limit: number;
   offset: number;
+  /** Tìm theo tên khách; backend bỏ dấu nên gõ không dấu vẫn khớp. */
+  q?: string;
 }
 
 /**
@@ -48,6 +50,7 @@ export function layDanhSachInbox(
       status: thamSo.status,
       limit: thamSo.limit,
       offset: thamSo.offset,
+      q: thamSo.q,
     },
     signal,
   );

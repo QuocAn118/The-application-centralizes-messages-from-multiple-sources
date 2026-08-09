@@ -5,6 +5,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Query, Request
+from fastapi.responses import FileResponse
 
 from src.modules.inbox.application.use_cases.assign_conversation_to_department import (
     AssignConversationToDepartment,
@@ -19,6 +20,10 @@ from src.modules.inbox.application.use_cases.take_conversation import TakeConver
 from src.modules.inbox.domain.entities.conversation import ConversationStatus
 from src.modules.inbox.domain.ports import ClosedConversation
 from src.modules.inbox.domain.value_objects.message_content import MessageContent
+from src.modules.inbox.infrastructure.attachments.signed_url import (
+    AttachmentUrlSigner,
+    SignedUrlError,
+)
 from src.modules.inbox.infrastructure.repositories.channel_repository import (
     SqlAlchemyChannelRepository,
 )
@@ -40,15 +45,18 @@ from src.modules.inbox.presentation.dependencies import (
     Directory,
     Notifier,
     Registry,
+    UrlSigner,
 )
 from src.modules.inbox.presentation.schemas.common import PageResponse
 from src.modules.inbox.presentation.schemas.inbox_schemas import (
     AssignRequest,
     ConversationResponse,
     InboxItemResponse,
+    KyUrl,
     MessageResponse,
     ReplyRequest,
 )
+from src.shared.application.exceptions import NotFoundError, PermissionDeniedError
 
 logger = logging.getLogger(__name__)
 
@@ -62,12 +70,14 @@ async def liet_ke_inbox(
     status: ConversationStatus | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    q: Annotated[str | None, Query(max_length=200, description="Tìm theo tên khách")] = None,
 ) -> PageResponse[InboxItemResponse]:
     trang = await ListInbox(
         SqlAlchemyConversationRepository(session),
         SqlAlchemyCustomerRepository(session),
         SqlAlchemyChannelRepository(session),
-    ).execute(actor=actor, status=status, limit=limit, offset=offset)
+        SqlAlchemyMessageRepository(session),
+    ).execute(actor=actor, status=status, limit=limit, offset=offset, q=q)
     return PageResponse(
         items=[InboxItemResponse.from_dto(i) for i in trang.items],
         total=trang.total,
@@ -76,11 +86,25 @@ async def liet_ke_inbox(
     )
 
 
+def _bo_ky_url(signer: AttachmentUrlSigner) -> KyUrl:
+    """Dựng hàm sinh URL đã ký cho tệp đính kèm."""
+
+    def ky(attachment_id: UUID, conversation_id: UUID) -> str:
+        het_han, chu_ky = signer.ky(attachment_id, conversation_id)
+        return (
+            f"/api/v1/inbox/{conversation_id}/attachments/{attachment_id}"
+            f"?expires={het_han}&signature={chu_ky}"
+        )
+
+    return ky
+
+
 @router.get("/inbox/{conversation_id}", response_model=ConversationResponse)
 async def xem_hoi_thoai(
     conversation_id: UUID,
     actor: Actor,
     session: DbSession,
+    signer: UrlSigner,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> ConversationResponse:
@@ -90,7 +114,60 @@ async def xem_hoi_thoai(
         SqlAlchemyChannelRepository(session),
         SqlAlchemyCustomerRepository(session),
     ).execute(actor=actor, conversation_id=conversation_id, limit=limit, offset=offset)
-    return ConversationResponse.from_dto(view)
+    return ConversationResponse.from_dto(view, _bo_ky_url(signer))
+
+
+@router.get("/inbox/{conversation_id}/attachments/{attachment_id}")
+async def tai_tep_dinh_kem(
+    conversation_id: UUID,
+    attachment_id: UUID,
+    session: DbSession,
+    store: AttachmentStore,
+    signer: UrlSigner,
+    expires: Annotated[int, Query()],
+    signature: Annotated[str, Query()],
+) -> FileResponse:
+    """Phục vụ một tệp đính kèm qua liên kết đã ký.
+
+    **Cố ý KHÔNG dùng Bearer token**: thẻ ``<img>`` của trình duyệt không gửi
+    được header ``Authorization``. Quyền được kiểm bằng chữ ký hết hạn — chữ ký
+    chỉ được cấp trong phản hồi của ``GET /inbox/{id}``, mà endpoint đó đã kiểm
+    quyền người gọi. Ai không xem được hội thoại thì không bao giờ nhận được
+    chữ ký.
+    """
+    try:
+        signer.xac_minh(attachment_id, conversation_id, expires, signature)
+    except SignedUrlError as loi:
+        # 403 cho cả chữ ký sai lẫn hết hạn: không tiết lộ tệp có tồn tại hay không.
+        raise PermissionDeniedError(str(loi), code="ATTACHMENT_LINK_INVALID") from loi
+
+    ket_qua = await SqlAlchemyMessageRepository(session).get_attachment_with_conversation(
+        attachment_id
+    )
+    if ket_qua is None:
+        raise NotFoundError("Không tìm thấy tệp đính kèm.", code="ATTACHMENT_NOT_FOUND")
+
+    attachment, conversation_cua_tep = ket_qua
+    # Chữ ký gắn với một cặp (tệp, hội thoại); kiểm lại với dữ liệu thật để URL
+    # ký cho hội thoại này không dùng để lấy tệp của hội thoại khác.
+    if conversation_cua_tep != conversation_id:
+        raise NotFoundError("Không tìm thấy tệp đính kèm.", code="ATTACHMENT_NOT_FOUND")
+
+    try:
+        duong_dan = store.resolve(attachment.stored_path)
+    except ValueError as loi:
+        raise NotFoundError("Không tìm thấy tệp đính kèm.", code="ATTACHMENT_NOT_FOUND") from loi
+
+    if not duong_dan.is_file():
+        raise NotFoundError("Không tìm thấy tệp đính kèm.", code="ATTACHMENT_NOT_FOUND")
+
+    return FileResponse(
+        duong_dan,
+        media_type=attachment.content_type or "application/octet-stream",
+        # inline để hiện trong thẻ <img>; nosniff để trình duyệt không tự đoán
+        # kiểu nội dung (tệp do khách gửi lên, không hoàn toàn tin được).
+        headers={"Content-Disposition": "inline", "X-Content-Type-Options": "nosniff"},
+    )
 
 
 @router.post("/inbox/{conversation_id}/reply", response_model=MessageResponse)
