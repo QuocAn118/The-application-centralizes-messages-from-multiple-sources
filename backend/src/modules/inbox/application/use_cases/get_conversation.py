@@ -44,6 +44,7 @@ class GetConversation:
         conversation_id: UUID,
         limit: int = 50,
         offset: int = 0,
+        newest: bool = True,
     ) -> ConversationView:
         conversation = await self._conversation_repo.get_by_id(conversation_id)
         if conversation is None:
@@ -57,8 +58,10 @@ class GetConversation:
 
         gioi_han = min(max(limit, 1), GIOI_HAN_TIN_TOI_DA)
         vi_tri = max(offset, 0)
+        # Mặc định lấy tin MỚI NHẤT: hội thoại dài hơn ``limit`` mà lấy từ đầu
+        # thì người dùng chỉ thấy tin cũ nhất, không bao giờ tới được tin mới.
         messages = await self._message_repo.list_for_conversation(
-            conversation.id, limit=gioi_han, offset=vi_tri
+            conversation.id, limit=gioi_han, offset=vi_tri, newest=newest
         )
         message_views = [await self._to_message_view(m) for m in messages]
 

@@ -62,8 +62,9 @@ export const SO_TIN_MOI_LAN = 100;
 /**
  * Chi tiết một hội thoại kèm tin nhắn.
  *
- * Server trả tin theo `created_at` TĂNG DẦN (cũ trước, mới sau) — đúng chiều
- * đọc của khung chat, nên FE giữ nguyên thứ tự.
+ * Server trả `limit` tin MỚI NHẤT, xếp theo `created_at` tăng dần (cũ trước,
+ * mới sau) — đúng chiều đọc của khung chat, nên FE giữ nguyên thứ tự. Hội thoại
+ * dài hơn `limit` thì phần cũ hơn chưa tải (cuộn-để-tải-thêm là nợ sau).
  */
 export function layChiTietHoiThoai(
   id: string,

@@ -19,8 +19,13 @@ class IMessageRepository(Protocol):
         ...
 
     async def list_for_conversation(
-        self, conversation_id: UUID, limit: int = 50, offset: int = 0
-    ) -> list[Message]: ...
+        self, conversation_id: UUID, limit: int = 50, offset: int = 0, newest: bool = False
+    ) -> list[Message]:
+        """Tin của hội thoại, luôn theo thứ tự cũ → mới.
+
+        ``newest=True`` lấy ``limit`` tin mới nhất (vẫn xếp cũ → mới khi trả).
+        """
+        ...
 
     async def list_attachments(self, message_id: UUID) -> list[Attachment]: ...
 

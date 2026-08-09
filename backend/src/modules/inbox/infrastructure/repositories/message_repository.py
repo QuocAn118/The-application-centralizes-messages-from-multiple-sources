@@ -4,6 +4,7 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from src.modules.inbox.domain.entities.attachment import Attachment
 from src.modules.inbox.domain.entities.message import Message
@@ -43,15 +44,35 @@ class SqlAlchemyMessageRepository:
         return ket_qua.scalar_one() > 0
 
     async def list_for_conversation(
-        self, conversation_id: UUID, limit: int = 50, offset: int = 0
+        self, conversation_id: UUID, limit: int = 50, offset: int = 0, newest: bool = False
     ) -> list[Message]:
-        cau = (
-            select(MessageModel)
-            .where(MessageModel.conversation_id == conversation_id)
-            .order_by(MessageModel.created_at)
-            .limit(limit)
-            .offset(offset)
-        )
+        """Tin của một hội thoại, luôn trả theo thứ tự cũ → mới.
+
+        ``newest=True`` lấy ``limit`` tin MỚI NHẤT (rồi vẫn xếp cũ → mới để
+        hiển thị). Cần cho khung chat: hội thoại dài hơn ``limit`` mà lấy từ
+        đầu thì người dùng chỉ thấy tin cũ nhất và không bao giờ tới được tin
+        mới — đúng thứ họ cần đọc.
+        """
+        if newest:
+            con = (
+                select(MessageModel)
+                .where(MessageModel.conversation_id == conversation_id)
+                # ``id`` phá hoà khi nhiều tin chung một mốc (chèn cùng lô).
+                .order_by(MessageModel.created_at.desc(), MessageModel.id.desc())
+                .limit(limit)
+                .offset(offset)
+                .subquery()
+            )
+            model = aliased(MessageModel, con)
+            cau = select(model).order_by(model.created_at, model.id)
+        else:
+            cau = (
+                select(MessageModel)
+                .where(MessageModel.conversation_id == conversation_id)
+                .order_by(MessageModel.created_at, MessageModel.id)
+                .limit(limit)
+                .offset(offset)
+            )
         ket_qua = await self._session.execute(cau)
         return [MessageMapper.to_domain(m) for m in ket_qua.scalars()]
 
@@ -85,7 +106,14 @@ class SqlAlchemyMessageRepository:
                 MessageModel.text != "",
             )
             .distinct(MessageModel.conversation_id)
-            .order_by(MessageModel.conversation_id, MessageModel.created_at.desc())
+            # ``id`` làm chốt phá hoà: tin chèn cùng lô chia nhau một
+            # ``created_at`` (server_default now() cố định trong một giao dịch),
+            # nên thiếu chốt này preview sẽ nhảy qua lại giữa các lần tải.
+            .order_by(
+                MessageModel.conversation_id,
+                MessageModel.created_at.desc(),
+                MessageModel.id.desc(),
+            )
         )
         ket_qua = await self._session.execute(cau)
         return {hang.conversation_id: hang.text for hang in ket_qua}

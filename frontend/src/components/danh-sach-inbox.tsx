@@ -96,9 +96,13 @@ export function DanhSachInbox() {
     }
 
     const duoi = sp.toString();
+    // Giữ nguyên route hiện tại: component này cũng hiển thị ở `/inbox/[id]`,
+    // nên ghi cứng "/inbox" sẽ đá người dùng ra khỏi hội thoại đang mở mỗi lần
+    // họ gõ tìm kiếm, đổi chip lọc hay sang trang.
+    const goc = params?.id ? `/inbox/${params.id}` : "/inbox";
+    const duong = duoi ? `${goc}?${duoi}` : goc;
     // `replace` chứ không `push` cho tìm kiếm: mỗi nhịp gõ tạo một mục lịch sử
     // sẽ khiến nút lùi phải bấm hàng chục lần mới thoát khỏi ô tìm kiếm.
-    const duong = duoi ? `/inbox?${duoi}` : "/inbox";
     if ("q" in thayDoi) router.replace(duong);
     else router.push(duong);
   }

@@ -62,6 +62,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["inbox"])
 
+# Số tin trả về mặc định khi xem một hội thoại. Dùng chung cho ``GET /inbox/{id}``
+# và cho phản hồi của các hành động (take/close/assign) — hai nơi lệch nhau sẽ
+# khiến client mất tin sau mỗi hành động mà không có dấu hiệu gì.
+GIOI_HAN_TIN_MAC_DINH = 100
+
 
 @router.get("/inbox", response_model=PageResponse[InboxItemResponse])
 async def liet_ke_inbox(
@@ -105,7 +110,7 @@ async def xem_hoi_thoai(
     actor: Actor,
     session: DbSession,
     signer: UrlSigner,
-    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    limit: Annotated[int, Query(ge=1, le=200)] = GIOI_HAN_TIN_MAC_DINH,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> ConversationResponse:
     view = await GetConversation(
@@ -124,8 +129,11 @@ async def tai_tep_dinh_kem(
     session: DbSession,
     store: AttachmentStore,
     signer: UrlSigner,
-    expires: Annotated[int, Query()],
-    signature: Annotated[str, Query()],
+    # Nhận dạng tuỳ chọn rồi tự kiểm, thay vì để FastAPI ép kiểu: tham số bắt
+    # buộc/sai kiểu sẽ trả 422 và phân biệt được với 403, thành ra người ngoài
+    # dò được URL nào là tệp có thật — đúng thứ chữ ký sinh ra để che.
+    expires: Annotated[str | None, Query()] = None,
+    signature: Annotated[str | None, Query()] = None,
 ) -> FileResponse:
     """Phục vụ một tệp đính kèm qua liên kết đã ký.
 
@@ -136,10 +144,15 @@ async def tai_tep_dinh_kem(
     chữ ký.
     """
     try:
-        signer.xac_minh(attachment_id, conversation_id, expires, signature)
-    except SignedUrlError as loi:
-        # 403 cho cả chữ ký sai lẫn hết hạn: không tiết lộ tệp có tồn tại hay không.
-        raise PermissionDeniedError(str(loi), code="ATTACHMENT_LINK_INVALID") from loi
+        if expires is None or signature is None:
+            raise SignedUrlError("Liên kết không hợp lệ.")
+        signer.xac_minh(attachment_id, conversation_id, int(expires), signature)
+    except (SignedUrlError, ValueError) as loi:
+        # 403 cho MỌI trường hợp chữ ký hỏng — thiếu, sai định dạng, sai, hết hạn.
+        # Một mã duy nhất để không tiết lộ tệp có tồn tại hay không.
+        raise PermissionDeniedError(
+            "Liên kết không hợp lệ hoặc đã hết hạn.", code="ATTACHMENT_LINK_INVALID"
+        ) from loi
 
     ket_qua = await SqlAlchemyMessageRepository(session).get_attachment_with_conversation(
         attachment_id
@@ -182,6 +195,7 @@ async def tra_loi(
     notifier: Notifier,
     clock: Clock,
     request: Request,
+    signer: UrlSigner,
 ) -> MessageResponse:
     use_case = ReplyToConversation(
         conversation_repo=SqlAlchemyConversationRepository(session),
@@ -214,19 +228,37 @@ async def tra_loi(
                 extra={"conversation_id": str(conversation_id)},
             )
 
-    return MessageResponse.from_dto(view)
+    # Truyền signer dù #1 chỉ gửi text (``attachments`` luôn rỗng): khi mở nợ
+    # đính kèm outbound, thiếu nó sẽ là lỗi im lặng — ảnh vừa gửi hiện thành ô xám.
+    return MessageResponse.from_dto(view, _bo_ky_url(signer), conversation_id)
 
 
 async def _tra_ve_hoi_thoai(
-    conversation_id: UUID, actor: Actor, session: DbSession
+    conversation_id: UUID,
+    actor: Actor,
+    session: DbSession,
+    signer: AttachmentUrlSigner,
 ) -> ConversationResponse:
+    """Đọc lại hội thoại để trả về sau một hành động (take/close/assign).
+
+    Hai chi tiết dễ sai, đều làm hỏng giao diện chứ không báo lỗi:
+    - **Phải truyền ``signer``**, nếu không đính kèm trả về ``url: null`` và
+      client ghi đè cache khiến ảnh đang hiện biến thành ô xám.
+    - **Phải lấy cùng số tin như ``GET /inbox/{id}``** (``GIOI_HAN_TIN_MAC_DINH``);
+      mặc định 50 của use case sẽ cắt mất tin của hội thoại dài, mà ``messages``
+      là trường bắt buộc nên client không có cách nào phát hiện thiếu.
+    """
     view = await GetConversation(
         SqlAlchemyConversationRepository(session),
         SqlAlchemyMessageRepository(session),
         SqlAlchemyChannelRepository(session),
         SqlAlchemyCustomerRepository(session),
-    ).execute(actor=actor, conversation_id=conversation_id)
-    return ConversationResponse.from_dto(view)
+    ).execute(
+        actor=actor,
+        conversation_id=conversation_id,
+        limit=GIOI_HAN_TIN_MAC_DINH,
+    )
+    return ConversationResponse.from_dto(view, _bo_ky_url(signer))
 
 
 @router.post("/inbox/{conversation_id}/assign", response_model=ConversationResponse)
@@ -238,6 +270,7 @@ async def phan_phong(
     directory: Directory,
     notifier: Notifier,
     clock: Clock,
+    signer: UrlSigner,
 ) -> ConversationResponse:
     await AssignConversationToDepartment(
         conversation_repo=SqlAlchemyConversationRepository(session),
@@ -245,7 +278,7 @@ async def phan_phong(
         notifier=notifier,
         clock=clock,
     ).execute(actor=actor, conversation_id=conversation_id, department_id=du_lieu.department_id)
-    return await _tra_ve_hoi_thoai(conversation_id, actor, session)
+    return await _tra_ve_hoi_thoai(conversation_id, actor, session, signer)
 
 
 @router.post("/inbox/{conversation_id}/take", response_model=ConversationResponse)
@@ -255,13 +288,14 @@ async def nhan_hoi_thoai(
     session: DbSession,
     notifier: Notifier,
     clock: Clock,
+    signer: UrlSigner,
 ) -> ConversationResponse:
     await TakeConversation(
         conversation_repo=SqlAlchemyConversationRepository(session),
         notifier=notifier,
         clock=clock,
     ).execute(actor=actor, conversation_id=conversation_id)
-    return await _tra_ve_hoi_thoai(conversation_id, actor, session)
+    return await _tra_ve_hoi_thoai(conversation_id, actor, session, signer)
 
 
 @router.post("/inbox/{conversation_id}/close", response_model=ConversationResponse)
@@ -272,13 +306,14 @@ async def dong_hoi_thoai(
     notifier: Notifier,
     clock: Clock,
     request: Request,
+    signer: UrlSigner,
 ) -> ConversationResponse:
     conversation = await CloseConversation(
         conversation_repo=SqlAlchemyConversationRepository(session),
         notifier=notifier,
         clock=clock,
     ).execute(actor=actor, conversation_id=conversation_id)
-    phan_hoi = await _tra_ve_hoi_thoai(conversation_id, actor, session)
+    phan_hoi = await _tra_ve_hoi_thoai(conversation_id, actor, session, signer)
 
     # Nhân viên vừa rảnh ra → các hook hạ nguồn (assignment #3 kéo hàng đợi;
     # analytics #5 cộng rollup). Composition root đăng ký callable vào app.state;

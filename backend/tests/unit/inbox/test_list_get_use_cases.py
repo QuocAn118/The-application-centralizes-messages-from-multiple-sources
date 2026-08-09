@@ -186,6 +186,58 @@ class TestGetChoPhan:
             await kho.get_uc().execute(staff, kho.ht_cho.id)
 
 
+class TestGetLayTinMoiNhat:
+    """Hội thoại dài hơn ``limit`` phải trả tin MỚI NHẤT, không phải cũ nhất.
+
+    Lấy từ đầu danh sách nghĩa là người dùng mở hội thoại 200 tin chỉ thấy 100
+    tin đầu tiên và không bao giờ tới được tin vừa nhận — đúng thứ họ cần đọc.
+    """
+
+    async def _dung_hoi_thoai_dai(self, kho: "_KhoDuLieu", so_tin: int) -> None:
+        from datetime import timedelta
+
+        for i in range(so_tin):
+            await kho.message_repo.add(
+                Message.inbound(
+                    conversation_id=kho.ht_a.id,
+                    content=MessageContent(text=f"tin-{i}"),
+                    external_message_id=f"m{i}",
+                    now=BAY_GIO + timedelta(minutes=i),
+                ),
+                [],
+            )
+
+    async def test_tra_ve_tin_moi_nhat_khi_hoi_thoai_dai(self) -> None:
+        kho = _KhoDuLieu()
+        await self._dung_hoi_thoai_dai(kho, 10)
+        admin = InboxActor(user_id=new_id(), role=ActorRole.ADMIN, department_id=None)
+
+        view = await kho.get_uc().execute(admin, kho.ht_a.id, limit=3)
+
+        texts = [m.text for m in view.messages]
+        assert texts == ["tin-7", "tin-8", "tin-9"], texts
+
+    async def test_van_xep_cu_truoc_moi_sau(self) -> None:
+        """Lấy tin mới nhất nhưng hiển thị vẫn theo chiều đọc của khung chat."""
+        kho = _KhoDuLieu()
+        await self._dung_hoi_thoai_dai(kho, 5)
+        admin = InboxActor(user_id=new_id(), role=ActorRole.ADMIN, department_id=None)
+
+        view = await kho.get_uc().execute(admin, kho.ht_a.id, limit=5)
+
+        moc = [m.created_at for m in view.messages]
+        assert moc == sorted(moc)
+
+    async def test_newest_false_van_lay_tu_dau(self) -> None:
+        kho = _KhoDuLieu()
+        await self._dung_hoi_thoai_dai(kho, 10)
+        admin = InboxActor(user_id=new_id(), role=ActorRole.ADMIN, department_id=None)
+
+        view = await kho.get_uc().execute(admin, kho.ht_a.id, limit=3, newest=False)
+
+        assert [m.text for m in view.messages] == ["tin-0", "tin-1", "tin-2"]
+
+
 class TestGetConversation:
     async def test_xem_hoi_thoai_kem_tin(self) -> None:
         kho = _KhoDuLieu()
