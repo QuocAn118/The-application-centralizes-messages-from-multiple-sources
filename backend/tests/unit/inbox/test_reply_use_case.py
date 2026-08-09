@@ -226,3 +226,108 @@ class TestKhongTonTai:
 
         with pytest.raises(NotFoundError):
             await bc.use_case.execute(_nhan_vien(), new_id(), MessageContent(text="x"))
+
+
+class TestGuiKemAnh:
+    """Gửi ảnh đính kèm (nợ (a) đã trả).
+
+    Điểm dễ sai nhất là THỨ TỰ: Zalo/Meta không nhận nội dung tệp trực tiếp mà
+    tự tải về từ URL ta cung cấp, nên ảnh phải được lưu và có URL TRƯỚC khi gọi
+    adapter. Làm ngược lại thì adapter nhận URL rỗng và khách không thấy ảnh.
+    """
+
+    @staticmethod
+    def _boi_canh_co_url() -> "_BoiCanh":
+        bc = _BoiCanh()
+        bc.use_case = ReplyToConversation(
+            conversation_repo=bc.conversation_repo,
+            channel_repo=bc.channel_repo,
+            customer_repo=bc.customer_repo,
+            message_repo=bc.message_repo,
+            adapters=FakeChannelAdapterRegistry([bc.adapter]),
+            cipher=FakeCredentialCipher(),
+            attachment_store=bc.store,
+            notifier=bc.notifier,
+            clock=bc.clock,
+            public_url=lambda aid, cid: f"https://vidu.test/f/{cid}/{aid}",
+        )
+        return bc
+
+    async def test_anh_duoc_luu_va_adapter_nhan_url_da_co(self) -> None:
+        bc = self._boi_canh_co_url()
+        await bc.seed()
+
+        view = await bc.use_case.execute(
+            _nhan_vien(),
+            bc.conversation.id,
+            MessageContent(
+                text="anh day",
+                attachments=(AttachmentRef(kind=AttachmentKind.IMAGE, content_type="image/png"),),
+            ),
+            raw_attachments=[b"noi-dung-png"],
+        )
+
+        # Tệp đã xuống store.
+        assert bc.store.saved == [b"noi-dung-png"]
+        # Adapter nhận URL TUYỆT ĐỐI trỏ tới tệp vừa lưu — không phải chuỗi rỗng.
+        _, noi_dung_gui = bc.adapter.sent[0]
+        assert len(noi_dung_gui.attachments) == 1
+        assert noi_dung_gui.attachments[0].url.startswith("https://vidu.test/f/")
+        assert noi_dung_gui.text == "anh day"
+        # Tin lưu lại có đính kèm để lịch sử hội thoại không mất ảnh.
+        assert len(view.attachments) == 1
+
+    async def test_gui_anh_khong_kem_text(self) -> None:
+        bc = self._boi_canh_co_url()
+        await bc.seed()
+
+        view = await bc.use_case.execute(
+            _nhan_vien(),
+            bc.conversation.id,
+            MessageContent(
+                attachments=(AttachmentRef(kind=AttachmentKind.IMAGE, content_type="image/png"),)
+            ),
+            raw_attachments=[b"chi-co-anh"],
+        )
+
+        assert view.text is None
+        assert len(view.attachments) == 1
+
+    async def test_khong_cau_hinh_url_cong_khai_van_luu_anh(self) -> None:
+        """Thiếu ``ATTACHMENT_PUBLIC_BASE_URL``: ảnh vẫn vào lịch sử, chỉ không gửi kèm."""
+        bc = _BoiCanh()  # public_url=None
+        await bc.seed()
+
+        view = await bc.use_case.execute(
+            _nhan_vien(),
+            bc.conversation.id,
+            MessageContent(
+                text="x",
+                attachments=(AttachmentRef(kind=AttachmentKind.IMAGE, content_type="image/png"),),
+            ),
+            raw_attachments=[b"anh"],
+        )
+
+        assert bc.store.saved == [b"anh"]
+        assert len(view.attachments) == 1
+
+    async def test_lech_so_tep_va_tham_chieu_bi_chan(self) -> None:
+        """Chặn sớm thay vì để ``zip(strict=True)`` nổ giữa chừng sau khi đã gửi."""
+        bc = self._boi_canh_co_url()
+        await bc.seed()
+
+        with pytest.raises(ValueError, match="không khớp"):
+            await bc.use_case.execute(
+                _nhan_vien(),
+                bc.conversation.id,
+                MessageContent(
+                    text="x",
+                    attachments=(
+                        AttachmentRef(kind=AttachmentKind.IMAGE),
+                        AttachmentRef(kind=AttachmentKind.IMAGE),
+                    ),
+                ),
+                raw_attachments=[b"chi-mot-tep"],
+            )
+
+        assert bc.adapter.sent == []

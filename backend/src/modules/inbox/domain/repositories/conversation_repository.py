@@ -32,6 +32,7 @@ class IConversationRepository(Protocol):
         status: ConversationStatus | None = None,
         limit: int = 50,
         offset: int = 0,
+        q: str | None = None,
     ) -> list[Conversation]:
         """Liệt kê hội thoại trong phạm vi phòng ban cho phép.
 
@@ -46,4 +47,5 @@ class IConversationRepository(Protocol):
         department_ids: list[UUID] | None,
         include_awaiting: bool,
         status: ConversationStatus | None = None,
+        q: str | None = None,
     ) -> int: ...

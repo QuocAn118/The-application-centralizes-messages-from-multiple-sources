@@ -37,6 +37,9 @@ class InboxItem:
     department_id: UUID | None
     assigned_user_id: UUID | None
     last_message_at: datetime
+    # Trích ngắn nội dung tin cuối để hiện dưới tên khách. ``None`` khi hội thoại
+    # chưa có tin, hoặc tin cuối chỉ có tệp đính kèm (không có phần chữ).
+    last_message_preview: str | None = None
 
 
 @dataclass(frozen=True)

@@ -32,6 +32,18 @@ class Settings(BaseSettings):
     channel_cipher_key: str = ""
     attachment_storage_dir: str = "var/attachments"
 
+    # Số giây một liên kết ảnh đính kèm còn hiệu lực. Ngắn để link rò rỉ nhanh
+    # vô dụng, nhưng đủ dài cho một phiên xem hội thoại thông thường.
+    attachment_url_ttl_seconds: int = 300
+
+    # Địa chỉ CÔNG KHAI của API, để Zalo/Meta tải ảnh gửi kèm về. Không suy
+    # ra được từ request (server thường sau NAT/proxy) nên phải cấu hình.
+    # Rỗng = vẫn lưu ảnh vào lịch sử nhưng KHÔNG gửi kèm ra nền tảng.
+    attachment_public_base_url: str = ""
+
+    # Trần kích thước một tệp gửi kèm (byte). Mặc định 10MB.
+    attachment_max_bytes: int = 10 * 1024 * 1024
+
     # Inbox: bí mật cấp ứng dụng để verify chữ ký webhook (không phải token kênh).
     zalo_app_id: str = ""
     zalo_oa_secret_key: str = ""
@@ -49,8 +61,22 @@ class Settings(BaseSettings):
     # viên nhập "ca sáng 08:00" theo giờ VN, không phải UTC.
     app_timezone: str = "Asia/Ho_Chi_Minh"
 
+    # CORS: các origin của frontend được phép gọi API từ trình duyệt. Danh sách
+    # ngăn cách bằng dấu phẩy. Trình duyệt chặn mọi lời gọi chéo origin nếu thiếu
+    # header cho phép, nên frontend chạy ở cổng khác BẮT BUỘC có mục ở đây.
+    #
+    # Cố ý KHÔNG nhận "*": API dùng Authorization header và cookie, mà chuẩn CORS
+    # cấm ghép wildcard với thông tin xác thực. Liệt kê origin cụ thể cũng giữ cho
+    # trang lạ không gọi API thay người dùng.
+    cors_allow_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+
     app_env: str = "development"
     log_level: str = "INFO"
+
+    @property
+    def danh_sach_cors_origin(self) -> list[str]:
+        """Tách ``cors_allow_origins`` thành danh sách, bỏ mục rỗng."""
+        return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]
 
 
 @lru_cache

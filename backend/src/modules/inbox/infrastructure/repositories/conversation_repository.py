@@ -13,6 +13,7 @@ from src.modules.inbox.infrastructure.mappers.conversation_mapper import (
     ConversationMapper,
 )
 from src.modules.inbox.infrastructure.models.conversation_model import ConversationModel
+from src.modules.inbox.infrastructure.models.customer_model import CustomerModel
 
 
 class SqlAlchemyConversationRepository:
@@ -81,6 +82,36 @@ class SqlAlchemyConversationRepository:
 
         return dieu_kien
 
+    @staticmethod
+    def _dieu_kien_tim_kiem(q: str | None) -> list[ColumnElement[bool]]:
+        """Lọc theo tên khách hiển thị, bỏ dấu và không phân biệt hoa thường.
+
+        Bỏ dấu cả hai vế vì người dùng Việt thường gõ không dấu — "nguyen" phải
+        tìm ra "Nguyễn". Biểu thức khớp đúng index
+        ``ix_customers_display_name_unaccent`` (migration ``d4e5f6a7b8c9``);
+        đổi biểu thức ở đây mà quên đổi index sẽ khiến truy vấn quét toàn bảng.
+
+        Dùng subquery thay vì JOIN để hình dạng kết quả không đổi (vẫn là các
+        hàng ``ConversationModel``), nên sắp xếp và phân trang giữ nguyên.
+        ``%``, ``_`` và ``\\`` trong chuỗi tìm được thoát để chúng không trở
+        thành ký tự đại diện.
+        """
+        if q is None:
+            return []
+        tu_khoa = q.strip()
+        if not tu_khoa:
+            return []
+
+        an_toan = tu_khoa.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        ten_da_chuan_hoa = func.lower(func.public.immutable_unaccent(CustomerModel.display_name))
+        mau = func.lower(func.public.immutable_unaccent(f"%{an_toan}%"))
+        khach = (
+            select(CustomerModel.id)
+            .where(ten_da_chuan_hoa.like(mau, escape="\\"))
+            .scalar_subquery()
+        )
+        return [ConversationModel.customer_id.in_(khach)]
+
     async def list_for_scope(
         self,
         department_ids: list[UUID] | None,
@@ -88,9 +119,11 @@ class SqlAlchemyConversationRepository:
         status: ConversationStatus | None = None,
         limit: int = 50,
         offset: int = 0,
+        q: str | None = None,
     ) -> list[Conversation]:
         cau = select(ConversationModel).where(
-            *self._dieu_kien_pham_vi(department_ids, include_awaiting, status)
+            *self._dieu_kien_pham_vi(department_ids, include_awaiting, status),
+            *self._dieu_kien_tim_kiem(q),
         )
         cau = cau.order_by(ConversationModel.last_message_at.desc()).limit(limit).offset(offset)
         ket_qua = await self._session.execute(cau)
@@ -101,11 +134,15 @@ class SqlAlchemyConversationRepository:
         department_ids: list[UUID] | None,
         include_awaiting: bool,
         status: ConversationStatus | None = None,
+        q: str | None = None,
     ) -> int:
         cau = (
             select(func.count())
             .select_from(ConversationModel)
-            .where(*self._dieu_kien_pham_vi(department_ids, include_awaiting, status))
+            .where(
+                *self._dieu_kien_pham_vi(department_ids, include_awaiting, status),
+                *self._dieu_kien_tim_kiem(q),
+            )
         )
         ket_qua = await self._session.execute(cau)
         return int(ket_qua.scalar_one())

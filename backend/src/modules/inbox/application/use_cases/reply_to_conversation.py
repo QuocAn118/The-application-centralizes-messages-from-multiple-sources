@@ -5,6 +5,7 @@ lại tin đi cùng các tệp đính kèm. Tin chỉ được lưu sau khi gử
 tránh ghi khống một tin mà khách không nhận được.
 """
 
+from collections.abc import Callable
 from datetime import datetime
 from uuid import UUID
 
@@ -63,6 +64,7 @@ class ReplyToConversation:
         attachment_store: IAttachmentStore,
         notifier: IRealtimeNotifier,
         clock: IClock,
+        public_url: Callable[[UUID, UUID], str] | None = None,
     ) -> None:
         self._conversation_repo = conversation_repo
         self._channel_repo = channel_repo
@@ -73,6 +75,10 @@ class ReplyToConversation:
         self._attachment_store = attachment_store
         self._notifier = notifier
         self._clock = clock
+        # Sinh URL công khai cho một tệp đã lưu: (attachment_id, conversation_id)
+        # → URL. Nền tảng tự tải ảnh từ đó. ``None`` = không gửi kèm ảnh được
+        # (giữ tương thích với nơi gọi cũ chỉ dùng text).
+        self._public_url = public_url
 
     async def execute(
         self,
@@ -96,6 +102,9 @@ class ReplyToConversation:
         if conversation.status is not ConversationStatus.DANG_MO:
             raise NotOpenError
 
+        if len(raw) != len(content.attachments):
+            raise ValueError("Số tệp gửi lên không khớp số tham chiếu đính kèm.")
+
         channel = await self._channel_repo.get_by_id(conversation.channel_id)
         if channel is None:  # pragma: no cover - dữ liệu luôn nhất quán
             raise NotFoundError("Không tìm thấy kênh của hội thoại.", code="CHANNEL_NOT_FOUND")
@@ -105,15 +114,6 @@ class ReplyToConversation:
         if customer is None:  # pragma: no cover - dữ liệu luôn nhất quán
             raise NotFoundError("Không tìm thấy khách của hội thoại.", code="CUSTOMER_NOT_FOUND")
 
-        # Adapter cần token thô để gọi API; giải mã tại đây, không lưu lại bản thô.
-        adapter = self._adapters.for_platform(channel.platform)
-        access_token = self._cipher.decrypt(channel.encrypted_credential)
-        await adapter.send_message(
-            access_token=access_token,
-            external_customer_id=customer.external_id,
-            content=content,
-        )
-
         now = self._clock.now()
         message = Message.outbound(
             conversation_id=conversation.id,
@@ -121,7 +121,35 @@ class ReplyToConversation:
             sender_user_id=actor.user_id,
             now=now,
         )
+
+        # Lưu tệp TRƯỚC khi gửi: Zalo/Meta không nhận nội dung tệp trực tiếp mà
+        # tự tải về từ một URL ta cung cấp, nên phải có tệp trên đĩa và có URL
+        # công khai rồi mới gọi được adapter.
         attachments = await self._luu_dinh_kem(content, raw, message.id, now)
+
+        noi_dung_gui = content
+        if attachments and self._public_url is not None:
+            noi_dung_gui = MessageContent(
+                text=content.text,
+                attachments=tuple(
+                    AttachmentRef(
+                        kind=a.kind,
+                        url=self._public_url(a.id, conversation.id),
+                        content_type=a.content_type,
+                    )
+                    for a in attachments
+                ),
+            )
+
+        # Adapter cần token thô để gọi API; giải mã tại đây, không lưu lại bản thô.
+        adapter = self._adapters.for_platform(channel.platform)
+        access_token = self._cipher.decrypt(channel.encrypted_credential)
+        await adapter.send_message(
+            access_token=access_token,
+            external_customer_id=customer.external_id,
+            content=noi_dung_gui,
+        )
+
         await self._message_repo.add(message, attachments)
 
         conversation.updated_at = now
@@ -177,6 +205,10 @@ class ReplyToConversation:
 
 
 def _ten_goi_y(ref: AttachmentRef) -> str:
-    """Tên gợi ý để store lưu; store toàn quyền quyết định tên cuối."""
+    """Tên gợi ý để store lưu; store toàn quyền quyết định tên cuối.
+
+    Ảnh nhân viên tải lên chưa có URL nền tảng (``url`` rỗng), nên rơi về tên
+    mặc định — store vẫn gắn tiền tố UUID nên không đè nhau.
+    """
     duoi = ref.url.rsplit("/", 1)[-1] if ref.url else ""
     return duoi or "attachment"
