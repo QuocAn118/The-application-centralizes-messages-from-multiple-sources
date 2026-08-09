@@ -27,12 +27,17 @@ class EmptyMessageContentError(DomainError):
 class AttachmentRef:
     """Tham chiếu tới một tệp đính kèm ở dạng chuẩn hoá.
 
-    ``url`` là địa chỉ tạm do nền tảng cấp; use case sẽ tải về và lưu lại vì
-    URL này hết hạn. Value object này chỉ mô tả, không tự tải.
+    Hai chiều dùng khác nhau:
+    - **Tin đến:** ``url`` là địa chỉ tạm do nền tảng cấp; use case tải về và
+      lưu lại vì URL này hết hạn.
+    - **Tin gửi đi:** nhân viên tải tệp thẳng lên nên chưa có URL — ``url`` để
+      rỗng, use case lưu tệp trước rồi mới sinh URL công khai cho nền tảng tải.
+
+    Value object này chỉ mô tả, không tự tải.
     """
 
     kind: AttachmentKind
-    url: str
+    url: str = ""
     content_type: str | None = None
 
 

@@ -4,6 +4,7 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from src.modules.inbox.domain.entities.attachment import Attachment
 from src.modules.inbox.domain.entities.message import Message
@@ -43,15 +44,35 @@ class SqlAlchemyMessageRepository:
         return ket_qua.scalar_one() > 0
 
     async def list_for_conversation(
-        self, conversation_id: UUID, limit: int = 50, offset: int = 0
+        self, conversation_id: UUID, limit: int = 50, offset: int = 0, newest: bool = False
     ) -> list[Message]:
-        cau = (
-            select(MessageModel)
-            .where(MessageModel.conversation_id == conversation_id)
-            .order_by(MessageModel.created_at)
-            .limit(limit)
-            .offset(offset)
-        )
+        """Tin của một hội thoại, luôn trả theo thứ tự cũ → mới.
+
+        ``newest=True`` lấy ``limit`` tin MỚI NHẤT (rồi vẫn xếp cũ → mới để
+        hiển thị). Cần cho khung chat: hội thoại dài hơn ``limit`` mà lấy từ
+        đầu thì người dùng chỉ thấy tin cũ nhất và không bao giờ tới được tin
+        mới — đúng thứ họ cần đọc.
+        """
+        if newest:
+            con = (
+                select(MessageModel)
+                .where(MessageModel.conversation_id == conversation_id)
+                # ``id`` phá hoà khi nhiều tin chung một mốc (chèn cùng lô).
+                .order_by(MessageModel.created_at.desc(), MessageModel.id.desc())
+                .limit(limit)
+                .offset(offset)
+                .subquery()
+            )
+            model = aliased(MessageModel, con)
+            cau = select(model).order_by(model.created_at, model.id)
+        else:
+            cau = (
+                select(MessageModel)
+                .where(MessageModel.conversation_id == conversation_id)
+                .order_by(MessageModel.created_at, MessageModel.id)
+                .limit(limit)
+                .offset(offset)
+            )
         ket_qua = await self._session.execute(cau)
         return [MessageMapper.to_domain(m) for m in ket_qua.scalars()]
 
@@ -63,3 +84,57 @@ class SqlAlchemyMessageRepository:
         )
         ket_qua = await self._session.execute(cau)
         return [AttachmentMapper.to_domain(m) for m in ket_qua.scalars()]
+
+    async def last_texts_for_conversations(self, conversation_ids: list[UUID]) -> dict[UUID, str]:
+        """Trả nội dung chữ của tin CUỐI mỗi hội thoại, cho cả danh sách.
+
+        Một truy vấn cho cả trang thay vì mỗi dòng một lần: danh sách 25 dòng
+        mà hỏi từng dòng là 25 vòng tới cơ sở dữ liệu chỉ để hiện dòng preview.
+
+        ``DISTINCT ON`` là cách của PostgreSQL để lấy hàng đầu tiên trong mỗi
+        nhóm — ở đây là tin mới nhất của mỗi hội thoại. Tin chỉ có ảnh (``text``
+        rỗng/NULL) bị loại, nên preview lấy tin có chữ gần nhất.
+        """
+        if not conversation_ids:
+            return {}
+
+        cau = (
+            select(MessageModel.conversation_id, MessageModel.text)
+            .where(
+                MessageModel.conversation_id.in_(conversation_ids),
+                MessageModel.text.isnot(None),
+                MessageModel.text != "",
+            )
+            .distinct(MessageModel.conversation_id)
+            # ``id`` làm chốt phá hoà: tin chèn cùng lô chia nhau một
+            # ``created_at`` (server_default now() cố định trong một giao dịch),
+            # nên thiếu chốt này preview sẽ nhảy qua lại giữa các lần tải.
+            .order_by(
+                MessageModel.conversation_id,
+                MessageModel.created_at.desc(),
+                MessageModel.id.desc(),
+            )
+        )
+        ket_qua = await self._session.execute(cau)
+        return {hang.conversation_id: hang.text for hang in ket_qua}
+
+    async def get_attachment_with_conversation(
+        self, attachment_id: UUID
+    ) -> tuple[Attachment, UUID] | None:
+        """Trả ``(tệp, conversation_id)`` — ``None`` nếu không có.
+
+        Trả kèm mã hội thoại trong CÙNG một truy vấn để nơi gọi kiểm được quyền
+        mà không phải tự nối bảng: người xin tệp phải có quyền trên đúng hội
+        thoại chứa nó.
+        """
+        cau = (
+            select(AttachmentModel, MessageModel.conversation_id)
+            .join(MessageModel, AttachmentModel.message_id == MessageModel.id)
+            .where(AttachmentModel.id == attachment_id)
+        )
+        ket_qua = await self._session.execute(cau)
+        hang = ket_qua.first()
+        if hang is None:
+            return None
+        model, conversation_id = hang
+        return AttachmentMapper.to_domain(model), conversation_id

@@ -5,6 +5,7 @@ làm test đỏ — đúng thứ ta muốn. Mock thì không.
 """
 
 from datetime import datetime
+from pathlib import Path
 from uuid import UUID
 
 from src.modules.inbox.domain.entities.attachment import Attachment
@@ -94,6 +95,9 @@ class FakeCustomerRepository:
 class FakeConversationRepository:
     def __init__(self) -> None:
         self._conversations: dict[UUID, Conversation] = {}
+        # Tên khách để mô phỏng lọc theo ``q``; ở bản thật tên nằm ở bảng
+        # ``customers`` và repository lọc bằng subquery.
+        self.ten_khach: dict[UUID, str | None] = {}
 
     async def get_by_id(self, conversation_id: UUID) -> Conversation | None:
         return self._conversations.get(conversation_id)
@@ -114,12 +118,18 @@ class FakeConversationRepository:
     async def update(self, conversation: Conversation) -> None:
         self._conversations[conversation.id] = conversation
 
+    def dat_ten_khach(self, customer_id: UUID, display_name: str | None) -> None:
+        """Gắn tên khách để mô phỏng phần lọc theo ``q`` (thật ra ở bảng khác)."""
+        self.ten_khach[customer_id] = display_name
+
     def _loc(
         self,
         department_ids: list[UUID] | None,
         include_awaiting: bool,
         status: ConversationStatus | None,
+        q: str | None = None,
     ) -> list[Conversation]:
+        tu_khoa = q.strip().lower() if q and q.strip() else None
         ket_qua = []
         for c in self._conversations.values():
             thuoc_pham_vi = department_ids is None or (
@@ -128,7 +138,14 @@ class FakeConversationRepository:
             la_cho_phan = c.status is ConversationStatus.CHO_PHAN
             trong_pham_vi = thuoc_pham_vi or (include_awaiting and la_cho_phan)
             khop_trang_thai = status is None or c.status is status
-            if trong_pham_vi and khop_trang_thai:
+
+            if tu_khoa is None:
+                khop_tim_kiem = True
+            else:
+                ten = self.ten_khach.get(c.customer_id)
+                khop_tim_kiem = ten is not None and tu_khoa in ten.lower()
+
+            if trong_pham_vi and khop_trang_thai and khop_tim_kiem:
                 ket_qua.append(c)
         return sorted(ket_qua, key=lambda c: c.last_message_at, reverse=True)
 
@@ -139,16 +156,18 @@ class FakeConversationRepository:
         status: ConversationStatus | None = None,
         limit: int = 50,
         offset: int = 0,
+        q: str | None = None,
     ) -> list[Conversation]:
-        return self._loc(department_ids, include_awaiting, status)[offset : offset + limit]
+        return self._loc(department_ids, include_awaiting, status, q)[offset : offset + limit]
 
     async def count_for_scope(
         self,
         department_ids: list[UUID] | None,
         include_awaiting: bool,
         status: ConversationStatus | None = None,
+        q: str | None = None,
     ) -> int:
-        return len(self._loc(department_ids, include_awaiting, status))
+        return len(self._loc(department_ids, include_awaiting, status, q))
 
 
 class FakeMessageRepository:
@@ -164,14 +183,40 @@ class FakeMessageRepository:
         return any(m.external_message_id == external_message_id for m in self.messages)
 
     async def list_for_conversation(
-        self, conversation_id: UUID, limit: int = 50, offset: int = 0
+        self, conversation_id: UUID, limit: int = 50, offset: int = 0, newest: bool = False
     ) -> list[Message]:
         ds = [m for m in self.messages if m.conversation_id == conversation_id]
         ds.sort(key=lambda m: m.created_at)
+        if newest:
+            # Lấy từ cuối lên, rồi trả lại theo thứ tự cũ → mới.
+            dau = max(0, len(ds) - offset - limit)
+            cuoi = len(ds) - offset
+            return ds[dau:cuoi] if cuoi > 0 else []
         return ds[offset : offset + limit]
 
     async def list_attachments(self, message_id: UUID) -> list[Attachment]:
         return list(self._attachments.get(message_id, []))
+
+    async def last_texts_for_conversations(self, conversation_ids: list[UUID]) -> dict[UUID, str]:
+        ket_qua: dict[UUID, str] = {}
+        # Tin sắp theo thứ tự thêm vào, nên duyệt xuôi rồi ghi đè sẽ giữ tin
+        # cuối cùng — giống ``DISTINCT ON ... ORDER BY created_at DESC`` thật.
+        for m in self.messages:
+            if m.conversation_id in conversation_ids and m.text:
+                ket_qua[m.conversation_id] = m.text
+        return ket_qua
+
+    async def get_attachment_with_conversation(
+        self, attachment_id: UUID
+    ) -> tuple[Attachment, UUID] | None:
+        for message_id, ds in self._attachments.items():
+            for a in ds:
+                if a.id == attachment_id:
+                    tin = next((m for m in self.messages if m.id == message_id), None)
+                    if tin is None:
+                        return None
+                    return a, tin.conversation_id
+        return None
 
 
 class FakeCredentialCipher:
@@ -199,6 +244,9 @@ class FakeAttachmentStore:
             content_type=content_type,
             size=len(data),
         )
+
+    def resolve(self, stored_path: str) -> Path:
+        return Path(stored_path)
 
 
 class FakeChannelAdapter:

@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
@@ -96,6 +97,24 @@ def create_app() -> FastAPI:
         window_seconds=settings.login_rate_limit_window_seconds,
         clock=SystemClock(),
     )
+
+    # CORS cho frontend chạy ở origin khác (dev: localhost:3000). Không có phần
+    # này, trình duyệt chặn ngay ở bước preflight và mọi lời gọi API từ trang web
+    # đều hỏng, dù server hoàn toàn khoẻ.
+    #
+    # ``allow_credentials=True`` để trình duyệt gửi kèm thông tin xác thực; đi
+    # cùng nó thì danh sách origin phải cụ thể, không được dùng "*".
+    cac_origin = settings.danh_sach_cors_origin
+    if cac_origin:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cac_origin,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+            # Để client đọc được mã truy vết khi cần báo lỗi.
+            expose_headers=["X-Request-ID"],
+        )
 
     @app.middleware("http")
     async def gan_request_id(request: Request, call_next):  # type: ignore[no-untyped-def]
@@ -233,6 +252,9 @@ def _wire_inbox(app: FastAPI, settings: Settings) -> None:
     from src.modules.inbox.infrastructure.attachments.local_store import (
         LocalAttachmentStore,
     )
+    from src.modules.inbox.infrastructure.attachments.signed_url import (
+        AttachmentUrlSigner,
+    )
     from src.modules.inbox.infrastructure.channels.meta_adapter import MetaAdapter
     from src.modules.inbox.infrastructure.channels.registry import ChannelAdapterRegistry
     from src.modules.inbox.infrastructure.channels.zalo_adapter import ZaloAdapter
@@ -272,6 +294,11 @@ def _wire_inbox(app: FastAPI, settings: Settings) -> None:
         )
     app.state.inbox_cipher = FernetCredentialCipher(cipher_key)
     app.state.inbox_attachment_store = LocalAttachmentStore(settings.attachment_storage_dir)
+    # Ký URL ảnh bằng chính khoá JWT: thẻ <img> không gửi được Authorization,
+    # nên ảnh được bảo vệ bằng chữ ký hết hạn thay vì Bearer token.
+    app.state.inbox_url_signer = AttachmentUrlSigner(
+        settings.jwt_secret_key, ttl_seconds=settings.attachment_url_ttl_seconds
+    )
     app.state.inbox_notifier = WebSocketNotifier()
     # Factory để inbox.presentation lấy IWorkforceDirectory mà không import
     # implementation (chỗ chạm identity) — giữ contract inbox.presentation ⊥ identity.
