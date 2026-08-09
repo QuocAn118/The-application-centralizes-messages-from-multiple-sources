@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     channel_cipher_key: str = ""
     attachment_storage_dir: str = "var/attachments"
 
+    # Số giây một liên kết ảnh đính kèm còn hiệu lực. Ngắn để link rò rỉ nhanh
+    # vô dụng, nhưng đủ dài cho một phiên xem hội thoại thông thường.
+    attachment_url_ttl_seconds: int = 300
+
     # Inbox: bí mật cấp ứng dụng để verify chữ ký webhook (không phải token kênh).
     zalo_app_id: str = ""
     zalo_oa_secret_key: str = ""

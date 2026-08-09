@@ -7,6 +7,7 @@ biết các hợp đồng này.
 
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Protocol
 from uuid import UUID
 
@@ -127,6 +128,14 @@ class IAttachmentStore(Protocol):
     async def save(
         self, data: bytes, suggested_name: str, content_type: str | None
     ) -> StoredAttachment: ...
+
+    def resolve(self, stored_path: str) -> Path:
+        """Đường dẫn thật của tệp để phục vụ lại nội dung.
+
+        Ném ``ValueError`` nếu ``stored_path`` cố thoát khỏi vùng lưu trữ —
+        đường dẫn đến từ cơ sở dữ liệu nhưng vẫn phải kiểm, không tin tuyệt đối.
+        """
+        ...
 
 
 @dataclass(frozen=True)

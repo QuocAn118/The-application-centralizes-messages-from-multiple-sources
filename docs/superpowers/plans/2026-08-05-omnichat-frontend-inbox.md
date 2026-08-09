@@ -173,9 +173,50 @@
 
 Cộng thêm `b8da7f7b` (backend CORS). Tổng: **50 unit test**, build/tsc/eslint sạch. Năm bất biến IT-1…IT-5 của spec §8 đều đã kiểm.
 
-### Nợ mới ghi ở GĐ2
+### Nợ ghi ở GĐ2 — ĐÃ TRẢ (xem mục dưới)
 
-- **Preview tin cuối trong dòng danh sách:** mockup có vẽ, nhưng `GET /inbox` trả `InboxItem` KHÔNG kèm tin nhắn → muốn preview phải gọi thêm N request. Bản đầu bỏ preview (RB-1 thắng mockup). Nếu cần, mở nợ backend thêm `last_message_preview` vào `InboxItem`.
-- **Ô tìm kiếm** trong mockup chưa làm: backend không có tham số tìm kiếm ở `GET /inbox`.
+- ~~Preview tin cuối~~ · ~~Ô tìm kiếm~~ — trả xong ở đợt trả nợ 2026-08-09.
+
+## Đợt trả nợ 2026-08-09 — XONG 4/4
+
+User chốt sửa backend (vượt RB-1, như đã làm với CORS).
+
+### 1. `event_loop.py` cho Python 3.13 — XONG
+
+**Nguyên nhân gốc:** `set_event_loop_policy` chỉ có tác dụng với code sau đó *hỏi* asyncio lấy loop. Chương trình tự dựng loop — uvicorn chạy từ dòng lệnh — bỏ qua policy hoàn toàn, nên psycopg gặp `ProactorEventLoop` và mọi request chạm DB trả 500.
+
+- Thêm `chay_async(coro)` truyền thẳng `loop_factory` (cách duy nhất chắc chắn) và `tao_event_loop()`.
+- Thêm `scripts/run_server.py` (`--host/--port/--reload`) thay lệnh `uvicorn` hỏng; README sửa lại kèm cảnh báo.
+- `seed_admin.py` chuyển sang `chay_async`.
+- **+5 test**, gồm ca then chốt: cố ý đặt policy Proactor rồi kiểm `chay_async` vẫn cho ra `SelectorEventLoop`.
+- Kiểm thật: `uv run python -m scripts.run_server --port 8002` → `/health` OK và **login chạm DB thành công**.
+
+### 2. Route phục vụ ảnh — XONG (URL ký số có hạn, user chọn)
+
+**Vì sao không dùng Bearer:** thẻ `<img>` không gửi được header `Authorization`. Thay vào đó backend cấp URL mang chữ ký HMAC-SHA256 trên `(attachment_id, conversation_id, hạn)`, TTL 300s (`ATTACHMENT_URL_TTL_SECONDS`), ký bằng `jwt_secret_key` sẵn có — không thêm bí mật mới.
+
+- `infrastructure/attachments/signed_url.py` + **8 test bảo mật**: sửa hạn làm hỏng chữ ký, chữ ký của tệp/hội thoại khác không tái dùng được, khoá khác không ký được, so sánh hằng thời gian.
+- `GET /inbox/{cid}/attachments/{aid}?expires=&signature=` — kiểm chữ ký, kiểm tệp thuộc đúng hội thoại, `resolve()` chống path traversal, trả `inline` + `nosniff`.
+- `AttachmentResponse` thêm `url`; `GET /inbox/{id}` cấp URL đã ký cho từng đính kèm.
+- Kiểm thật với ảnh PNG: URL ký tải được (**200, image/png, 67 bytes, KHÔNG cần Bearer**); chữ ký sai → **403**; thiếu chữ ký → **422**.
+- **Bẫy đã gặp và sửa:** backend trả đường dẫn TƯƠNG ĐỐI (cố ý — nó không biết mình sau proxy nào), nên trình duyệt gọi vào `localhost:3000` và **404**. FE ghép `API_BASE_URL` ở `bong-bong-tin.tsx`.
+
+### 3. Tìm kiếm theo tên khách — XONG (+ bỏ dấu)
+
+- `GET /inbox?q=` → subquery `customers` (giữ hình dạng kết quả nên sắp xếp/phân trang không đổi). Thoát `%`, `_`, `\` để không thành ký tự đại diện.
+- **Phát hiện khi kiểm thật:** hoa/thường đã đúng nhưng gõ **không dấu không khớp** ("nguyen" → 0 kết quả). User chốt thêm `unaccent`: migration `d4e5f6a7b8c9` bật `unaccent` + `pg_trgm`, hàm wrapper IMMUTABLE, index GIN trgm trên `lower(immutable_unaccent(display_name))`.
+- Kiểm thật: "nguyen" → ra "Nguyễn"; "do trung" → ra "Đỗ Trung Kiên" (cả `Đ` cũng bỏ dấu); `%` → 0 (thoát đúng); `q` rỗng → đủ 15.
+- **+5 test**, gồm ca quan trọng nhất: **tìm kiếm KHÔNG nới rộng phạm vi quyền** — Staff gõ đúng tên khách phòng khác vẫn không thấy.
+- FE: ô tìm kiếm có debounce 350ms, giữ `q` trên URL (dùng `replace` để không rác lịch sử), nút xoá, trạng thái "Không tìm thấy".
+
+### 4. Preview tin cuối — XONG
+
+- `last_texts_for_conversations()` dùng `DISTINCT ON` lấy tin cuối cho **cả trang trong MỘT truy vấn** — hỏi từng dòng sẽ thành N+1. Bỏ tin chỉ có ảnh (`text` rỗng) nên preview lấy tin có chữ gần nhất.
+- `InboxItem.last_message_preview` cắt 120 ký tự, gộp khoảng trắng.
+- `message_repo` là tham số **tuỳ chọn** của `ListInbox` — nơi gọi cũ không phải đổi.
+
+**Kiểm chứng giao diện 11/11 PASS** (trình duyệt thật): preview hiện dưới tên khách; tìm kiếm không dấu ra đúng kết quả, URL giữ từ khoá, nút xoá chạy; **ảnh TẢI ĐƯỢC thật** (`naturalWidth > 0`, không chỉ có thẻ `<img>`) qua URL đã ký; không lỗi console.
+
+**Backend sau đợt trả nợ:** 663 unit (+13) + 128 integration đạt, mypy sạch, ruff sạch, **16/16 import contract giữ nguyên**. FE: 50 test, build/tsc/eslint sạch.
 
 Chi tiết từng task (files/interfaces/steps) viết khi bắt đầu mỗi giai đoạn, như cách backend #0–#5.

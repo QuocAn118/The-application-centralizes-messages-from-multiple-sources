@@ -1,12 +1,6 @@
 "use client";
 
-/**
- * Một dòng trong danh sách inbox (mockup Stitch: cột trái).
- *
- * Cố ý KHÔNG hiển thị preview nội dung tin cuối: `GET /inbox` trả `InboxItem`
- * không kèm tin nhắn, nên preview sẽ phải gọi thêm N request cho N dòng. Mockup
- * có vẽ preview, nhưng hợp đồng API thắng (RB-1) — ghi nợ ở plan.
- */
+/** Một dòng trong danh sách inbox (mockup Stitch: cột trái). */
 
 import Link from "next/link";
 import { BadgeKenh, BadgeTrangThai } from "./badges";
@@ -49,6 +43,12 @@ export function DongHoiThoai({
             {mocNgan(item.last_message_at)}
           </time>
         </div>
+
+        {item.last_message_preview && (
+          <p className="mt-0.5 truncate text-xs text-muted">
+            {item.last_message_preview}
+          </p>
+        )}
 
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           <BadgeKenh platform={item.platform} />

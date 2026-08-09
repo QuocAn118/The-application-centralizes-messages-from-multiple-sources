@@ -252,6 +252,9 @@ def _wire_inbox(app: FastAPI, settings: Settings) -> None:
     from src.modules.inbox.infrastructure.attachments.local_store import (
         LocalAttachmentStore,
     )
+    from src.modules.inbox.infrastructure.attachments.signed_url import (
+        AttachmentUrlSigner,
+    )
     from src.modules.inbox.infrastructure.channels.meta_adapter import MetaAdapter
     from src.modules.inbox.infrastructure.channels.registry import ChannelAdapterRegistry
     from src.modules.inbox.infrastructure.channels.zalo_adapter import ZaloAdapter
@@ -291,6 +294,11 @@ def _wire_inbox(app: FastAPI, settings: Settings) -> None:
         )
     app.state.inbox_cipher = FernetCredentialCipher(cipher_key)
     app.state.inbox_attachment_store = LocalAttachmentStore(settings.attachment_storage_dir)
+    # Ký URL ảnh bằng chính khoá JWT: thẻ <img> không gửi được Authorization,
+    # nên ảnh được bảo vệ bằng chữ ký hết hạn thay vì Bearer token.
+    app.state.inbox_url_signer = AttachmentUrlSigner(
+        settings.jwt_secret_key, ttl_seconds=settings.attachment_url_ttl_seconds
+    )
     app.state.inbox_notifier = WebSocketNotifier()
     # Factory để inbox.presentation lấy IWorkforceDirectory mà không import
     # implementation (chỗ chạm identity) — giữ contract inbox.presentation ⊥ identity.
