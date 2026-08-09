@@ -21,6 +21,15 @@ import type { InboxSignal } from "./types";
 const CHO_DAU_MS = 1_000;
 const CHO_TOI_DA_MS = 30_000;
 
+/**
+ * Kết nối phải sống ít nhất chừng này mới coi là thành công (và reset backoff).
+ *
+ * Server nhận bắt tay WebSocket TRƯỚC khi xác thực token, nên token hỏng vẫn
+ * kích hoạt `onopen` rồi bị đóng 1008 ngay. Không có ngưỡng này thì backoff bị
+ * vô hiệu và client quay vòng mở-đóng liên tục.
+ */
+const SONG_DU_LAU_MS = 5_000;
+
 /** Đổi base URL HTTP thành ws/wss. WS ở `/ws/inbox`, KHÔNG có `/api/v1`. */
 export function duongDanWebSocket(baseUrl: string, token: string): string {
   const u = new URL("/ws/inbox", baseUrl);
@@ -100,8 +109,13 @@ export function useInboxSocket({ onSignal, enabled = true }: TuyChonSocket): voi
       const ws = new WebSocket(duongDanWebSocket(API_BASE_URL, token));
       socket = ws;
 
+      let moLuc = 0;
+
       ws.onopen = () => {
-        soLanThu = 0;
+        // KHÔNG reset bộ đếm ngay: server chấp nhận bắt tay rồi mới xác thực,
+        // token hỏng thì đóng 1008 ngay sau đó. Reset ở đây sẽ biến mọi lần
+        // thử thành "thành công" và tạo vòng lặp mở-đóng ~1 giây.
+        moLuc = Date.now();
       };
 
       ws.onmessage = (e) => {
@@ -123,6 +137,9 @@ export function useInboxSocket({ onSignal, enabled = true }: TuyChonSocket): voi
 
       ws.onclose = () => {
         if (socket === ws) socket = null;
+        // Chỉ coi là kết nối thành công khi nó sống đủ lâu — đủ để loại trường
+        // hợp server nhận bắt tay rồi đóng ngay vì token hỏng.
+        if (moLuc > 0 && Date.now() - moLuc >= SONG_DU_LAU_MS) soLanThu = 0;
         henMoLai();
       };
 

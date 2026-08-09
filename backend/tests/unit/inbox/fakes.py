@@ -182,10 +182,15 @@ class FakeMessageRepository:
         return any(m.external_message_id == external_message_id for m in self.messages)
 
     async def list_for_conversation(
-        self, conversation_id: UUID, limit: int = 50, offset: int = 0
+        self, conversation_id: UUID, limit: int = 50, offset: int = 0, newest: bool = False
     ) -> list[Message]:
         ds = [m for m in self.messages if m.conversation_id == conversation_id]
         ds.sort(key=lambda m: m.created_at)
+        if newest:
+            # Lấy từ cuối lên, rồi trả lại theo thứ tự cũ → mới.
+            dau = max(0, len(ds) - offset - limit)
+            cuoi = len(ds) - offset
+            return ds[dau:cuoi] if cuoi > 0 else []
         return ds[offset : offset + limit]
 
     async def list_attachments(self, message_id: UUID) -> list[Attachment]:
