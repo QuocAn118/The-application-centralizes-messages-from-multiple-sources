@@ -140,6 +140,49 @@ class TestGuiTin:
         assert ghi_lai["body"]["recipient"]["user_id"] == "user_abc"
         assert ghi_lai["body"]["message"]["text"] == "chao"
 
+    async def test_gui_kem_anh_dung_template_media(self) -> None:
+        """Zalo tự tải ảnh từ ``url`` ta gửi, nên URL phải nằm trong payload."""
+        ghi_lai: dict = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            ghi_lai["body"] = json.loads(request.content)
+            return httpx.Response(200, json={"data": {"message_id": "sent_10"}})
+
+        transport = httpx.MockTransport(handler)
+        adapter = _adapter(client_factory=lambda: httpx.AsyncClient(transport=transport))
+
+        await adapter.send_message(
+            "tok",
+            "user_abc",
+            MessageContent(
+                text="anh day",
+                attachments=(
+                    AttachmentRef(kind=AttachmentKind.IMAGE, url="https://vidu.test/a.png"),
+                ),
+            ),
+        )
+
+        message = ghi_lai["body"]["message"]
+        assert message["attachment"]["type"] == "template"
+        phan_tu = message["attachment"]["payload"]["elements"][0]
+        assert phan_tu["media_type"] == "image"
+        assert phan_tu["url"] == "https://vidu.test/a.png"
+        assert message["text"] == "anh day"
+
+    async def test_khong_co_anh_van_gui_text_nhu_cu(self) -> None:
+        ghi_lai: dict = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            ghi_lai["body"] = json.loads(request.content)
+            return httpx.Response(200, json={"data": {"message_id": "s"}})
+
+        transport = httpx.MockTransport(handler)
+        adapter = _adapter(client_factory=lambda: httpx.AsyncClient(transport=transport))
+
+        await adapter.send_message("tok", "u", MessageContent(text="chi text"))
+
+        assert ghi_lai["body"]["message"] == {"text": "chi text"}
+
 
 class TestTaiMedia:
     async def test_tai_media_tra_ve_bytes(self) -> None:

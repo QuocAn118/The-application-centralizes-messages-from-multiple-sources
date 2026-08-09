@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { t } from "@/lib/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api-client";
 import {
@@ -16,6 +17,7 @@ import {
   khoaInbox,
   layChiTietHoiThoai,
   nhanViec,
+  SO_TIN_MOI_LAN,
   phanPhong,
   traLoiHoiThoai,
 } from "@/lib/inbox-api";
@@ -39,6 +41,7 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
   const [loiGui, setLoiGui] = useState<string | null>(null);
   const [loiHanhDong, setLoiHanhDong] = useState<string | null>(null);
   const [moDialogPhan, setMoDialogPhan] = useState(false);
+  const [hetTinCu, setHetTinCu] = useState(false);
 
   const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: khoaInbox.detail(conversationId),
@@ -68,7 +71,7 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
       // phòng. Cả hai đều cần đọc lại để nút hiển thị cho đúng.
       if (err.isConflict || err.isForbidden) void refetch();
     } else {
-      setLoiHanhDong("Không thực hiện được. Kiểm tra kết nối rồi thử lại.");
+      setLoiHanhDong(t("hanhDong.loiChung"));
     }
   }
 
@@ -93,8 +96,48 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
     onError: xuLyLoiHanhDong,
   });
 
+  /**
+   * Tải thêm tin CŨ HƠN khi người dùng cuộn lên đầu.
+   *
+   * Backend trả `limit` tin mới nhất; `offset` đếm ngược từ mới về cũ, nên
+   * offset = số tin đang có sẽ lấy đúng trang liền trước.
+   */
+  const taiThem = useMutation({
+    mutationFn: () => {
+      const dangCo = queryClient.getQueryData<Conversation>(
+        khoaInbox.detail(conversationId),
+      );
+      return layChiTietHoiThoai(
+        conversationId,
+        SO_TIN_MOI_LAN,
+        dangCo?.messages.length ?? 0,
+      );
+    },
+    onSuccess: (trang) => {
+      if (trang.messages.length === 0) {
+        setHetTinCu(true);
+        return;
+      }
+      if (trang.messages.length < SO_TIN_MOI_LAN) setHetTinCu(true);
+      queryClient.setQueryData<Conversation>(
+        khoaInbox.detail(conversationId),
+        (cu) => {
+          if (!cu) return cu;
+          // Lọc trùng: tin mới có thể tới giữa hai lần tải và làm lệch offset.
+          const daCo = new Set(cu.messages.map((m) => m.id));
+          const themVao = trang.messages.filter((m) => !daCo.has(m.id));
+          return { ...cu, messages: [...themVao, ...cu.messages] };
+        },
+      );
+    },
+  });
+
+  // Đủ một trang đầy nghĩa là có thể còn tin cũ hơn.
+  const conCuHon = !hetTinCu && (data?.messages.length ?? 0) >= SO_TIN_MOI_LAN;
+
   const guiTraLoi = useMutation({
-    mutationFn: (text: string) => traLoiHoiThoai(conversationId, text),
+    mutationFn: ({ text, tep }: { text: string; tep: File[] }) =>
+      traLoiHoiThoai(conversationId, text, tep),
     onSuccess: (tinMoi: Message) => {
       setLoiGui(null);
       // Dùng thẳng tin từ response thay vì gọi lại API (RB-6): response đã là
@@ -114,7 +157,7 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
         // thoại chẳng hạn) — đọc lại để ô soạn khoá/mở cho đúng.
         if (err.isConflict || err.isForbidden) void refetch();
       } else {
-        setLoiGui("Không gửi được tin. Kiểm tra kết nối rồi thử lại.");
+        setLoiGui(t("soan.loiGuiChung"));
       }
     },
   });
@@ -122,7 +165,7 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
   if (isPending) {
     return (
       <div className="flex flex-1 items-center justify-center bg-surface">
-        <p className="text-sm text-muted">Đang tải hội thoại…</p>
+        <p className="text-sm text-muted">{t("chat.dangTaiHoiThoai")}</p>
       </div>
     );
   }
@@ -133,12 +176,12 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
       <div className="flex flex-1 items-center justify-center bg-surface px-6">
         <div className="max-w-sm text-center">
           <p className="text-sm font-medium text-foreground">
-            {la404 ? "Không xem được hội thoại này" : "Không tải được hội thoại"}
+            {la404 ? t("chat.khongCoQuyen") : t("chat.loiTai")}
           </p>
           <p className="mt-1 text-xs text-muted">
             {error instanceof ApiError
               ? error.message
-              : "Không kết nối được máy chủ."}
+              : t("chung.loiKetNoi")}
           </p>
           {!la404 && (
             <button
@@ -146,7 +189,7 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
               onClick={() => void refetch()}
               className="mt-4 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-95"
             >
-              Thử lại
+              {t("chung.thuLai")}
             </button>
           )}
         </div>
@@ -182,7 +225,12 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
         </p>
       )}
 
-      <DanhSachTin messages={data.messages} />
+      <DanhSachTin
+        messages={data.messages}
+        conCuHon={conCuHon}
+        dangTaiThem={taiThem.isPending}
+        onTaiThem={() => taiThem.mutate()}
+      />
 
       {loiGui && (
         <p
@@ -196,9 +244,9 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
       <OSoanTin
         status={data.status}
         dangGui={guiTraLoi.isPending}
-        onGui={async (text) => {
-          // `mutateAsync` ném lại lỗi → OSoanTin không xoá nội dung đã gõ (IT-5).
-          await guiTraLoi.mutateAsync(text);
+        onGui={async (text, tep) => {
+          // `mutateAsync` ném lại lỗi → OSoanTin giữ nguyên chữ và ảnh (IT-5).
+          await guiTraLoi.mutateAsync({ text, tep });
         }}
       />
 
@@ -253,9 +301,9 @@ function HeaderHoiThoai({
           <BadgeTrangThai status={hoiThoai.status} />
         </div>
         <p className="mt-0.5 text-xs text-muted">
-          {hoiThoai.department_id ? "Đã phân phòng" : "Chưa phân phòng"}
+          {hoiThoai.department_id ? t("chat.daPhanPhong") : t("chat.chuaPhanPhong")}
           {" · "}
-          {hoiThoai.assigned_user_id ? "Đang được xử lý" : "Chưa có người xử lý"}
+          {hoiThoai.assigned_user_id ? t("chat.dangXuLy") : t("chat.chuaCoNguoiXuLy")}
         </p>
       </div>
 
@@ -266,7 +314,7 @@ function HeaderHoiThoai({
             onClick={onMoPhanPhong}
             className="rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-white transition hover:brightness-95"
           >
-            Phân phòng
+            {t("hanhDong.phanPhong")}
           </button>
         )}
 
@@ -277,7 +325,7 @@ function HeaderHoiThoai({
             disabled={dangNhanViec}
             className="rounded-lg border border-border-subtle px-3.5 py-2 text-sm font-medium text-foreground transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {dangNhanViec ? "Đang nhận…" : "Nhận việc"}
+            {dangNhanViec ? t("hanhDong.dangNhan") : t("hanhDong.nhanViec")}
           </button>
         )}
 
@@ -288,7 +336,7 @@ function HeaderHoiThoai({
             disabled={dangDong}
             className="rounded-lg border border-border-subtle px-3.5 py-2 text-sm font-medium text-foreground transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {dangDong ? "Đang đóng…" : "Đóng hội thoại"}
+            {dangDong ? t("hanhDong.dangDong") : t("hanhDong.dong")}
           </button>
         )}
       </div>
@@ -296,24 +344,72 @@ function HeaderHoiThoai({
   );
 }
 
-function DanhSachTin({ messages }: { messages: Message[] }) {
+function DanhSachTin({
+  messages,
+  conCuHon,
+  dangTaiThem,
+  onTaiThem,
+}: {
+  messages: Message[];
+  conCuHon: boolean;
+  dangTaiThem: boolean;
+  onTaiThem: () => void;
+}) {
   const cuoiRef = useRef<HTMLDivElement>(null);
+  const khungRef = useRef<HTMLDivElement>(null);
+  // Chiều cao nội dung trước khi chèn tin cũ, để bù lại vị trí cuộn.
+  const caoTruocRef = useRef<number | null>(null);
+  const idCuoiRef = useRef<string | null>(null);
 
-  // Chat mở ra phải ở tin mới nhất, và tự trôi xuống khi có tin mới.
   useEffect(() => {
-    cuoiRef.current?.scrollIntoView({ block: "end" });
-  }, [messages.length]);
+    const khung = khungRef.current;
+    if (!khung) return;
+
+    if (caoTruocRef.current !== null) {
+      // Vừa chèn tin CŨ vào đầu: dịch vị trí cuộn xuống đúng phần vừa thêm, để
+      // nội dung người dùng đang đọc đứng yên thay vì nhảy vọt lên.
+      khung.scrollTop += khung.scrollHeight - caoTruocRef.current;
+      caoTruocRef.current = null;
+      return;
+    }
+
+    // Tin MỚI ở cuối (hoặc lần mở đầu) → trôi xuống đáy.
+    const idCuoi = messages[messages.length - 1]?.id ?? null;
+    if (idCuoi !== idCuoiRef.current) {
+      idCuoiRef.current = idCuoi;
+      cuoiRef.current?.scrollIntoView({ block: "end" });
+    }
+  }, [messages]);
+
+  function taiThem() {
+    // Ghi lại chiều cao TRƯỚC khi dữ liệu đổi; effect ở trên dùng nó để bù.
+    caoTruocRef.current = khungRef.current?.scrollHeight ?? null;
+    onTaiThem();
+  }
 
   if (messages.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center px-6">
-        <p className="text-xs text-muted">Chưa có tin nhắn nào trong hội thoại này.</p>
+        <p className="text-xs text-muted">{t("chat.chuaCoTin")}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
+    <div ref={khungRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
+      {conCuHon && (
+        <div className="flex justify-center pb-1">
+          <button
+            type="button"
+            onClick={taiThem}
+            disabled={dangTaiThem}
+            className="rounded-full border border-border-subtle bg-white px-3 py-1 text-xs font-medium text-muted transition hover:bg-surface disabled:opacity-60"
+          >
+            {dangTaiThem ? t("chung.dangTai") : t("chat.xemTinCu")}
+          </button>
+        </div>
+      )}
+
       {messages.map((m) => (
         <BongBongTin key={m.id} message={m} />
       ))}

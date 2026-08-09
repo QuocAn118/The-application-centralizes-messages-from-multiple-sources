@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     # vô dụng, nhưng đủ dài cho một phiên xem hội thoại thông thường.
     attachment_url_ttl_seconds: int = 300
 
+    # Địa chỉ CÔNG KHAI của API, để Zalo/Meta tải ảnh gửi kèm về. Không suy
+    # ra được từ request (server thường sau NAT/proxy) nên phải cấu hình.
+    # Rỗng = vẫn lưu ảnh vào lịch sử nhưng KHÔNG gửi kèm ra nền tảng.
+    attachment_public_base_url: str = ""
+
+    # Trần kích thước một tệp gửi kèm (byte). Mặc định 10MB.
+    attachment_max_bytes: int = 10 * 1024 * 1024
+
     # Inbox: bí mật cấp ứng dụng để verify chữ ký webhook (không phải token kênh).
     zalo_app_id: str = ""
     zalo_oa_secret_key: str = ""

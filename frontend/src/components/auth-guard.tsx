@@ -8,6 +8,7 @@
  */
 
 import { useEffect } from "react";
+import { t } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 
@@ -22,7 +23,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface">
-        <p className="text-sm text-muted">Đang tải…</p>
+        <p className="text-sm text-muted">{t("chung.dangTai")}</p>
       </div>
     );
   }

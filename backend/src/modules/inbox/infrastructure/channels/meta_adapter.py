@@ -126,11 +126,50 @@ class MetaAdapter:
         external_customer_id: str,
         content: MessageContent,
     ) -> SentMessageRef:
-        """Gửi tin qua Graph API (token đã giải mã, use case lo việc đó)."""
-        body = {
-            "recipient": {"id": external_customer_id},
-            "message": {"text": content.text or ""},
-        }
+        """Gửi tin qua Graph API (token đã giải mã, use case lo việc đó).
+
+        Ảnh gửi bằng ``attachment`` kiểu ``image`` — Meta TỰ TẢI ảnh từ ``url``
+        ta cung cấp, nên URL phải công khai truy cập được từ máy chủ Meta (xem
+        ``ATTACHMENT_PUBLIC_BASE_URL``). Graph API không cho gửi text và ảnh
+        trong cùng một tin, nên khi có cả hai, phần text đi thành tin riêng
+        trước — giữ đúng thứ tự người dùng gõ.
+        """
+        anh = next(
+            (a for a in content.attachments if a.kind is AttachmentKind.IMAGE and a.url),
+            None,
+        )
+        cac_body: list[dict[str, Any]] = []
+        if content.text:
+            cac_body.append(
+                {
+                    "recipient": {"id": external_customer_id},
+                    "message": {"text": content.text},
+                }
+            )
+        if anh is not None:
+            cac_body.append(
+                {
+                    "recipient": {"id": external_customer_id},
+                    "message": {
+                        "attachment": {
+                            "type": "image",
+                            "payload": {"url": anh.url, "is_reusable": False},
+                        }
+                    },
+                }
+            )
+
+        if len(cac_body) > 1:
+            return await self._gui_nhieu(access_token, cac_body)
+
+        body = (
+            cac_body[0]
+            if cac_body
+            else {
+                "recipient": {"id": external_customer_id},
+                "message": {"text": ""},
+            }
+        )
         async with self._client_factory() as client:
             resp = await client.post(
                 _GRAPH_SEND_URL,
@@ -140,6 +179,24 @@ class MetaAdapter:
             resp.raise_for_status()
             data = resp.json()
         message_id = data.get("message_id")
+        return SentMessageRef(external_message_id=str(message_id) if message_id else None)
+
+    async def _gui_nhieu(self, access_token: str, cac_body: list[dict[str, Any]]) -> SentMessageRef:
+        """Gửi lần lượt nhiều tin, trả mã của tin CUỐI.
+
+        Dùng khi một tin của người dùng phải tách làm nhiều lời gọi (text + ảnh).
+        Gửi tuần tự để giữ đúng thứ tự hiển thị bên phía khách.
+        """
+        message_id: str | None = None
+        async with self._client_factory() as client:
+            for body in cac_body:
+                resp = await client.post(
+                    _GRAPH_SEND_URL,
+                    params={"access_token": access_token},
+                    json=body,
+                )
+                resp.raise_for_status()
+                message_id = resp.json().get("message_id")
         return SentMessageRef(external_message_id=str(message_id) if message_id else None)
 
     # -- Tải media -----------------------------------------------------------

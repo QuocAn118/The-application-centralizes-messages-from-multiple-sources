@@ -56,8 +56,12 @@ export function layDanhSachInbox(
   );
 }
 
-/** Số tin tải mỗi lần xem hội thoại. Backend chặn trần ở 200. */
-export const SO_TIN_MOI_LAN = 100;
+/**
+ * Số tin tải mỗi lần. Backend chặn trần ở 200.
+ *
+ * Nhỏ để mở hội thoại nhanh; phần cũ hơn tải thêm khi người dùng cuộn lên.
+ */
+export const SO_TIN_MOI_LAN = 30;
 
 /**
  * Chi tiết một hội thoại kèm tin nhắn.
@@ -81,8 +85,20 @@ export function layChiTietHoiThoai(
  * Backend chỉ chấp nhận khi hội thoại `DANG_MO`; ngược lại trả 4xx và FE phải
  * đồng bộ lại trạng thái (RB-5, §7).
  */
-export function traLoiHoiThoai(id: string, text: string): Promise<Message> {
-  return api.post<Message>(`/inbox/${id}/reply`, { text });
+export function traLoiHoiThoai(
+  id: string,
+  text: string,
+  tep: File[] = [],
+): Promise<Message> {
+  // Không có tệp thì giữ nguyên JSON — nhẹ hơn và là đường đi đã chạy ổn định.
+  if (tep.length === 0) {
+    return api.post<Message>(`/inbox/${id}/reply`, { text });
+  }
+
+  const form = new FormData();
+  if (text) form.append("text", text);
+  for (const t of tep) form.append("files", t);
+  return api.postForm<Message>(`/inbox/${id}/reply`, form);
 }
 
 // ---------------------------------------------------------------------------

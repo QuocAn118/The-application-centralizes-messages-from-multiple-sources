@@ -80,9 +80,10 @@ Reply: khoá ô nhập → `POST reply` → thêm tin từ response → mở kho
 | Đăng xuất | `POST /api/v1/auth/logout` | `{refresh_token}` | 204 (cần Bearer) |
 | Đổi mật khẩu | `POST /api/v1/auth/change-password` | `{current_password, new_password}` | 204 |
 | Tôi là ai | `GET /api/v1/auth/me` | — | `UserResponse` (xem kiểu chính) |
-| Danh sách inbox | `GET /api/v1/inbox` | `status?, limit≤100, offset` | `PageResponse<InboxItem>` |
-| Chi tiết hội thoại | `GET /api/v1/inbox/{id}` | `limit≤200, offset` | `Conversation` (kèm `messages[]`) |
-| Trả lời | `POST /api/v1/inbox/{id}/reply` | `{text}` (≤8000, không rỗng) | `Message` |
+| Danh sách inbox | `GET /api/v1/inbox` | `status?, limit≤100, offset, q?` | `PageResponse<InboxItem>` |
+| Chi tiết hội thoại | `GET /api/v1/inbox/{id}` | `limit≤200, offset` | `Conversation` (kèm `messages[]`) — trả tin **mới nhất**, `offset` đếm ngược về cũ |
+| Trả lời | `POST /api/v1/inbox/{id}/reply` | JSON `{text}` **hoặc** multipart `text` + `files` (ảnh) | `Message` |
+| Tải ảnh đính kèm | `GET /api/v1/inbox/{cid}/attachments/{aid}` | `expires, signature` (URL đã ký) | nội dung tệp |
 | Phân phòng | `POST /api/v1/inbox/{id}/assign` | `{department_id}` | `Conversation` |
 | Nhận việc | `POST /api/v1/inbox/{id}/take` | — | `Conversation` |
 | Đóng | `POST /api/v1/inbox/{id}/close` | — | `Conversation` |
@@ -120,13 +121,14 @@ Reply: khoá ô nhập → `POST reply` → thêm tin từ response → mở kho
 
 ## 9. Nợ ghi sẵn (không làm bản đầu)
 
-(a) đính kèm ảnh khi trả lời (cần mở rộng `ReplyRequest` — backend, ghi nợ) — **CÒN NỢ**;
+(a) ~~đính kèm ảnh khi trả lời~~ — **ĐÃ TRẢ 2026-08-09**: endpoint reply nhận `multipart/form-data` (giữ nhánh JSON cho client cũ); ảnh lưu TRƯỚC rồi sinh URL công khai để Zalo/Meta tự tải về. Cần đặt `ATTACHMENT_PUBLIC_BASE_URL`;
 (b) ~~phục vụ ảnh attachment~~ — **ĐÃ TRẢ 2026-08-09**: `GET /inbox/{cid}/attachments/{aid}` với URL ký HMAC hết hạn 300s (thẻ `<img>` không gửi được Bearer nên dùng chữ ký);
-(c) các màn #4/#5/#2 (sub-project FE sau, spec riêng) — **CÒN NỢ**;
-(d) i18n/đa ngôn ngữ (bản đầu tiếng Việt) — **CÒN NỢ**;
+(c) các màn #4/#5/#2 — **CÒN NỢ, tách sub-project riêng** (user chốt 2026-08-09): mỗi màn cần spec+plan như #F1, không gộp vào nhánh này;
+(d) ~~i18n~~ — **ĐÃ TRẢ MỘT PHẦN**: toàn bộ chuỗi gom vào `lib/i18n.ts` + hàm `t()` có kiểm kiểu; giao diện vẫn tiếng Việt, thêm ngôn ngữ sau chỉ là thêm một từ điển. CÒN NỢ: bản dịch tiếng Anh + nút chuyển ngôn ngữ;
 (e) ~~mockup UI bằng Stitch~~ — **XONG 2026-08-05** (6 màn);
 (f) ~~preview tin cuối ở dòng danh sách~~ — **ĐÃ TRẢ**: `InboxItem.last_message_preview`, một truy vấn `DISTINCT ON` cho cả trang;
-(g) ~~ô tìm kiếm~~ — **ĐÃ TRẢ**: `GET /inbox?q=` lọc theo tên khách, **bỏ dấu** (`unaccent`) nên gõ không dấu vẫn khớp.
+(g) ~~ô tìm kiếm~~ — **ĐÃ TRẢ**: `GET /inbox?q=` lọc theo tên khách, **bỏ dấu** (`unaccent`) nên gõ không dấu vẫn khớp;
+(h) ~~cuộn-để-tải-thêm~~ — **ĐÃ TRẢ**: tải 30 tin mỗi lần, nút "Xem tin cũ hơn" giữ nguyên vị trí cuộn khi chèn tin cũ.
 
 ## 10. Bước tiếp (thứ tự)
 

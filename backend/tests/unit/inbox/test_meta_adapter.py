@@ -196,3 +196,60 @@ class TestTaiMedia:
             AttachmentRef(kind=AttachmentKind.FILE, url="https://cdn/f.pdf")
         )
         assert data == b"file-bytes"
+
+
+class TestGuiKemAnh:
+    """Meta không cho text và ảnh trong CÙNG một tin, nên phải tách hai lời gọi."""
+
+    async def test_text_va_anh_tach_thanh_hai_tin_dung_thu_tu(self) -> None:
+        cac_body: list[dict] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            cac_body.append(json.loads(request.content))
+            return httpx.Response(200, json={"message_id": f"mid_{len(cac_body)}"})
+
+        transport = httpx.MockTransport(handler)
+        adapter = _adapter(client_factory=lambda: httpx.AsyncClient(transport=transport))
+
+        ref = await adapter.send_message(
+            "tok",
+            "psid_1",
+            MessageContent(
+                text="anh day",
+                attachments=(
+                    AttachmentRef(kind=AttachmentKind.IMAGE, url="https://vidu.test/a.png"),
+                ),
+            ),
+        )
+
+        assert len(cac_body) == 2
+        # Text đi trước để giữ đúng thứ tự người dùng gõ.
+        assert cac_body[0]["message"]["text"] == "anh day"
+        anh = cac_body[1]["message"]["attachment"]
+        assert anh["type"] == "image"
+        assert anh["payload"]["url"] == "https://vidu.test/a.png"
+        # Trả mã của tin CUỐI.
+        assert ref.external_message_id == "mid_2"
+
+    async def test_chi_co_anh_thi_mot_loi_goi(self) -> None:
+        cac_body: list[dict] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            cac_body.append(json.loads(request.content))
+            return httpx.Response(200, json={"message_id": "mid_1"})
+
+        transport = httpx.MockTransport(handler)
+        adapter = _adapter(client_factory=lambda: httpx.AsyncClient(transport=transport))
+
+        await adapter.send_message(
+            "tok",
+            "psid_1",
+            MessageContent(
+                attachments=(
+                    AttachmentRef(kind=AttachmentKind.IMAGE, url="https://vidu.test/a.png"),
+                ),
+            ),
+        )
+
+        assert len(cac_body) == 1
+        assert "attachment" in cac_body[0]["message"]

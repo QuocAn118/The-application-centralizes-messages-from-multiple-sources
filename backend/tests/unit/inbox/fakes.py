@@ -5,6 +5,7 @@ làm test đỏ — đúng thứ ta muốn. Mock thì không.
 """
 
 from datetime import datetime
+from pathlib import Path
 from uuid import UUID
 
 from src.modules.inbox.domain.entities.attachment import Attachment
@@ -243,6 +244,9 @@ class FakeAttachmentStore:
             content_type=content_type,
             size=len(data),
         )
+
+    def resolve(self, stored_path: str) -> Path:
+        return Path(stored_path)
 
 
 class FakeChannelAdapter:

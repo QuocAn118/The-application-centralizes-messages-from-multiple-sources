@@ -5,24 +5,26 @@
  * là của backend, còn cách gọi tên bằng tiếng Việt là quyết định của FE.
  */
 
+import { t } from "./i18n";
 import type { ConversationStatus, Platform, Role } from "./types";
 
+// Nhãn lấy từ từ điển i18n — một nguồn duy nhất, đổi ngôn ngữ là đổi cả đây.
 export const NHAN_TRANG_THAI: Record<ConversationStatus, string> = {
-  CHO_PHAN: "Chờ phân",
-  DANG_MO: "Đang mở",
-  DA_DONG: "Đã đóng",
+  CHO_PHAN: t("trangThai.CHO_PHAN"),
+  DANG_MO: t("trangThai.DANG_MO"),
+  DA_DONG: t("trangThai.DA_DONG"),
 };
 
 export const NHAN_KENH: Record<Platform, string> = {
-  ZALO: "Zalo",
-  FACEBOOK: "Facebook",
-  INSTAGRAM: "Instagram",
+  ZALO: t("kenh.ZALO"),
+  FACEBOOK: t("kenh.FACEBOOK"),
+  INSTAGRAM: t("kenh.INSTAGRAM"),
 };
 
 export const NHAN_VAI: Record<Role, string> = {
-  STAFF: "Nhân viên",
-  MANAGER: "Quản lý",
-  ADMIN: "Quản trị",
+  STAFF: t("vai.STAFF"),
+  MANAGER: t("vai.MANAGER"),
+  ADMIN: t("vai.ADMIN"),
 };
 
 /** Lớp Tailwind cho badge kênh — màu lấy từ design system. */
@@ -41,13 +43,13 @@ export const LOP_BADGE_TRANG_THAI: Record<ConversationStatus, string> = {
 
 /** Tên hiển thị của khách khi backend chưa có tên (kênh không trả về). */
 export function tenKhach(ten: string | null): string {
-  return ten?.trim() ? ten : "Khách chưa rõ tên";
+  return ten?.trim() ? ten : t("inbox.khachChuaRoTen");
 }
 
 /** Chữ cái đầu cho avatar. */
 export function chuCaiDau(ten: string | null): string {
-  const t = tenKhach(ten).trim();
-  return t[0]?.toUpperCase() ?? "?";
+  const daCat = tenKhach(ten).trim();
+  return daCat[0]?.toUpperCase() ?? "?";
 }
 
 /** Giờ:phút 24h dạng "14:32" — ghép tay để không lệch theo bản ICU. */
