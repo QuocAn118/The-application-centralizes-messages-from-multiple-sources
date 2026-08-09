@@ -117,6 +117,16 @@ export interface PageResponse<T> {
   offset: number;
 }
 
+/** Phòng ban — dùng ở dialog phân phòng (`GET /departments`). */
+export interface Department {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // ---------------------------------------------------------------------------
 // Realtime (RB-2: WS chỉ đẩy TÍN HIỆU, không đẩy nội dung)
 // ---------------------------------------------------------------------------

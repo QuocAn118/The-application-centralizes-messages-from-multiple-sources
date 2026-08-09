@@ -110,6 +110,32 @@
 
 **Hạn chế kiểm thử:** adapter thật gọi API Zalo/Meta ngoài internet nên không chạy được ở máy dev (credential seed là giả → `InvalidToken`). Đã kiểm bằng một backend phụ ở cổng 8001 dùng **app thật**, chỉ thay adapter gửi tin + cipher bằng bản giả — quyền, máy trạng thái, DB, lưu tin vẫn là code thật. **Chưa từng gửi tin thật ra Zalo/Facebook.**
 
+## Chi tiết GĐ4 — Hành động & vai: XONG
+
+| # | Task | Trạng thái |
+|---|---|---|
+| 1 | `inbox-api.ts`: `nhanViec` / `dongHoiThoai` / `phanPhong` + `layPhongBanHoatDong` | xong |
+| 2 | `lib/quyen-hanh-dong.ts` — logic ẩn/hiện nút tách riêng để test được (+15 test IT-3) | xong |
+| 3 | `dialog-phan-phong.tsx` — modal radio phòng ban, Esc/bấm nền để đóng | xong |
+| 4 | Ba nút trong header khung chat + xử lý 403/409/422 (toast + refetch) | xong |
+
+**Quy tắc rút từ use case backend (không đoán):**
+
+| Hành động | Điều kiện | Ai thấy nút |
+|---|---|---|
+| Nhận việc | `DANG_MO` + `assigned_user_id == null` | ai trong phạm vi phòng (gồm Staff) |
+| Đóng | `DANG_MO` (kể cả đã có người nhận) | ai trong phạm vi phòng |
+| Phân phòng | `CHO_PHAN` | MANAGER / ADMIN |
+
+**Phát hiện quan trọng — `ASSIGN_OUT_OF_SCOPE`:** `AssignConversationToDepartment` chặn Manager phân về phòng KHÁC phòng mình (403). Nên dialog **lọc sẵn danh sách phòng theo vai**: Manager thấy đúng 1 phòng (và được chọn sẵn), Admin thấy tất cả. Hiện cả danh sách rồi để server từ chối là mời người dùng vào một thất bại đã biết trước. Đã kiểm bằng API thật: Manager phân về Phòng Kỹ thuật → 403 `ASSIGN_OUT_OF_SCOPE`; phân về phòng mình → 200, `CHO_PHAN` → `DANG_MO`.
+
+**Bẫy đã tránh:** `take`/`close`/`assign` trả `Conversation` **không kèm `messages`**. Ghi đè thẳng response vào cache sẽ làm trắng khung chat — `apDungHoiThoaiMoi` giữ lại mảng tin đang có.
+
+**Kiểm chứng đầu-cuối (trình duyệt thật, 3 vai):**
+- **STAFF 9/9**, **MANAGER 15/15**, **ADMIN 15/15** PASS. Điểm mấu chốt: dialog hiện **1 phòng** với Manager và **2 phòng** với Admin.
+- Ba luồng chạy thật: Nhận việc → header đổi "Đang được xử lý" + nút biến mất; Phân phòng → dialog đóng, badge thành "Đang mở"; Đóng → badge "Đã đóng", ô soạn khoá, nút hành động biến mất.
+- **Xử lý lỗi 7/7 PASS:** ép 422 → báo lỗi rõ **và refetch** (kiểm đếm số lần GET detail: 0 → 1); ép 403 → nói rõ không có quyền, không trắng màn; ép mạng hỏng → gợi ý kiểm tra kết nối.
+
 ### Nợ mới ghi ở GĐ2
 
 - **Preview tin cuối trong dòng danh sách:** mockup có vẽ, nhưng `GET /inbox` trả `InboxItem` KHÔNG kèm tin nhắn → muốn preview phải gọi thêm N request. Bản đầu bỏ preview (RB-1 thắng mockup). Nếu cần, mở nợ backend thêm `last_message_preview` vào `InboxItem`.
