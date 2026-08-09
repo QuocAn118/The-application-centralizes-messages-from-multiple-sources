@@ -13,6 +13,7 @@ import {
   SessionExpiredError,
   __resetApiClientState,
   apiRequest,
+  onAccessTokenChange,
   setAccessToken,
   setOnSessionExpired,
 } from "./api-client";
@@ -191,6 +192,64 @@ describe("apiRequest — 401 và refresh (IT-4)", () => {
       .mockResolvedValueOnce(jsonResponse(200, { ok: true }));
 
     await expect(apiRequest("/inbox")).resolves.toEqual({ ok: true });
+  });
+});
+
+describe("báo token đổi (mắt xích để WS reconnect — RB-4)", () => {
+  it("refresh xong thì báo cho người nghe kèm token mới", async () => {
+    setAccessToken("token-cu");
+    const daNghe: (string | null)[] = [];
+    onAccessTokenChange((t) => daNghe.push(t));
+
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(401, errorBody("EXPIRED", "hết hạn")))
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          access_token: "token-moi",
+          refresh_token: "r2",
+          token_type: "bearer",
+          expires_in: 900,
+          must_change_password: false,
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, { ok: true }));
+
+    await apiRequest("/inbox");
+
+    // Không có bước này thì WS vẫn ôm token cũ và bị server đóng 1008.
+    expect(daNghe).toContain("token-moi");
+  });
+
+  it("không báo khi gán lại đúng token cũ (tránh mở lại WS vô cớ)", () => {
+    setAccessToken("token-a");
+    const daNghe: (string | null)[] = [];
+    onAccessTokenChange((t) => daNghe.push(t));
+
+    setAccessToken("token-a");
+    expect(daNghe).toHaveLength(0);
+
+    setAccessToken("token-b");
+    expect(daNghe).toEqual(["token-b"]);
+  });
+
+  it("đăng xuất (token null) cũng được báo để đóng WS", () => {
+    setAccessToken("token-a");
+    const daNghe: (string | null)[] = [];
+    onAccessTokenChange((t) => daNghe.push(t));
+
+    setAccessToken(null);
+    expect(daNghe).toEqual([null]);
+  });
+
+  it("huỷ đăng ký thì không nhận báo nữa", () => {
+    const daNghe: (string | null)[] = [];
+    const huy = onAccessTokenChange((t) => daNghe.push(t));
+
+    setAccessToken("t1");
+    huy();
+    setAccessToken("t2");
+
+    expect(daNghe).toEqual(["t1"]);
   });
 });
 

@@ -136,6 +136,43 @@
 - Ba luồng chạy thật: Nhận việc → header đổi "Đang được xử lý" + nút biến mất; Phân phòng → dialog đóng, badge thành "Đang mở"; Đóng → badge "Đã đóng", ô soạn khoá, nút hành động biến mất.
 - **Xử lý lỗi 7/7 PASS:** ép 422 → báo lỗi rõ **và refetch** (kiểm đếm số lần GET detail: 0 → 1); ép 403 → nói rõ không có quyền, không trắng màn; ép mạng hỏng → gợi ý kiểm tra kết nối.
 
+## Chi tiết GĐ5 — Realtime: XONG
+
+| # | Task | Trạng thái |
+|---|---|---|
+| 1 | `api-client.ts`: thêm `onAccessTokenChange` — mắt xích để WS biết token đã xoay | xong |
+| 2 | `lib/use-inbox-socket.ts` — giữ WS sống, backoff có nhiễu, mở lại khi token đổi (+9 test) | xong |
+| 3 | `components/cau-noi-realtime.tsx` — tín hiệu → `invalidateQueries` (RB-2), đặt ở layout `/inbox` | xong |
+| 4 | 4 test cho cơ chế báo token đổi trong `api-client.test.ts` | xong |
+
+**Vì sao cần `onAccessTokenChange`:** WS mang access token ở **query string**, nên token cũ hết hạn thì server đóng 1008. Trước đây `refreshAccessToken` gán thẳng biến module — không ai được báo, và realtime sẽ **chết âm thầm sau lần refresh đầu tiên**. Nay refresh đi qua `setAccessToken`, phát sự kiện, hook mở lại WS bằng token mới.
+
+**Thiết kế đáng lưu:**
+- Tín hiệu chỉ dùng `conversation_id` để chọn khoá cache; **không đọc nội dung nào từ payload WS** (RB-2). Chi tiết chỉ invalidate nếu hội thoại đó đang có trong cache — tránh gọi REST cho hội thoại người dùng không mở.
+- Backoff có **nhiễu ngẫu nhiên** để nhiều tab không cùng đập vào server một nhịp sau khi mạng trở lại; trần 30s, sàn 0,5s.
+- Gỡ handler trước khi đóng socket cũ: nếu không, `onclose` của kết nối đã bỏ sẽ kích hoạt vòng thử-lại cho một kết nối không còn dùng.
+- Callback giữ trong `ref` — đổi callback không được làm đứt kết nối đang chạy.
+
+**Kiểm chứng đầu-cuối (trình duyệt thật):**
+- **IT-1 hai tab 7/7 PASS:** hai tab cùng mở một hội thoại; gửi tin ở tab A → **tab B thấy mà KHÔNG F5** (đã kiểm `beforeunload` để chắc chắn không reload); đóng hội thoại ở A → B thấy badge "Đã đóng" và **ô soạn tự khoá** theo trạng thái mới.
+- WS mở đúng `ws://127.0.0.1:8001/ws/inbox?token=***` — không dính tiền tố `/api/v1`.
+- **Reconnect 4/4 PASS:** đóng WS từ phía server → tự mở lại → kết nối mới ở trạng thái OPEN → gửi tin vẫn chạy.
+- **Token xoay 2/2 PASS:** ép 401 → refresh → WS mở lại (2 → 3 kết nối) với **token khác token ban đầu**.
+
+**Một FAIL ban đầu hoá ra là lỗi kịch bản, không phải lỗi code:** `context.setOffline(true)` không làm rớt WS tới `127.0.0.1` (loopback không chịu ảnh hưởng của giả lập offline), nên không có sự kiện `close` nào để kích hoạt reconnect. Đã kiểm lại đúng cách bằng cách đóng socket từ phía server.
+
+## #F1 Inbox & Reply — HOÀN TẤT 5/5 giai đoạn
+
+| GĐ | Commit | Kiểm chứng |
+|---|---|---|
+| 1 — Khung & Auth | `d7cb27e8` | 11 test, IT-4 single-flight |
+| 2 — Inbox list | `b472c296` | 12/12 PASS × 2 vai |
+| 3 — Khung chat & Reply | `c688fc41` | 9/9 + IT-5 6/6 |
+| 4 — Hành động & vai | `d248b658` | STAFF 9/9, MANAGER 15/15, ADMIN 15/15, lỗi 7/7 |
+| 5 — Realtime | (commit này) | IT-1 7/7, reconnect 4/4, token xoay 2/2 |
+
+Cộng thêm `b8da7f7b` (backend CORS). Tổng: **50 unit test**, build/tsc/eslint sạch. Năm bất biến IT-1…IT-5 của spec §8 đều đã kiểm.
+
 ### Nợ mới ghi ở GĐ2
 
 - **Preview tin cuối trong dòng danh sách:** mockup có vẽ, nhưng `GET /inbox` trả `InboxItem` KHÔNG kèm tin nhắn → muốn preview phải gọi thêm N request. Bản đầu bỏ preview (RB-1 thắng mockup). Nếu cần, mở nợ backend thêm `last_message_preview` vào `InboxItem`.
