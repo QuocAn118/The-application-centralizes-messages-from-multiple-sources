@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { t } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 
@@ -34,7 +35,7 @@ export default function LoginPage() {
       // Mật khẩu tạm: bắt đổi trước khi vào việc.
       router.replace(me.must_change_password ? "/doi-mat-khau" : "/inbox");
     } catch (err) {
-      setLoi(err instanceof Error ? err.message : "Không đăng nhập được.");
+      setLoi(err instanceof Error ? err.message : t("dangNhap.loiChung"));
       setDangGui(false);
     }
   }
@@ -42,9 +43,9 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-surface px-4">
       <div className="w-full max-w-[420px] rounded-lg border border-border-subtle bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-bold text-primary">OmniChat</h1>
+        <h1 className="text-2xl font-bold text-primary">{t("dangNhap.tieuDe")}</h1>
         <p className="mt-1 text-sm text-muted">
-          Hộp thư đa kênh — Zalo, Facebook, Instagram
+          {t("dangNhap.phuDe")}
         </p>
 
         <form onSubmit={xuLyGui} className="mt-8 space-y-5">
@@ -53,7 +54,7 @@ export default function LoginPage() {
               htmlFor="email"
               className="mb-1.5 block text-sm font-medium text-foreground"
             >
-              Email
+              {t("dangNhap.email")}
             </label>
             <input
               id="email"
@@ -72,7 +73,7 @@ export default function LoginPage() {
               htmlFor="mat-khau"
               className="mb-1.5 block text-sm font-medium text-foreground"
             >
-              Mật khẩu
+              {t("dangNhap.matKhau")}
             </label>
             <div className="relative">
               <input
@@ -87,7 +88,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setHienMatKhau((v) => !v)}
-                aria-label={hienMatKhau ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                aria-label={hienMatKhau ? t("dangNhap.anMatKhau") : t("dangNhap.hienMatKhau")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-soft transition hover:text-muted"
               >
                 {hienMatKhau ? <IconMatDong /> : <IconMat />}
@@ -100,7 +101,7 @@ export default function LoginPage() {
             disabled={dangGui}
             className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {dangGui ? "Đang đăng nhập…" : "Đăng nhập"}
+            {dangGui ? t("dangNhap.dangGui") : t("dangNhap.nut")}
           </button>
 
           {loi && (

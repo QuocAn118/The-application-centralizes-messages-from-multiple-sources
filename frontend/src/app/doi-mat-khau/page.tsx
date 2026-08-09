@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { t } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
@@ -33,11 +34,11 @@ export default function DoiMatKhauPage() {
     setLoi(null);
 
     if (matKhauMoi !== xacNhan) {
-      setLoi("Hai ô mật khẩu mới không khớp.");
+      setLoi(t("doiMatKhau.khongKhop"));
       return;
     }
     if (matKhauMoi.length < 8) {
-      setLoi("Mật khẩu mới phải có ít nhất 8 ký tự.");
+      setLoi(t("doiMatKhau.quaNgan"));
       return;
     }
 
@@ -52,7 +53,7 @@ export default function DoiMatKhauPage() {
       router.replace("/inbox");
     } catch (err) {
       setLoi(
-        err instanceof ApiError ? err.message : "Không đổi được mật khẩu.",
+        err instanceof ApiError ? err.message : t("doiMatKhau.loiChung"),
       );
       setDangGui(false);
     }
@@ -61,7 +62,7 @@ export default function DoiMatKhauPage() {
   if (isLoading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface">
-        <p className="text-sm text-muted">Đang tải…</p>
+        <p className="text-sm text-muted">{t("chung.dangTai")}</p>
       </div>
     );
   }
@@ -69,32 +70,32 @@ export default function DoiMatKhauPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-surface px-4">
       <div className="w-full max-w-[420px] rounded-lg border border-border-subtle bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-bold text-foreground">Đổi mật khẩu</h1>
+        <h1 className="text-xl font-bold text-foreground">{t("doiMatKhau.tieuDe")}</h1>
         <p className="mt-1 text-sm text-muted">
           {user.must_change_password
-            ? "Bạn đang dùng mật khẩu tạm. Hãy đặt mật khẩu mới để tiếp tục."
-            : "Đặt mật khẩu mới cho tài khoản của bạn."}
+            ? t("doiMatKhau.batBuoc")
+            : t("doiMatKhau.tuNguyen")}
         </p>
 
         <form onSubmit={xuLyGui} className="mt-8 space-y-5">
           <O
             id="mk-hien-tai"
-            nhan="Mật khẩu hiện tại"
+            nhan={t("doiMatKhau.hienTai")}
             giaTri={matKhauHienTai}
             doiGiaTri={setMatKhauHienTai}
             autoComplete="current-password"
           />
           <O
             id="mk-moi"
-            nhan="Mật khẩu mới"
+            nhan={t("doiMatKhau.moi")}
             giaTri={matKhauMoi}
             doiGiaTri={setMatKhauMoi}
             autoComplete="new-password"
-            goiY="Ít nhất 8 ký tự"
+            goiY={t("doiMatKhau.goiYDoDai")}
           />
           <O
             id="mk-xac-nhan"
-            nhan="Nhập lại mật khẩu mới"
+            nhan={t("doiMatKhau.nhapLai")}
             giaTri={xacNhan}
             doiGiaTri={setXacNhan}
             autoComplete="new-password"
@@ -105,7 +106,7 @@ export default function DoiMatKhauPage() {
             disabled={dangGui}
             className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {dangGui ? "Đang lưu…" : "Đổi mật khẩu"}
+            {dangGui ? t("doiMatKhau.dangLuu") : t("doiMatKhau.nut")}
           </button>
 
           {loi && (

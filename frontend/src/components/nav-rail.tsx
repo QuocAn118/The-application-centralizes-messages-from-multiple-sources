@@ -9,6 +9,7 @@
  */
 
 import Link from "next/link";
+import { t } from "@/lib/i18n";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 
@@ -35,17 +36,17 @@ export function NavRail() {
         }`}
       >
         <IconHopThu />
-        Hộp thư
+        {t("nav.hopThu")}
       </Link>
 
       {[
-        { nhan: "Nhân sự", icon: <IconNhanSu /> },
-        { nhan: "Báo cáo", icon: <IconBaoCao /> },
-        { nhan: "Cấu hình", icon: <IconCauHinh /> },
+        { nhan: t("nav.nhanSu"), icon: <IconNhanSu /> },
+        { nhan: t("nav.baoCao"), icon: <IconBaoCao /> },
+        { nhan: t("nav.cauHinh"), icon: <IconCauHinh /> },
       ].map((muc) => (
         <span
           key={muc.nhan}
-          title="Sẽ có ở phiên bản sau"
+          title={t("nav.sauNay")}
           aria-disabled="true"
           className="flex w-14 cursor-not-allowed flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-medium text-muted-soft/50"
         >
@@ -66,7 +67,7 @@ export function NavRail() {
           onClick={() => void logout()}
           className="text-[10px] text-muted-soft transition hover:text-danger-fg"
         >
-          Đăng xuất
+          {t("nav.dangXuat")}
         </button>
       </div>
     </nav>

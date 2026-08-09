@@ -25,6 +25,7 @@ from src.modules.inbox.domain.ports import (
 from src.modules.inbox.infrastructure.attachments.signed_url import AttachmentUrlSigner
 from src.shared.application.exceptions import AuthenticationError
 from src.shared.infrastructure.clock import SystemClock
+from src.shared.infrastructure.config import Settings, get_settings
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -134,6 +135,7 @@ Cipher = Annotated[ICredentialCipher, Depends(get_cipher)]
 Registry = Annotated[IChannelAdapterRegistry, Depends(get_registry)]
 AttachmentStore = Annotated[IAttachmentStore, Depends(get_attachment_store)]
 UrlSigner = Annotated[AttachmentUrlSigner, Depends(get_url_signer)]
+SettingsDep = Annotated[Settings, Depends(get_settings)]
 Clock = Annotated[SystemClock, Depends(get_clock)]
 Directory = Annotated[IWorkforceDirectory, Depends(get_directory)]
 Notifier = Annotated[IRealtimeNotifier, Depends(get_notifier)]

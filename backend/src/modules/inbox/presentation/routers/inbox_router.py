@@ -1,6 +1,7 @@
 """Endpoint inbox: liệt kê, xem, trả lời, phân, nhận, đóng hội thoại."""
 
 import logging
+from collections.abc import Callable
 from typing import Annotated
 from uuid import UUID
 
@@ -19,7 +20,11 @@ from src.modules.inbox.application.use_cases.reply_to_conversation import (
 from src.modules.inbox.application.use_cases.take_conversation import TakeConversation
 from src.modules.inbox.domain.entities.conversation import ConversationStatus
 from src.modules.inbox.domain.ports import ClosedConversation
-from src.modules.inbox.domain.value_objects.message_content import MessageContent
+from src.modules.inbox.domain.value_objects.message_content import (
+    AttachmentKind,
+    AttachmentRef,
+    MessageContent,
+)
 from src.modules.inbox.infrastructure.attachments.signed_url import (
     AttachmentUrlSigner,
     SignedUrlError,
@@ -45,6 +50,7 @@ from src.modules.inbox.presentation.dependencies import (
     Directory,
     Notifier,
     Registry,
+    SettingsDep,
     UrlSigner,
 )
 from src.modules.inbox.presentation.schemas.common import PageResponse
@@ -56,7 +62,12 @@ from src.modules.inbox.presentation.schemas.inbox_schemas import (
     MessageResponse,
     ReplyRequest,
 )
-from src.shared.application.exceptions import NotFoundError, PermissionDeniedError
+from src.shared.application.exceptions import (
+    ApplicationError,
+    NotFoundError,
+    PermissionDeniedError,
+)
+from src.shared.infrastructure.config import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -91,17 +102,87 @@ async def liet_ke_inbox(
     )
 
 
+def _duong_dan_tep(attachment_id: UUID, conversation_id: UUID, het_han: int, chu_ky: str) -> str:
+    return (
+        f"/api/v1/inbox/{conversation_id}/attachments/{attachment_id}"
+        f"?expires={het_han}&signature={chu_ky}"
+    )
+
+
 def _bo_ky_url(signer: AttachmentUrlSigner) -> KyUrl:
-    """Dựng hàm sinh URL đã ký cho tệp đính kèm."""
+    """Dựng hàm sinh URL đã ký (tương đối) cho tệp đính kèm.
+
+    Cố ý trả đường dẫn TƯƠNG ĐỐI: server không biết mình đứng sau proxy hay tên
+    miền nào, đoán ở đây sẽ sai khi triển khai. Client tự ghép origin.
+    """
 
     def ky(attachment_id: UUID, conversation_id: UUID) -> str:
         het_han, chu_ky = signer.ky(attachment_id, conversation_id)
-        return (
-            f"/api/v1/inbox/{conversation_id}/attachments/{attachment_id}"
-            f"?expires={het_han}&signature={chu_ky}"
-        )
+        return _duong_dan_tep(attachment_id, conversation_id, het_han, chu_ky)
 
     return ky
+
+
+def _bo_url_cong_khai(
+    signer: AttachmentUrlSigner, settings: Settings
+) -> Callable[[UUID, UUID], str] | None:
+    """Dựng hàm sinh URL TUYỆT ĐỐI để Zalo/Meta tải ảnh về.
+
+    Khác ``_bo_ky_url`` ở chỗ phải tuyệt đối: máy chủ nền tảng ở ngoài internet,
+    đường dẫn tương đối vô nghĩa với họ. Địa chỉ công khai không suy ra được từ
+    request (server thường sau NAT/proxy) nên phải cấu hình:
+    ``ATTACHMENT_PUBLIC_BASE_URL``.
+
+    Trả ``None`` khi chưa cấu hình — use case sẽ vẫn lưu ảnh vào lịch sử nhưng
+    không gửi kèm ra nền tảng.
+    """
+    goc = settings.attachment_public_base_url.rstrip("/")
+    if not goc:
+        return None
+
+    def url(attachment_id: UUID, conversation_id: UUID) -> str:
+        het_han, chu_ky = signer.ky(attachment_id, conversation_id)
+        return goc + _duong_dan_tep(attachment_id, conversation_id, het_han, chu_ky)
+
+    return url
+
+
+async def _doc_noi_dung_tra_loi(
+    request: Request, settings: Settings
+) -> tuple[str | None, list[tuple[bytes, str | None]]]:
+    """Đọc text + tệp từ thân request, chấp nhận cả JSON lẫn multipart."""
+    kieu = (request.headers.get("content-type") or "").lower()
+
+    if not kieu.startswith("multipart/form-data"):
+        du_lieu = ReplyRequest.model_validate(await request.json())
+        return du_lieu.text, []
+
+    form = await request.form()
+    text = form.get("text")
+    text = text if isinstance(text, str) and text.strip() else None
+
+    tep: list[tuple[bytes, str | None]] = []
+    for muc in form.getlist("files"):
+        if isinstance(muc, str):
+            continue
+        noi_dung = await muc.read()
+        if not noi_dung:
+            continue
+        if len(noi_dung) > settings.attachment_max_bytes:
+            raise ApplicationError(
+                f"Tệp vượt quá {settings.attachment_max_bytes // (1024 * 1024)}MB.",
+                code="ATTACHMENT_TOO_LARGE",
+            )
+        loai = (muc.content_type or "").lower()
+        # Chỉ nhận ảnh: #1 chưa hỗ trợ gửi tệp thường ra nền tảng, và nhận bừa
+        # rồi im lặng bỏ qua sẽ khiến người dùng tưởng đã gửi được.
+        if not loai.startswith("image/"):
+            raise ApplicationError("Chỉ gửi được tệp ảnh.", code="ATTACHMENT_TYPE_UNSUPPORTED")
+        tep.append((noi_dung, muc.content_type))
+
+    if text is None and not tep:
+        raise ApplicationError("Tin trả lời phải có nội dung.", code="EMPTY_REPLY")
+    return text, tep
 
 
 @router.get("/inbox/{conversation_id}", response_model=ConversationResponse)
@@ -186,7 +267,6 @@ async def tai_tep_dinh_kem(
 @router.post("/inbox/{conversation_id}/reply", response_model=MessageResponse)
 async def tra_loi(
     conversation_id: UUID,
-    du_lieu: ReplyRequest,
     actor: Actor,
     session: DbSession,
     registry: Registry,
@@ -196,7 +276,18 @@ async def tra_loi(
     clock: Clock,
     request: Request,
     signer: UrlSigner,
+    settings: SettingsDep,
 ) -> MessageResponse:
+    """Trả lời hội thoại bằng text và/hoặc ảnh.
+
+    Nhận cả hai kiểu thân request:
+    - ``application/json`` — ``{"text": "..."}`` như trước, không đổi;
+    - ``multipart/form-data`` — trường ``text`` và các tệp ``files``.
+
+    Giữ nhánh JSON để client cũ không hỏng khi hợp đồng mở rộng.
+    """
+    text, tep = await _doc_noi_dung_tra_loi(request, settings)
+
     use_case = ReplyToConversation(
         conversation_repo=SqlAlchemyConversationRepository(session),
         channel_repo=SqlAlchemyChannelRepository(session),
@@ -207,11 +298,18 @@ async def tra_loi(
         attachment_store=store,
         notifier=notifier,
         clock=clock,
+        public_url=_bo_url_cong_khai(signer, settings),
     )
     view = await use_case.execute(
         actor=actor,
         conversation_id=conversation_id,
-        content=MessageContent(text=du_lieu.text),
+        content=MessageContent(
+            text=text,
+            attachments=tuple(
+                AttachmentRef(kind=AttachmentKind.IMAGE, content_type=ct) for _, ct in tep
+            ),
+        ),
+        raw_attachments=[du_lieu for du_lieu, _ in tep],
     )
 
     # Tin outbound vừa gửi (đã commit) → hook hạ nguồn (analytics #5) cộng rollup.

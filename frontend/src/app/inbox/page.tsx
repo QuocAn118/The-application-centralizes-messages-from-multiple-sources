@@ -3,6 +3,9 @@
  *
  * Khung chat thật nằm ở `/inbox/[id]` (GĐ3).
  */
+
+import { t } from "@/lib/i18n";
+
 export default function InboxPage() {
   return (
     <div className="flex flex-1 items-center justify-center bg-surface px-6">
@@ -21,10 +24,10 @@ export default function InboxPage() {
           </svg>
         </div>
         <p className="mt-4 text-sm font-medium text-foreground">
-          Chọn một hội thoại để bắt đầu
+          {t("inbox.chonHoiThoai")}
         </p>
         <p className="mt-1 text-xs text-muted">
-          Danh sách hội thoại ở cột bên trái.
+          {t("inbox.chonHoiThoaiPhu")}
         </p>
       </div>
     </div>

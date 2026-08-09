@@ -8,6 +8,7 @@
  */
 
 import { useState } from "react";
+import { t } from "@/lib/i18n";
 import { API_BASE_URL } from "@/lib/api-client";
 import { mocDayDu, mocNgan } from "@/lib/hien-thi";
 import type { Attachment, Message } from "@/lib/types";
@@ -48,7 +49,7 @@ export function BongBongTin({ message }: { message: Message }) {
         {/* Tin không có cả text lẫn đính kèm gần như không xảy ra, nhưng nếu
             có thì phải hiện gì đó — bong bóng rỗng trông như lỗi giao diện. */}
         {!message.text && message.attachments.length === 0 && (
-          <p className="italic opacity-70">(tin không có nội dung)</p>
+          <p className="italic opacity-70">{t("chat.tinKhongCoNoiDung")}</p>
         )}
       </div>
 
@@ -91,7 +92,7 @@ function DinhKem({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={href}
-          alt="Ảnh đính kèm"
+          alt={t("chat.anhDinhKem")}
           loading="lazy"
           onError={() => setLoiTai(true)}
           className="max-h-64 max-w-full rounded-md object-contain"
@@ -119,7 +120,7 @@ function DinhKem({
         <circle cx="8.5" cy="8.5" r="1.5" />
         <path d="m21 15-5-5L5 21" />
       </svg>
-      {loiTai ? "[không tải được tệp — thử mở lại hội thoại]" : "[tệp đính kèm]"}
+      {loiTai ? t("chat.loiTaiTep") : t("chat.tepDinhKem")}
     </div>
   );
 }

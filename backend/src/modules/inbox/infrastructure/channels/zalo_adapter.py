@@ -136,12 +136,35 @@ class ZaloAdapter:
         """Gửi tin qua Zalo Open API (token đã giải mã, use case lo việc đó).
 
         Dùng endpoint ``/message/cs`` (chăm sóc khách hàng): hợp lệ để trả lời
-        trong cửa sổ tương tác sau tin cuối của khách — đúng luồng inbox #1. #1
-        gửi phần text; media để iteration sau.
+        trong cửa sổ tương tác sau tin cuối của khách — đúng luồng inbox #1.
+
+        Ảnh gửi kèm bằng ``attachment`` kiểu ``template`` — Zalo TỰ TẢI ảnh từ
+        ``url`` ta cung cấp, nên URL đó phải công khai truy cập được từ máy chủ
+        Zalo (xem ``ATTACHMENT_PUBLIC_BASE_URL``). Zalo chỉ nhận một ảnh mỗi
+        tin, nên nhiều ảnh sẽ do use case gửi thành nhiều tin.
         """
+        anh = next(
+            (a for a in content.attachments if a.kind is AttachmentKind.IMAGE and a.url),
+            None,
+        )
+        if anh is not None:
+            message: dict[str, Any] = {
+                "attachment": {
+                    "type": "template",
+                    "payload": {
+                        "template_type": "media",
+                        "elements": [{"media_type": "image", "url": anh.url}],
+                    },
+                }
+            }
+            if content.text:
+                message["text"] = content.text
+        else:
+            message = {"text": content.text or ""}
+
         body = {
             "recipient": {"user_id": external_customer_id},
-            "message": {"text": content.text or ""},
+            "message": message,
         }
         async with self._client_factory() as client:
             resp = await client.post(

@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { t } from "@/lib/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
@@ -25,7 +26,7 @@ import { DongHoiThoai } from "./dong-hoi-thoai";
 
 /** Các chip lọc. `undefined` = tất cả. */
 const BO_LOC: { nhan: string; giaTri?: ConversationStatus }[] = [
-  { nhan: "Tất cả" },
+  { nhan: t("inbox.locTatCa") },
   { nhan: NHAN_TRANG_THAI.CHO_PHAN, giaTri: "CHO_PHAN" },
   { nhan: NHAN_TRANG_THAI.DANG_MO, giaTri: "DANG_MO" },
   { nhan: NHAN_TRANG_THAI.DA_DONG, giaTri: "DA_DONG" },
@@ -128,9 +129,9 @@ export function DanhSachInbox() {
     <aside className="flex w-[360px] shrink-0 flex-col border-r border-border-subtle bg-white">
       <div className="border-b border-border-subtle px-4 py-3">
         <div className="flex items-center justify-between">
-          <h1 className="text-base font-semibold text-foreground">Hộp thư</h1>
+          <h1 className="text-base font-semibold text-foreground">{t("inbox.tieuDe")}</h1>
           {isFetching && !isPending && (
-            <span className="text-[11px] text-muted-soft">Đang cập nhật…</span>
+            <span className="text-[11px] text-muted-soft">{t("inbox.dangCapNhat")}</span>
           )}
         </div>
 
@@ -145,15 +146,15 @@ export function DanhSachInbox() {
             type="search"
             value={oTimKiem}
             onChange={(e) => setOTimKiem(e.target.value)}
-            placeholder="Tìm theo tên khách…"
-            aria-label="Tìm theo tên khách"
+            placeholder={t("inbox.timKiem")}
+            aria-label={t("inbox.timKiemNhan")}
             className="w-full rounded-lg border border-border-subtle py-2 pl-9 pr-8 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
           {oTimKiem && (
             <button
               type="button"
               onClick={() => setOTimKiem("")}
-              aria-label="Xoá tìm kiếm"
+              aria-label={t("inbox.xoaTimKiem")}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-soft transition hover:text-muted"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -190,11 +191,11 @@ export function DanhSachInbox() {
 
         {isError && (
           <TrangThaiTrong
-            tieuDe="Không tải được danh sách"
+            tieuDe={t("inbox.loiTai")}
             moTa={
               error instanceof ApiError
                 ? error.message
-                : "Không kết nối được máy chủ."
+                : t("chung.loiKetNoi")
             }
             hanhDong={
               <button
@@ -202,7 +203,7 @@ export function DanhSachInbox() {
                 onClick={() => void refetch()}
                 className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-95"
               >
-                Thử lại
+                {t("chung.thuLai")}
               </button>
             }
           />
@@ -210,13 +211,13 @@ export function DanhSachInbox() {
 
         {!isPending && !isError && data.items.length === 0 && (
           <TrangThaiTrong
-            tieuDe={q.trim() ? "Không tìm thấy" : "Chưa có hội thoại"}
+            tieuDe={q.trim() ? t("inbox.khongTimThay") : t("inbox.khongCoHoiThoai")}
             moTa={
               q.trim()
                 ? `Không có khách nào tên khớp "${q.trim()}".`
                 : status
                   ? `Không có hội thoại ở trạng thái "${NHAN_TRANG_THAI[status]}".`
-                  : "Khi khách nhắn tới, hội thoại sẽ hiện ở đây."
+                  : t("inbox.goiYKhiRong")
             }
             hanhDong={
               q.trim() ? (
@@ -225,7 +226,7 @@ export function DanhSachInbox() {
                   onClick={() => setOTimKiem("")}
                   className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-muted transition hover:bg-surface"
                 >
-                  Xoá tìm kiếm
+                  {t("inbox.xoaTimKiem")}
                 </button>
               ) : undefined
             }
@@ -250,7 +251,7 @@ export function DanhSachInbox() {
         <div className="flex gap-1">
           <NutTrang
             nhan="‹"
-            moTa="Trang trước"
+            moTa={t("inbox.trangTruoc")}
             tat={!conTrangTruoc}
             onClick={() =>
               dieuHuong({ offset: Math.max(0, offset - KICH_THUOC_TRANG) })
@@ -258,7 +259,7 @@ export function DanhSachInbox() {
           />
           <NutTrang
             nhan="›"
-            moTa="Trang sau"
+            moTa={t("inbox.trangSau")}
             tat={!conTrangSau}
             onClick={() => dieuHuong({ offset: offset + KICH_THUOC_TRANG })}
           />

@@ -221,18 +221,26 @@ async function rawRequest(
   path: string,
   options: RequestOptions,
 ): Promise<Response> {
+  const laForm = options.body instanceof FormData;
   const headers: Record<string, string> = {};
-  if (options.body !== undefined) {
+  // FormData phải để trình duyệt tự đặt Content-Type: nó cần kèm `boundary`,
+  // tự đặt tay sẽ khiến server không tách được các phần.
+  if (options.body !== undefined && !laForm) {
     headers["Content-Type"] = "application/json";
   }
   if (!options.skipAuth && accessToken) {
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
+  let body: BodyInit | undefined;
+  if (options.body !== undefined) {
+    body = laForm ? (options.body as FormData) : JSON.stringify(options.body);
+  }
+
   return fetch(buildUrl(path, options.query), {
     method: options.method ?? "GET",
     headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    body,
     signal: options.signal,
   });
 }
@@ -283,6 +291,10 @@ export const api = {
 
   post: <T>(path: string, body?: unknown, options: RequestOptions = {}) =>
     apiRequest<T>(path, { ...options, method: "POST", body }),
+
+  /** POST multipart (tải tệp lên). Trình duyệt tự đặt Content-Type kèm boundary. */
+  postForm: <T>(path: string, form: FormData, options: RequestOptions = {}) =>
+    apiRequest<T>(path, { ...options, method: "POST", body: form }),
 };
 
 export { AUTH_PREFIX, API_BASE_URL };

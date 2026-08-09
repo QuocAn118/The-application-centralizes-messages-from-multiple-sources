@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { t } from "@/lib/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { khoaPhongBan, layPhongBanHoatDong } from "@/lib/inbox-api";
 import { phongCoTheChon, type Actor } from "@/lib/quyen-hanh-dong";
@@ -71,12 +72,12 @@ export function DialogPhanPhong({
       >
         <div className="flex items-start justify-between gap-4">
           <h2 id="tieu-de-phan-phong" className="text-base font-bold text-foreground">
-            Phân phòng ban
+            {t("phanPhong.tieuDe")}
           </h2>
           <button
             type="button"
             onClick={onDong}
-            aria-label="Đóng"
+            aria-label={t("chung.dong")}
             className="text-muted-soft transition hover:text-muted"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -90,17 +91,17 @@ export function DialogPhanPhong({
         </p>
 
         <div className="mt-5">
-          <p className="mb-2 text-sm font-medium text-foreground">Phòng ban</p>
+          <p className="mb-2 text-sm font-medium text-foreground">{t("phanPhong.phongBan")}</p>
 
-          {isPending && <p className="text-xs text-muted">Đang tải phòng ban…</p>}
+          {isPending && <p className="text-xs text-muted">{t("phanPhong.dangTai")}</p>}
 
           {isError && (
-            <p className="text-xs text-danger-fg">Không tải được danh sách phòng ban.</p>
+            <p className="text-xs text-danger-fg">{t("phanPhong.loiTai")}</p>
           )}
 
           {!isPending && !isError && phongBan.length === 0 && (
             <p className="text-xs text-muted">
-              Bạn chưa thuộc phòng ban nào nên không thể phân hội thoại.
+              {t("phanPhong.khongCoPhong")}
             </p>
           )}
 
@@ -155,7 +156,7 @@ export function DialogPhanPhong({
             onClick={onDong}
             className="rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-muted transition hover:bg-surface"
           >
-            Huỷ
+            {t("chung.huy")}
           </button>
           <button
             type="button"
@@ -163,7 +164,7 @@ export function DialogPhanPhong({
             onClick={() => dangChon && onXacNhan(dangChon)}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {dangGui ? "Đang phân…" : "Phân phòng"}
+            {dangGui ? t("hanhDong.dangPhan") : t("hanhDong.phanPhong")}
           </button>
         </div>
       </div>
