@@ -8,6 +8,7 @@
 import { api } from "./api-client";
 import type {
   Conversation,
+  Department,
   InboxItem,
   Message,
   PageResponse,
@@ -79,3 +80,43 @@ export function layChiTietHoiThoai(
 export function traLoiHoiThoai(id: string, text: string): Promise<Message> {
   return api.post<Message>(`/inbox/${id}/reply`, { text });
 }
+
+// ---------------------------------------------------------------------------
+// Hành động trên hội thoại (GĐ4)
+//
+// Cả ba trả về `Conversation` đã cập nhật — dùng thẳng response để làm mới
+// cache thay vì gọi lại API (RB-6).
+// ---------------------------------------------------------------------------
+
+/** Nhận việc: gán chính mình. Backend đòi `DANG_MO` và chưa có ai nhận. */
+export function nhanViec(id: string): Promise<Conversation> {
+  return api.post<Conversation>(`/inbox/${id}/take`);
+}
+
+/** Đóng hội thoại. Backend đòi `DANG_MO`. */
+export function dongHoiThoai(id: string): Promise<Conversation> {
+  return api.post<Conversation>(`/inbox/${id}/close`);
+}
+
+/**
+ * Phân hội thoại về một phòng. Backend đòi `CHO_PHAN` + vai Manager/Admin;
+ * Manager còn bị giới hạn chỉ phân về phòng của chính mình.
+ */
+export function phanPhong(id: string, departmentId: string): Promise<Conversation> {
+  return api.post<Conversation>(`/inbox/${id}/assign`, {
+    department_id: departmentId,
+  });
+}
+
+/** Danh sách phòng ban đang hoạt động, cho dialog phân phòng. */
+export function layPhongBanHoatDong(
+  signal?: AbortSignal,
+): Promise<PageResponse<Department>> {
+  return api.get<PageResponse<Department>>(
+    "/departments",
+    { is_active: "true", limit: 100 },
+    signal,
+  );
+}
+
+export const khoaPhongBan = ["departments", "active"] as const;
