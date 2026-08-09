@@ -78,8 +78,29 @@ let accessToken: string | null = null;
 /** Đăng ký callback chạy khi phiên chết hẳn (để AuthContext đẩy về `/login`). */
 let onSessionExpired: (() => void) | null = null;
 
+/**
+ * Những ai cần biết khi access token đổi.
+ *
+ * WebSocket mang token ở query string, nên token cũ hết hạn thì server đóng
+ * kết nối (1008). Nghe sự kiện này để mở lại WS bằng token mới — nếu không,
+ * realtime sẽ chết âm thầm sau lần refresh đầu tiên (RB-4).
+ */
+const nguoiNgheDoiToken = new Set<(token: string | null) => void>();
+
 export function setAccessToken(token: string | null): void {
+  const doi = accessToken !== token;
   accessToken = token;
+  if (doi) {
+    for (const nghe of nguoiNgheDoiToken) nghe(token);
+  }
+}
+
+/** Đăng ký lắng nghe token đổi. Trả về hàm huỷ đăng ký. */
+export function onAccessTokenChange(
+  nghe: (token: string | null) => void,
+): () => void {
+  nguoiNgheDoiToken.add(nghe);
+  return () => nguoiNgheDoiToken.delete(nghe);
 }
 
 export function getAccessToken(): string | null {
@@ -126,7 +147,9 @@ function refreshAccessToken(): Promise<string> {
     }
 
     const data = (await res.json()) as TokenResponse;
-    accessToken = data.access_token;
+    // Qua `setAccessToken` chứ không gán thẳng: WS phải được báo để mở lại
+    // kết nối bằng token mới.
+    setAccessToken(data.access_token);
     return data.access_token;
   })();
 
@@ -144,6 +167,7 @@ export function __resetApiClientState(): void {
   accessToken = null;
   refreshInFlight = null;
   onSessionExpired = null;
+  nguoiNgheDoiToken.clear();
 }
 
 // ---------------------------------------------------------------------------
