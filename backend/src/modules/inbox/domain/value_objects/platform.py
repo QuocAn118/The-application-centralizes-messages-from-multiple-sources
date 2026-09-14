@@ -15,3 +15,4 @@ class Platform(StrEnum):
     ZALO = "ZALO"
     FACEBOOK = "FACEBOOK"
     INSTAGRAM = "INSTAGRAM"
+    TELEGRAM = "TELEGRAM"
