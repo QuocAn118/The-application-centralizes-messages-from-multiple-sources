@@ -121,6 +121,105 @@ curl -X POST http://127.0.0.1:8003/api/v1/channels \
 
 ---
 
+## Kết nối Telegram Bot (đường nhanh nhất để test)
+
+Dùng khi chưa có Zalo OA (cần giấy phép kinh doanh) hoặc tài khoản Meta Developer đang
+lỗi. Telegram Bot chỉ cần **một tài khoản Telegram thường** — không duyệt, không giấy tờ.
+Đây là kênh phục vụ test/demo nội bộ, không thay thế Zalo/Meta trong phạm vi sản phẩm.
+
+Vẫn cần **Bước 1** (địa chỉ công khai) ở trên: Telegram chỉ gọi webhook qua **HTTPS**.
+
+### T1 — Tạo bot, lấy token
+
+1. Mở Telegram, tìm **@BotFather**, bấm Start.
+2. Gửi `/newbot`, đặt tên hiển thị, rồi đặt username kết thúc bằng `bot`.
+3. BotFather trả token dạng `123456789:AAH...`. **Token này là credential của kênh** —
+   giữ bí mật như Zalo OA access token.
+
+Phần số trước dấu hai chấm (`123456789`) là **bot id**, dùng làm `external_channel_id` ở
+bước T4.
+
+### T2 — Sinh secret token, điền `.env`
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Điền vào `backend/.env`:
+
+```
+TELEGRAM_BOT_TOKEN=123456789:AAH...
+TELEGRAM_WEBHOOK_SECRET=<chuỗi vừa sinh>
+```
+
+> **Để trống `TELEGRAM_WEBHOOK_SECRET` thì MỌI webhook Telegram bị từ chối 403.** Đây là
+> cố ý, khác `WEBHOOK_VERIFY_TOKEN` (để trống = bỏ qua). Telegram không ký body, nên secret
+> là thứ duy nhất chứng minh request đến từ Telegram — không có nó thì endpoint là cửa mở.
+
+Sửa `.env` xong phải **khởi động lại server**.
+
+### T3 — Đăng ký webhook
+
+```bash
+curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook"  \
+  -H "Content-Type: application/json"  \
+  -d '{
+    "url": "https://<url-cong-khai>/api/v1/webhooks/TELEGRAM",
+    "secret_token": "<TELEGRAM_WEBHOOK_SECRET>"
+  }'
+```
+
+Trả `{"ok":true,...}` là xong. Kiểm tra lại bất cứ lúc nào:
+
+```bash
+curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
+```
+
+Xem `last_error_message` trong kết quả — đây là chỗ Telegram nói thẳng vì sao nó không
+gửi được tin tới bạn.
+
+### T4 — Kết nối kênh trong OmniChat
+
+```bash
+curl -X POST http://127.0.0.1:8003/api/v1/channels  \
+  -H "Authorization: Bearer <access_token_admin>"  \
+  -H "Content-Type: application/json"  \
+  -d '{
+    "platform": "TELEGRAM",
+    "external_channel_id": "123456789",
+    "name": "Bot CSKH",
+    "credential": "123456789:AAH...",
+    "department_id": null
+  }'
+```
+
+- `external_channel_id` là **bot id** (số trước dấu hai chấm), **không phải** id đoạn chat.
+  Một bot là một kênh; mỗi người nhắn bot là một khách.
+- `credential` là **token đầy đủ** (cả phần sau dấu hai chấm).
+
+### T5 — Chạy thử đầu-cuối
+
+1. Mở Telegram, tìm bot theo username, bấm **Start**, nhắn một câu.
+2. Tin phải hiện trong inbox. Có `ANTHROPIC_API_KEY` thì hội thoại được phân phòng; không
+   có thì nằm ở `CHO_PHAN`.
+3. Trả lời từ frontend, xác nhận nhận được trong Telegram.
+4. Gửi thử một ảnh (chỉ hoạt động nếu đã đặt `ATTACHMENT_PUBLIC_BASE_URL`).
+
+### Khi có trục trặc (Telegram)
+
+| Hiện tượng | Nguyên nhân thường gặp |
+|---|---|
+| `setWebhook` báo lỗi SSL / URL | URL phải là **HTTPS** công khai; `localhost` không dùng được |
+| Nhắn bot nhưng inbox trống, `getWebhookInfo` báo 403 | `TELEGRAM_WEBHOOK_SECRET` trong `.env` khác `secret_token` đã đăng ký, hoặc chưa restart server |
+| Webhook 200 nhưng không thấy tin | `external_channel_id` không phải bot id (dễ nhầm sang chat id) |
+| Bot không phản hồi `/start` | Chưa bấm Start, hoặc token sai |
+| Trả lời lỗi 500 | `credential` của kênh không phải token đầy đủ |
+| Ảnh khách gửi không hiện | Ảnh >20MB (giới hạn `getFile` của Bot API) |
+| Khách không nhận được ảnh | `ATTACHMENT_PUBLIC_BASE_URL` rỗng hoặc URL đường hầm đã đổi |
+| Tin trong nhóm không vào inbox | Cố ý: bản này chỉ nhận chat 1-1 với bot |
+
+---
+
 ## Đã xong (không cần làm lại)
 
 - `CHANNEL_CIPHER_KEY` — đã sinh khoá Fernet thật, đã kiểm tra mã hoá/giải mã

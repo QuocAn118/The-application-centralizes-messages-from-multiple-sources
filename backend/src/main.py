@@ -257,6 +257,7 @@ def _wire_inbox(app: FastAPI, settings: Settings) -> None:
     )
     from src.modules.inbox.infrastructure.channels.meta_adapter import MetaAdapter
     from src.modules.inbox.infrastructure.channels.registry import ChannelAdapterRegistry
+    from src.modules.inbox.infrastructure.channels.telegram_adapter import TelegramAdapter
     from src.modules.inbox.infrastructure.channels.zalo_adapter import ZaloAdapter
     from src.modules.inbox.infrastructure.directory.workforce_directory import (
         IdentityWorkforceDirectory,
@@ -309,6 +310,7 @@ def _wire_inbox(app: FastAPI, settings: Settings) -> None:
             ZaloAdapter(settings.zalo_app_id, settings.zalo_oa_secret_key),
             MetaAdapter(Platform.FACEBOOK, settings.meta_app_secret),
             MetaAdapter(Platform.INSTAGRAM, settings.meta_app_secret),
+            TelegramAdapter(settings.telegram_bot_token, settings.telegram_webhook_secret),
         ]
     )
 

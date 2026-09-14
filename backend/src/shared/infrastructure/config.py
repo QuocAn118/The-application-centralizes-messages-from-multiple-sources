@@ -51,6 +51,15 @@ class Settings(BaseSettings):
     # Token dùng khi Meta/Zalo verify webhook (GET hub.challenge). Rỗng = bỏ qua.
     webhook_verify_token: str = ""
 
+    # Telegram (kênh thứ ba của #1, dùng cho test/demo nội bộ).
+    # ``telegram_bot_token`` là credential từ @BotFather, dạng ``<bot_id>:<chuỗi>``;
+    # phần trước dấu hai chấm là định danh kênh (một bot = một kênh).
+    telegram_bot_token: str = ""
+    # Secret tự đặt, truyền vào ``setWebhook`` và Telegram gửi lại ở mọi request.
+    # KHÁC ``webhook_verify_token``: rỗng ở đây = TỪ CHỐI MỌI webhook Telegram,
+    # không phải bỏ qua kiểm tra — webhook công khai không xác thực là lỗ hổng.
+    telegram_webhook_secret: str = ""
+
     # Keyword (#2): Claude API để LLM tự đọc tin và chọn phòng phù hợp.
     # Khoá là BÍ MẬT — chỉ đọc từ .env, không commit, không log.
     anthropic_api_key: str = ""

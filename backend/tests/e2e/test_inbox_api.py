@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from src.modules.inbox.domain.value_objects.platform import Platform
 from src.modules.inbox.infrastructure.channels.meta_adapter import MetaAdapter
 from src.modules.inbox.infrastructure.channels.registry import ChannelAdapterRegistry
+from src.modules.inbox.infrastructure.channels.telegram_adapter import TelegramAdapter
 from src.modules.inbox.infrastructure.channels.zalo_adapter import ZaloAdapter
 
 pytestmark = [pytest.mark.e2e, pytest.mark.integration]
@@ -24,6 +25,9 @@ MAT_KHAU_ADMIN = "MatKhauAdmin123"
 ZALO_APP_ID = "app_test"
 ZALO_OA_SECRET = "oa_secret_test"
 META_APP_SECRET = "meta_secret_test"
+TELEGRAM_BOT_TOKEN = "987654321:AAHtokenTestTelegram"
+TELEGRAM_BOT_ID = "987654321"
+TELEGRAM_SECRET = "telegram_webhook_secret_test"
 
 
 def _bearer(token: str) -> dict[str, str]:
@@ -53,9 +57,21 @@ def _mock_client() -> httpx.AsyncClient:
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
+            # Mỗi nền tảng đọc một khoá khác nhau: Zalo ``data.message_id``,
+            # Meta ``message_id``, Telegram ``result.message_id``. Gộp cả ba vào
+            # một phản hồi để dùng chung một client giả.
             return httpx.Response(
-                200, json={"data": {"message_id": "sent_1"}, "message_id": "sent_1"}
+                200,
+                json={
+                    "data": {"message_id": "sent_1"},
+                    "message_id": "sent_1",
+                    "result": {"message_id": "sent_1", "file_path": "photos/f1.jpg"},
+                },
             )
+        # GET: vừa là ``getFile`` của Telegram, vừa là tải nội dung ảnh. Trả JSON
+        # có ``file_path`` để bước 1 chạy được; bước 2 đọc bytes thô của chính nó.
+        if "getFile" in str(request.url):
+            return httpx.Response(200, json={"result": {"file_path": "photos/f1.jpg"}})
         return httpx.Response(200, content=b"anh-gia-lap")
 
     return httpx.AsyncClient(transport=httpx.MockTransport(handler))
@@ -69,6 +85,7 @@ def app_inbox(app_test):  # type: ignore[no-untyped-def]
             ZaloAdapter(ZALO_APP_ID, ZALO_OA_SECRET, client_factory=_mock_client),
             MetaAdapter(Platform.FACEBOOK, META_APP_SECRET, client_factory=_mock_client),
             MetaAdapter(Platform.INSTAGRAM, META_APP_SECRET, client_factory=_mock_client),
+            TelegramAdapter(TELEGRAM_BOT_TOKEN, TELEGRAM_SECRET, client_factory=_mock_client),
         ]
     )
     return app_test
@@ -471,3 +488,156 @@ async def test_batch_meta_mot_event_loi_khong_chan_event_khac(
         )
         textos = [m["text"] for m in conv.json()["messages"]]
         assert "toi can ho tro" in textos
+
+
+# ---------------------------------------------------------------------------
+# Telegram — kênh thứ ba (spec 2026-09-14)
+# ---------------------------------------------------------------------------
+
+
+def _webhook_telegram(chat_id: int, message_id: int, text_: str) -> bytes:
+    return json.dumps(
+        {
+            "update_id": 100 + message_id,
+            "message": {
+                "message_id": message_id,
+                "chat": {"id": chat_id, "type": "private"},
+                "from": {"id": chat_id, "first_name": "Minh", "last_name": "Tran"},
+                "text": text_,
+            },
+        }
+    ).encode()
+
+
+def _header_telegram(secret: str = TELEGRAM_SECRET) -> dict[str, str]:
+    return {"X-Telegram-Bot-Api-Secret-Token": secret}
+
+
+async def _tao_kenh_telegram(client: AsyncClient, admin: str, phong_id: str | None) -> None:
+    kenh = await client.post(
+        "/api/v1/channels",
+        json={
+            "platform": "TELEGRAM",
+            "external_channel_id": TELEGRAM_BOT_ID,
+            "name": "Bot CSKH",
+            "credential": TELEGRAM_BOT_TOKEN,
+            "department_id": phong_id,
+        },
+        headers=_bearer(admin),
+    )
+    assert kenh.status_code == 201, kenh.text
+    # Credential KHÔNG lộ ra response.
+    assert TELEGRAM_BOT_TOKEN not in kenh.text
+
+
+async def test_luong_telegram_day_du(client_inbox: AsyncClient, engine: AsyncEngine) -> None:
+    """Khách nhắn bot → vào inbox → nhân viên trả lời, đi qua HTTP thật."""
+    await _tao_admin(engine)
+    admin = await _dang_nhap_admin(client_inbox)
+
+    phong = await client_inbox.post(
+        "/api/v1/departments",
+        json={"name": "CSKH Telegram", "description": None},
+        headers=_bearer(admin),
+    )
+    phong_id = phong.json()["id"]
+    await _tao_kenh_telegram(client_inbox, admin, phong_id)
+
+    raw = _webhook_telegram(555, 7, "Xin chao shop")
+    wh = await client_inbox.post(
+        "/api/v1/webhooks/TELEGRAM", content=raw, headers=_header_telegram()
+    )
+    assert wh.status_code == 200
+
+    inbox = await client_inbox.get("/api/v1/inbox", headers=_bearer(admin))
+    items = inbox.json()["items"]
+    assert len(items) == 1
+    assert items[0]["platform"] == "TELEGRAM"
+    assert items[0]["department_id"] == phong_id
+    conv_id = items[0]["conversation_id"]
+
+    chi_tiet = await client_inbox.get(f"/api/v1/inbox/{conv_id}", headers=_bearer(admin))
+    assert chi_tiet.json()["messages"][0]["text"] == "Xin chao shop"
+
+    tra_loi = await client_inbox.post(
+        f"/api/v1/inbox/{conv_id}/reply",
+        json={"text": "Chao ban, shop nghe a"},
+        headers=_bearer(admin),
+    )
+    assert tra_loi.status_code == 200
+    assert tra_loi.json()["direction"] == "OUTBOUND"
+
+
+async def test_webhook_telegram_tu_choi_khi_sai_secret_token(
+    client_inbox: AsyncClient, engine: AsyncEngine
+) -> None:
+    await _tao_admin(engine)
+    admin = await _dang_nhap_admin(client_inbox)
+    await _tao_kenh_telegram(client_inbox, admin, None)
+
+    raw = _webhook_telegram(556, 1, "hi")
+    r = await client_inbox.post(
+        "/api/v1/webhooks/TELEGRAM", content=raw, headers=_header_telegram("sai_secret")
+    )
+    assert r.status_code == 403
+
+
+async def test_webhook_telegram_tu_choi_khi_thieu_secret_token(
+    client_inbox: AsyncClient, engine: AsyncEngine
+) -> None:
+    await _tao_admin(engine)
+    admin = await _dang_nhap_admin(client_inbox)
+    await _tao_kenh_telegram(client_inbox, admin, None)
+
+    raw = _webhook_telegram(557, 1, "hi")
+    r = await client_inbox.post("/api/v1/webhooks/TELEGRAM", content=raw)
+    assert r.status_code == 403
+
+
+async def test_webhook_telegram_trung_khong_nhan_doi(
+    client_inbox: AsyncClient, engine: AsyncEngine
+) -> None:
+    await _tao_admin(engine)
+    admin = await _dang_nhap_admin(client_inbox)
+    await _tao_kenh_telegram(client_inbox, admin, None)
+
+    raw = _webhook_telegram(558, 9, "tin trung")
+    r1 = await client_inbox.post(
+        "/api/v1/webhooks/TELEGRAM", content=raw, headers=_header_telegram()
+    )
+    r2 = await client_inbox.post(
+        "/api/v1/webhooks/TELEGRAM", content=raw, headers=_header_telegram()
+    )
+    assert r1.status_code == r2.status_code == 200
+
+    inbox = await client_inbox.get("/api/v1/inbox", headers=_bearer(admin))
+    conv_id = inbox.json()["items"][0]["conversation_id"]
+    chi_tiet = await client_inbox.get(f"/api/v1/inbox/{conv_id}", headers=_bearer(admin))
+    assert len(chi_tiet.json()["messages"]) == 1
+
+
+async def test_hai_khach_cung_message_id_khong_bi_coi_la_trung(
+    client_inbox: AsyncClient, engine: AsyncEngine
+) -> None:
+    """message_id của Telegram chỉ duy nhất TRONG MỘT chat.
+
+    Nếu khoá idempotency không ghép ``chat_id``, tin của khách thứ hai sẽ bị
+    nuốt mất — mất dữ liệu im lặng. Đây là test bảo vệ điều đó.
+    """
+    await _tao_admin(engine)
+    admin = await _dang_nhap_admin(client_inbox)
+    await _tao_kenh_telegram(client_inbox, admin, None)
+
+    # Hai khách KHÁC nhau, CÙNG message_id = 5.
+    for chat_id in (601, 602):
+        r = await client_inbox.post(
+            "/api/v1/webhooks/TELEGRAM",
+            content=_webhook_telegram(chat_id, 5, f"tin tu {chat_id}"),
+            headers=_header_telegram(),
+        )
+        assert r.status_code == 200
+
+    inbox = await client_inbox.get("/api/v1/inbox", headers=_bearer(admin))
+    items = inbox.json()["items"]
+    # Hai khách → hai hội thoại riêng, không bị idempotency gộp.
+    assert len(items) == 2
