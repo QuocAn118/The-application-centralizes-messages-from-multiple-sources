@@ -127,6 +127,71 @@ const VI = {
   "doiMatKhau.khongKhop": "Hai ô mật khẩu mới không khớp.",
   "doiMatKhau.quaNgan": "Mật khẩu mới phải có ít nhất 8 ký tự.",
   "doiMatKhau.loiChung": "Không đổi được mật khẩu.",
+
+  // Quản trị (#F2) — chung
+  "quanTri.tieuDe": "Quản trị",
+  "quanTri.tabNguoiDung": "Người dùng",
+  "quanTri.tabPhongBan": "Phòng ban",
+  "quanTri.tabKenh": "Kênh",
+  "quanTri.tabNhatKy": "Nhật ký",
+  "quanTri.khongCoQuyen": "Bạn không có quyền vào khu vực này.",
+  "quanTri.trong": "Không có dữ liệu.",
+  "quanTri.truoc": "Trước",
+  "quanTri.sau": "Sau",
+  "quanTri.hienThi": "Hiển thị {tu}–{den} trong {tong}",
+  "quanTri.tatCa": "Tất cả",
+
+  // Quản trị — người dùng
+  "nguoiDung.tieuDe": "Người dùng",
+  "nguoiDung.taoMoi": "Tạo tài khoản",
+  "nguoiDung.timKiem": "Tìm theo tên hoặc email",
+  "nguoiDung.locVaiTro": "Vai trò",
+  "nguoiDung.locPhongBan": "Phòng ban",
+  "nguoiDung.locTrangThai": "Trạng thái",
+  "nguoiDung.dangHoatDong": "Đang hoạt động",
+  "nguoiDung.daVoHieuHoa": "Đã vô hiệu hoá",
+  "nguoiDung.cotNguoiDung": "Người dùng",
+  "nguoiDung.cotVaiTro": "Vai trò",
+  "nguoiDung.cotPhongBan": "Phòng ban",
+  "nguoiDung.cotTrangThai": "Trạng thái",
+  "nguoiDung.khongPhong": "—",
+  "nguoiDung.thaoTac": "Thao tác",
+  "nguoiDung.suaHoSo": "Sửa hồ sơ",
+  "nguoiDung.doiVaiTro": "Đổi vai trò",
+  "nguoiDung.doiPhongBan": "Đổi phòng ban",
+  "nguoiDung.datLaiMatKhau": "Đặt lại mật khẩu",
+  "nguoiDung.voHieuHoa": "Vô hiệu hoá",
+  "nguoiDung.kichHoatLai": "Kích hoạt lại",
+  "nguoiDung.hoTen": "Họ và tên",
+  "nguoiDung.email": "Email",
+  "nguoiDung.dienThoai": "Số điện thoại",
+  "nguoiDung.khongBatBuoc": "(không bắt buộc)",
+  "nguoiDung.matKhauTam": "Mật khẩu tạm",
+  "nguoiDung.toiThieu8": "Tối thiểu 8 ký tự",
+  "nguoiDung.phaiDoiLanDau": "Tài khoản mới sẽ phải đổi mật khẩu ở lần đăng nhập đầu tiên.",
+  "nguoiDung.daTao": "Đã tạo tài khoản",
+  "nguoiDung.canhBaoMotLan":
+    "Mật khẩu tạm chỉ hiện MỘT LẦN. Hãy sao chép và gửi cho người dùng ngay bây giờ.",
+  "nguoiDung.saoChep": "Sao chép",
+  "nguoiDung.daSaoChep": "Đã sao chép",
+  "nguoiDung.dongLai": "Đã sao chép, đóng lại",
+  "nguoiDung.xacNhanVoHieu":
+    "Vô hiệu hoá {ten}? Người này sẽ bị đăng xuất khỏi mọi thiết bị và không đăng nhập lại được.",
+  "nguoiDung.xacNhanKichHoat": "Kích hoạt lại {ten}?",
+  "nguoiDung.luu": "Lưu",
+  "nguoiDung.dangLuu": "Đang lưu…",
+
+  // Quản trị — lỗi
+  //
+  // Backend ĐÃ trả thông điệp tiếng Việt đầy đủ cho mọi vi phạm quy tắc nghiệp
+  // vụ (xem `identity/domain/entities/user.py`: DEPARTMENT_ALREADY_HAS_MANAGER,
+  // LAST_ADMIN_CANNOT_BE_DEACTIVATED, INACTIVE_DEPARTMENT, CANNOT_CHANGE_TO_ADMIN…).
+  // Nên UI HIỆN THẲNG message của server thay vì dịch lại mã lỗi ở đây — hai
+  // bản thông điệp song song chắc chắn sẽ lệch nhau khi backend đổi.
+  //
+  // Chỉ giữ ở đây các trường hợp server KHÔNG nói được: lỗi mạng, và mã lỗi lạ.
+  "loiQuanTri.khongDuQuyen": "Bạn không có quyền thực hiện thao tác này.",
+  "loiQuanTri.chung": "Không thực hiện được. Hãy thử lại.",
 } as const;
 
 export type KhoaChuoi = keyof typeof VI;

@@ -292,6 +292,12 @@ export const api = {
   post: <T>(path: string, body?: unknown, options: RequestOptions = {}) =>
     apiRequest<T>(path, { ...options, method: "POST", body }),
 
+  patch: <T>(path: string, body?: unknown, options: RequestOptions = {}) =>
+    apiRequest<T>(path, { ...options, method: "PATCH", body }),
+
+  delete: <T>(path: string, options: RequestOptions = {}) =>
+    apiRequest<T>(path, { ...options, method: "DELETE" }),
+
   /** POST multipart (tải tệp lên). Trình duyệt tự đặt Content-Type kèm boundary. */
   postForm: <T>(path: string, form: FormData, options: RequestOptions = {}) =>
     apiRequest<T>(path, { ...options, method: "POST", body: form }),

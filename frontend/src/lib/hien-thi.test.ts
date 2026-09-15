@@ -7,8 +7,16 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LOP_BADGE_KENH, NHAN_KENH, chuCaiDau, mocNgan, tenKhach } from "./hien-thi";
-import type { Platform } from "./types";
+import {
+  LOP_BADGE_KENH,
+  LOP_BADGE_VAI,
+  NHAN_KENH,
+  NHAN_VAI,
+  chuCaiDau,
+  mocNgan,
+  tenKhach,
+} from "./hien-thi";
+import type { Platform, Role } from "./types";
 
 describe("mocNgan", () => {
   beforeEach(() => {
@@ -75,5 +83,18 @@ describe("bảng nhãn kênh phủ đủ mọi nền tảng", () => {
 
   it.each(MOI_KENH)("kênh %s có lớp màu badge", (kenh) => {
     expect(LOP_BADGE_KENH[kenh]).toBeTruthy();
+  });
+});
+
+/** Cùng lý do RB-9: bảng vai trò thiếu khoá thì badge trống, không có lỗi. */
+describe("bảng nhãn vai trò phủ đủ mọi vai", () => {
+  const MOI_VAI: Role[] = ["STAFF", "MANAGER", "ADMIN"];
+
+  it.each(MOI_VAI)("vai %s có nhãn hiển thị", (vai) => {
+    expect(NHAN_VAI[vai]).toBeTruthy();
+  });
+
+  it.each(MOI_VAI)("vai %s có lớp màu badge", (vai) => {
+    expect(LOP_BADGE_VAI[vai]).toBeTruthy();
   });
 });

@@ -79,13 +79,29 @@ vào URL, không log ra console.
 Người dùng mới bị buộc đổi mật khẩu ở lần đăng nhập đầu — luồng
 `/doi-mat-khau` đã có sẵn từ #F1, không làm lại.
 
-### RB-4 — Hai lỗi nghiệp vụ phải hiện rõ ràng, không phải "Đã có lỗi"
+### RB-4 — Hiện THẲNG message của server cho lỗi nghiệp vụ
 
-- `DepartmentAlreadyHasManagerError` → "Phòng này đã có quản lý. Mỗi phòng chỉ
-  một quản lý."
-- Vô hiệu hoá admin cuối → giải thích vì sao bị chặn, không chỉ báo lỗi chung.
+Backend đã trả thông điệp tiếng Việt đầy đủ cho từng vi phạm, không chỉ mã lỗi.
+Bảy quy tắc tìm được trong `user.py` / `department.py`:
 
-Hai trường hợp này là *quy tắc nghiệp vụ*, người dùng cần biết để xử lý tiếp.
+| Mã | Ý nghĩa |
+|---|---|
+| `DEPARTMENT_ALREADY_HAS_MANAGER` | Mỗi phòng tối đa một quản lý đang hoạt động |
+| `LAST_ADMIN_CANNOT_BE_DEACTIVATED` | Phải luôn còn ít nhất một quản trị viên |
+| `DEPARTMENT_REQUIRED` | Staff/Manager bắt buộc thuộc một phòng |
+| `ADMIN_CANNOT_HAVE_DEPARTMENT` | Admin không gắn phòng ban nào |
+| `INACTIVE_DEPARTMENT` | Không kích hoạt lại người thuộc phòng đã ngừng |
+| `CANNOT_CHANGE_TO_ADMIN` | Chỉ đổi qua lại giữa Nhân viên và Quản lý |
+| `DEPARTMENT_HAS_ACTIVE_MEMBERS` | Phòng còn người thì không ngừng được |
+
+**Không dịch lại các mã này ở FE.** Duy trì hai bản thông điệp song song thì
+chúng chắc chắn lệch nhau khi backend đổi. FE chỉ tự viết thông điệp cho những
+gì server không nói được: lỗi mạng và mã lỗi lạ.
+
+Ba quy tắc `INACTIVE_DEPARTMENT`, `CANNOT_CHANGE_TO_ADMIN`,
+`DEPARTMENT_HAS_ACTIVE_MEMBERS` phát hiện trong lúc code — không có trong bản
+spec đầu. Chúng ảnh hưởng tới UI: ví dụ dropdown "Đổi vai trò" **không được**
+có lựa chọn "Quản trị".
 
 ## 5. Màn Phòng ban
 
