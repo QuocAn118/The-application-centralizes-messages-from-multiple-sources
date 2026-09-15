@@ -19,6 +19,7 @@ export const NHAN_KENH: Record<Platform, string> = {
   ZALO: t("kenh.ZALO"),
   FACEBOOK: t("kenh.FACEBOOK"),
   INSTAGRAM: t("kenh.INSTAGRAM"),
+  TELEGRAM: t("kenh.TELEGRAM"),
 };
 
 export const NHAN_VAI: Record<Role, string> = {
@@ -32,6 +33,7 @@ export const LOP_BADGE_KENH: Record<Platform, string> = {
   ZALO: "bg-zalo-bg text-zalo-fg",
   FACEBOOK: "bg-facebook-bg text-facebook-fg",
   INSTAGRAM: "bg-instagram-bg text-instagram-fg",
+  TELEGRAM: "bg-telegram-bg text-telegram-fg",
 };
 
 /** Lớp Tailwind cho badge trạng thái. */
