@@ -158,7 +158,7 @@ class TestKhongKhoaVinhVien:
         assert kq.outcome is AnalysisOutcome.AUTO_ASSIGNED
         assert router.da_gan == [(cid, phong)]
 
-    async def test_phan_tich_THANH_CONG_thi_van_chan_goi_lai(self) -> None:
+    async def test_phan_tich_thanh_cong_that_thi_van_chan_goi_lai(self) -> None:
         """Guard RB-5 vẫn phải giữ: đã phân tích THẬT rồi thì không gọi LLM nữa.
 
         Sửa lỗi trên không được làm mất tác dụng tiết kiệm token của RB-5.
@@ -202,7 +202,7 @@ class TestKhongKhoaVinhVien:
         assert kq is None
         assert classifier.so_lan_goi == 0, "AMBIGUOUS là kết quả thật, không gọi lại"
 
-    async def test_force_van_gọi_lai_du_da_phan_tich(self) -> None:
+    async def test_force_van_goi_lai_du_da_phan_tich(self) -> None:
         """Manager kích hoạt lại thủ công thì bỏ qua mọi guard."""
         phong = uuid4()
         repo = _AnalysisRepo()

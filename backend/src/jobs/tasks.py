@@ -57,3 +57,31 @@ async def phan_tich_hoi_thoai(conversation_id: str) -> None:
     from src.jobs.wiring import chay_phan_tich
 
     await chay_phan_tich(UUID(conversation_id))
+
+
+@app.task(
+    name="tu_gan_nhan_vien",
+    queue="phan_tich",
+    retry=RetryStrategy(
+        max_attempts=SO_LAN_THU,
+        exponential_wait=CHO_TANG_DAN_GIAY,
+    ),
+)
+async def tu_gan_nhan_vien(conversation_id: str) -> None:
+    """Chọn một nhân viên trong phòng của hội thoại và gán (#3).
+
+    **Job RIÊNG, không gộp vào ``phan_tich_hoi_thoai``** (quyết định 2026-09-15,
+    xem ADR). Hai việc hỏng vì hai lý do khác nhau: phân loại hỏng khi LLM lỗi,
+    gán người hỏng khi DB/ca làm trục trặc. Gộp chung thì mỗi lần retry lại gọi
+    lại LLM đã thành công, và job phải tự nhớ "đã phân loại xong nhưng gán lỗi" —
+    đúng loại trạng thái nội bộ đã sinh ra lỗi NOT_ANALYZED hôm trước.
+
+    Tách ra thì mỗi job retry đúng phần việc của nó và guard nằm ở dữ liệu thật
+    (hội thoại đã có người chưa), không nằm trong bộ nhớ của job.
+
+    Idempotent: chạy lại trên hội thoại đã có người phụ trách thì bỏ qua — chính
+    hook #3 kiểm điều đó trước khi gán.
+    """
+    from src.jobs.wiring import chay_tu_gan
+
+    await chay_tu_gan(UUID(conversation_id))
