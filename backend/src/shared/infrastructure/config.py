@@ -60,10 +60,32 @@ class Settings(BaseSettings):
     # không phải bỏ qua kiểm tra — webhook công khai không xác thực là lỗ hổng.
     telegram_webhook_secret: str = ""
 
-    # Keyword (#2): Claude API để LLM tự đọc tin và chọn phòng phù hợp.
+    # Keyword (#2): LLM tự đọc tin và chọn phòng phù hợp.
     # Khoá là BÍ MẬT — chỉ đọc từ .env, không commit, không log.
+    #
+    # ``llm_provider`` chọn nhà cung cấp: "gemini" | "claude" | "none".
+    # "none" (hoặc thiếu khoá tương ứng) = TẮT phân tích: mọi hội thoại ở lại
+    # CHO_PHAN cho Manager phân tay — đúng hành vi đã có khi thiếu khoá.
+    llm_provider: str = "gemini"
+
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-5"
+
+    # Gemini (Google AI Studio). Nhóm Flash: rẻ và nhanh, đủ cho việc phân loại
+    # ngắn vài tin — không cần model mạnh nhất.
+    #
+    # Hai kiểu đặt tên, đều có cái giá của nó (đã gặp CẢ HAI trong ngày 2026-09-15):
+    # - Số phiên bản cứng (``gemini-2.0-flash``): Google gỡ model cũ → **404**.
+    # - Bí danh ``-latest``: không bao giờ 404, nhưng trỏ vào pool dùng chung nên
+    #   dễ gặp **503 "high demand"** vào giờ cao điểm.
+    # Chọn bản cụ thể còn được hỗ trợ, và theo dõi thông báo retire của Google.
+    # Lỗi 404/503 giờ được nêu rõ trong thông điệp lỗi để chẩn đoán nhanh.
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-3.6-flash"
+
+    # Hàng đợi nền (Procrastinate) cho phân tích LLM. Tắt = chạy đồng bộ trong
+    # webhook như trước (chỉ nên dùng khi chạy test hoặc không bật worker).
+    queue_enabled: bool = True
 
     # Múi giờ nghiệp vụ: giờ ca làm (#4) và các so sánh "đang trong ca" (#3) diễn
     # ra theo giờ địa phương này, dù hệ thống lưu mọi mốc thời gian ở UTC. Nhân
