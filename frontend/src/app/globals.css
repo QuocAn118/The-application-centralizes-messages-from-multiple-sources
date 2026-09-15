@@ -28,6 +28,8 @@
   --facebook-fg: #1877f2;
   --instagram-bg: #fdecef;
   --instagram-fg: #c1358a;
+  --telegram-bg: #e6f4fb;
+  --telegram-fg: #2481cc;
 
   /* Badge trạng thái hội thoại */
   --cho-phan-bg: #fff4e5;
@@ -59,6 +61,8 @@
   --color-facebook-fg: var(--facebook-fg);
   --color-instagram-bg: var(--instagram-bg);
   --color-instagram-fg: var(--instagram-fg);
+  --color-telegram-bg: var(--telegram-bg);
+  --color-telegram-fg: var(--telegram-fg);
 
   --color-cho-phan-bg: var(--cho-phan-bg);
   --color-cho-phan-fg: var(--cho-phan-fg);
