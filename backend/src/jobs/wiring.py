@@ -21,6 +21,14 @@ from src.shared.infrastructure.config import Settings, get_settings
 logger = logging.getLogger(__name__)
 
 
+class PhanTichThatBaiError(RuntimeError):
+    """LLM không phân tích được — ném ra để hàng đợi thử lại.
+
+    Cố ý là lỗi riêng, không dùng ``ClassifierError``: use case bắt loại đó và
+    nuốt, còn ở đây ta CẦN nó nổi lên tới worker.
+    """
+
+
 class _KhongBaoRealtime:
     """Notifier rỗng cho worker.
 
@@ -121,6 +129,7 @@ async def chay_phan_tich(conversation_id: UUID) -> None:
     from src.modules.hrm.infrastructure.directory.workforce_directory import (  # noqa: F401
         IdentityWorkforceDirectory as _HrmDirectory,
     )
+    from src.modules.keyword.domain.value_objects.extracted_term import AnalysisOutcome
     from src.modules.keyword.infrastructure.directory.workforce_directory import (
         IdentityWorkforceDirectory,
     )
@@ -139,6 +148,8 @@ async def chay_phan_tich(conversation_id: UUID) -> None:
     clock = SystemClock()
     session_factory = _lay_session_factory()
 
+    logger.info("Bắt đầu phân tích hội thoại %s", conversation_id)
+
     async with session_factory() as session:
         use_case = build_analyze_conversation(
             session,
@@ -150,5 +161,32 @@ async def chay_phan_tich(conversation_id: UUID) -> None:
             workforce_factory=IdentityWorkforceDirectory,
             clock=clock,
         )
-        await use_case.execute(conversation_id)
+        ket_qua = await use_case.execute(conversation_id)
         await session.commit()
+
+    if ket_qua is None:
+        # Bỏ qua hợp lệ: hội thoại không còn CHO_PHAN, chưa có tin, hoặc đã phân
+        # tích thật rồi. Không phải lỗi.
+        logger.info("Bỏ qua hội thoại %s (không đủ điều kiện phân tích).", conversation_id)
+        return
+
+    logger.info(
+        "Phân tích xong hội thoại %s: outcome=%s phòng=%s tin_cậy=%s cụm=%d",
+        conversation_id,
+        ket_qua.outcome,
+        ket_qua.suggested_department_id,
+        ket_qua.confidence,
+        len(ket_qua.extracted_terms),
+    )
+
+    if ket_qua.outcome is AnalysisOutcome.NOT_ANALYZED and not ket_qua.extracted_terms:
+        # LLM thất bại (mạng/quota/sai model). Use case đã nuốt lỗi và ghi
+        # NOT_ANALYZED để giữ đúng hợp đồng "phân tích lỗi không làm hỏng nhận
+        # tin". Nhưng ở hàng đợi thì im lặng là sai: job báo Success, retry không
+        # bao giờ chạy, và không ai biết LLM đang hỏng.
+        #
+        # Ném lỗi ở đây để Procrastinate retry. Bản ghi NOT_ANALYZED đã commit
+        # KHÔNG chặn lần thử lại — guard RB-5 cố ý bỏ qua loại bản ghi này.
+        raise PhanTichThatBaiError(
+            f"LLM không phân tích được hội thoại {conversation_id} — xem log phía trên."
+        )

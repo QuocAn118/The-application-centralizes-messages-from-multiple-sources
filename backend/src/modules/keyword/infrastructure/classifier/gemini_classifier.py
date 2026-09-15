@@ -61,9 +61,7 @@ class GeminiConversationClassifier:
             # Gemini tách chỉ dẫn hệ thống ra ``systemInstruction``, khác Claude
             # (tham số ``system``) — nội dung prompt thì giống hệt.
             "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-            "contents": [
-                {"role": "user", "parts": [{"text": dung_prompt(texts, departments)}]}
-            ],
+            "contents": [{"role": "user", "parts": [{"text": dung_prompt(texts, departments)}]}],
             "generationConfig": {
                 "maxOutputTokens": MAX_TOKENS,
                 # Phân loại cần tính ổn định, không cần sáng tạo: nhiệt độ 0 để
@@ -86,8 +84,28 @@ class GeminiConversationClassifier:
                 raw = self._lay_text(resp.json())
         except ClassifierError:
             raise
-        except Exception as exc:  # mạng/HTTP/JSON hỏng đều gói lại
-            raise ClassifierError("Gọi Gemini thất bại.") from exc
+        except httpx.HTTPStatusError as exc:
+            # Nêu rõ mã lỗi và model: 404 gần như luôn là "model đã bị Google gỡ"
+            # — thông điệp chung chung khiến việc chẩn đoán mất hàng giờ.
+            ma = exc.response.status_code
+            goi_y = ""
+            if ma == 404:
+                goi_y = (
+                    f" Model {self._model!r} có thể đã bị gỡ; đổi GEMINI_MODEL "
+                    "(ví dụ 'gemini-flash-latest')."
+                )
+            elif ma in (401, 403):
+                goi_y = " Kiểm tra GEMINI_API_KEY."
+            elif ma == 429:
+                goi_y = " Đã chạm giới hạn quota."
+            elif ma == 503:
+                goi_y = (
+                    " Model đang quá tải (lỗi TẠM THỜI của Google, không phải lỗi cấu"
+                    " hình) — hàng đợi sẽ thử lại. Hay gặp với bí danh '-latest'."
+                )
+            raise ClassifierError(f"Gọi Gemini lỗi HTTP {ma}.{goi_y}") from exc
+        except Exception as exc:  # mạng/JSON hỏng đều gói lại
+            raise ClassifierError("Gọi Gemini thất bại (mạng hoặc phản hồi hỏng).") from exc
 
         return parse_ket_qua(raw, _TEN)
 
