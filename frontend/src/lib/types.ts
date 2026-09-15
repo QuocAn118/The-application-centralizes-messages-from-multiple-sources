@@ -167,3 +167,65 @@ export interface ApiErrorBody {
   };
   request_id: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Quản trị (#F2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Hành động được ghi nhật ký — khớp `AuditAction` ở
+ * `identity/domain/entities/audit_log.py`.
+ *
+ * Giá trị dạng `<đối tượng>.<hành động>` nên lọc theo tiền tố được.
+ */
+export type AuditAction =
+  | "user.created"
+  | "user.updated"
+  | "user.deactivated"
+  | "user.reactivated"
+  | "user.role_changed"
+  | "user.department_changed"
+  | "user.password_reset"
+  | "user.password_changed"
+  | "department.created"
+  | "department.updated"
+  | "department.deactivated"
+  | "auth.login_succeeded"
+  | "auth.login_failed"
+  | "auth.logout"
+  | "auth.token_reuse_detected";
+
+/** Một dòng nhật ký (`GET /audit-logs`). Chỉ đọc — backend không cho sửa/xoá. */
+export interface AuditLogEntry {
+  id: string;
+  action: AuditAction;
+  actor_id: string | null;
+  resource_type: string;
+  resource_id: string | null;
+  changes: unknown;
+  ip_address: string | null;
+  created_at: string;
+}
+
+/** Kênh đã kết nối (`GET /channels`). KHÔNG bao giờ chứa credential. */
+export interface Channel {
+  id: string;
+  platform: Platform;
+  external_channel_id: string;
+  name: string;
+  department_id: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Tham số lọc danh sách người dùng (`GET /users`). */
+export interface ThamSoNguoiDung {
+  search?: string;
+  role?: Role;
+  /** Manager gửi cũng vô ích: backend ép về phòng của chính họ. */
+  department_id?: string;
+  is_active?: boolean;
+  limit: number;
+  offset: number;
+}

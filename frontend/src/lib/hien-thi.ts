@@ -102,3 +102,15 @@ export function mocDayDu(isoString: string): string {
   if (Number.isNaN(t.getTime())) return "";
   return t.toLocaleString("vi-VN");
 }
+
+/**
+ * Lớp Tailwind cho badge vai trò (#F2).
+ *
+ * "Quản trị" dùng tím để tách hẳn khỏi primary xanh — nhìn lướt bảng là thấy
+ * ngay ai có toàn quyền.
+ */
+export const LOP_BADGE_VAI: Record<Role, string> = {
+  ADMIN: "bg-admin-bg text-admin-fg",
+  MANAGER: "bg-zalo-bg text-zalo-fg",
+  STAFF: "bg-da-dong-bg text-da-dong-fg",
+};
