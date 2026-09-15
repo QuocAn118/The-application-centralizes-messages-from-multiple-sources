@@ -110,10 +110,14 @@ async def nhan_webhook(
         # Chỉ chạy hook cho tin THẬT SỰ mới (không trùng idempotency). Hook tự lo
         # session/lỗi riêng — lỗi hook không được ảnh hưởng phản hồi webhook.
         #
-        # NỢ (chấp nhận — spec §9, ghi rõ ở review GĐ4): hook chạy ĐỒNG BỘ trong
-        # request. Với LLM thật (#2 gọi Claude vài giây/tin) webhook chậm đi tương
-        # ứng; nền tảng có thể timeout và gửi lại (idempotency giữ đúng nhưng tốn
-        # gọi LLM thừa). Tách sang hàng đợi nền là nợ để sau, không sửa ở GĐ4.
+        # NỢ NÀY ĐÃ TRẢ (2026-09-15): hook của #2 giờ chỉ ĐẨY JOB vào hàng đợi
+        # Procrastinate rồi trả về ngay (mili-giây), worker ở tiến trình riêng
+        # mới gọi LLM. Router không đổi — chỗ thay là hook đăng ký ở composition
+        # root (`QUEUE_ENABLED`). Xem ADR 2026-09-15.
+        #
+        # Lưu ý cho hook THÊM MỚI về sau: chúng vẫn chạy ĐỒNG BỘ ở đây, nên việc
+        # nào tốn thời gian (gọi API ngoài, LLM) phải tự đẩy sang hàng đợi như #2,
+        # đừng làm thẳng trong vòng lặp này.
         if ket_qua is None:
             continue
         # Lỗi hook KHÔNG được làm hỏng phản hồi webhook (tin đã commit). Các hook
