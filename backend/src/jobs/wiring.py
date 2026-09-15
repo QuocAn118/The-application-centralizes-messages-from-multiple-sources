@@ -10,7 +10,7 @@ lại chạy Claude thì kết quả phân tích khác nhau tuỳ ai xử lý.
 """
 
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -109,9 +109,13 @@ def _lay_session_factory() -> async_sessionmaker[AsyncSession]:
 
     Không dựng lại mỗi job: mỗi engine kéo theo một pool kết nối riêng, tạo mới
     liên tục sẽ làm cạn kết nối PostgreSQL sau vài trăm job.
+
+    Nạp ``models_registry`` ở đây — điểm mọi job đều đi qua — để SQLAlchemy giải
+    được khoá ngoại lúc commit. Xem module đó để biết vì sao cần.
     """
     global _engine, _session_factory
     if _session_factory is None:
+        from src.jobs import models_registry  # noqa: F401
         from src.shared.infrastructure.database import create_engine_and_session_factory
 
         _engine, _session_factory = create_engine_and_session_factory(get_settings().database_url)
@@ -179,6 +183,16 @@ async def chay_phan_tich(conversation_id: UUID) -> None:
         len(ket_qua.extracted_terms),
     )
 
+    # Phân được phòng thì đẩy tiếp job gán người (#3).
+    #
+    # TẠI SAO Ở ĐÂY: chuỗi hook ``post_ingest`` chạy #2 rồi #3 theo thứ tự đăng
+    # ký, dựa trên giả định #2 phân phòng XONG ngay trong request. Khi #2 chuyển
+    # sang hàng đợi, giả định đó vỡ: hook #3 chạy lúc phòng còn NULL nên không
+    # bao giờ gán ai, và không có lỗi nào hiện ra. Nối lại chuỗi tại đây — chỗ
+    # duy nhất biết chắc phòng vừa được phân.
+    if ket_qua.outcome is AnalysisOutcome.AUTO_ASSIGNED:
+        await day_job_tu_gan(ket_qua.suggested_department_id, conversation_id)
+
     if ket_qua.outcome is AnalysisOutcome.NOT_ANALYZED and not ket_qua.extracted_terms:
         # LLM thất bại (mạng/quota/sai model). Use case đã nuốt lỗi và ghi
         # NOT_ANALYZED để giữ đúng hợp đồng "phân tích lỗi không làm hỏng nhận
@@ -190,3 +204,106 @@ async def chay_phan_tich(conversation_id: UUID) -> None:
         raise PhanTichThatBaiError(
             f"LLM không phân tích được hội thoại {conversation_id} — xem log phía trên."
         )
+
+
+async def day_job_tu_gan(
+    department_id: UUID | None,
+    conversation_id: UUID | None = None,
+    *,
+    _day: Callable[[UUID], Awaitable[None]] | None = None,
+) -> None:
+    """Đẩy job ``tu_gan_nhan_vien`` khi hội thoại vừa được phân về một phòng.
+
+    Không có phòng thì không đẩy: #3 cần biết chọn người trong phòng nào, và hội
+    thoại chưa phân phòng vẫn đang chờ Manager phân tay.
+
+    ``_day`` chỉ để test bơm hàm đẩy giả — mặc định dùng hàng đợi thật.
+
+    Nuốt mọi lỗi: hàng đợi hỏng không được làm job phân tích (đã thành công) bị
+    tính là thất bại rồi retry, vì retry sẽ gọi lại LLM một cách vô ích. Mất job
+    gán chỉ nghĩa là hội thoại nằm trong hàng đợi phòng — Manager vẫn kéo tay
+    được bằng ``POST /departments/{id}/auto-assign``.
+    """
+    if department_id is None or conversation_id is None:
+        return
+
+    try:
+        if _day is not None:
+            await _day(conversation_id)
+            return
+
+        from procrastinate.exceptions import AppNotOpen
+
+        from src.jobs.app import app
+        from src.jobs.tasks import tu_gan_nhan_vien
+
+        # Hàm này chạy ở HAI nơi có trạng thái app khác nhau:
+        # - trong worker: app ĐANG mở (worker tự mở để nhận job);
+        # - ngoài worker (test, script): app chưa mở.
+        #
+        # ``async with app.open_async()`` vô điều kiện sẽ ĐÓNG app của worker khi
+        # thoát khối, làm chính job đang chạy không ghi nổi kết quả —
+        # ``AppNotOpen``, job kẹt ở ``doing`` và worker chết. Đã gặp thật khi chạy
+        # end-to-end 2026-09-15.
+        #
+        # Thử đẩy trước rồi mới mở: ``AppNotOpen`` là cách duy nhất biết chắc app
+        # chưa mở mà không phải đoán kiểu connector cụ thể.
+        try:
+            await tu_gan_nhan_vien.defer_async(conversation_id=str(conversation_id))
+        except AppNotOpen:
+            async with app.open_async():
+                await tu_gan_nhan_vien.defer_async(conversation_id=str(conversation_id))
+    except Exception:
+        logger.exception(
+            "Không đẩy được job tự gán cho hội thoại %s — hội thoại nằm trong hàng đợi phòng",
+            conversation_id,
+        )
+
+
+async def chay_tu_gan(conversation_id: UUID) -> None:
+    """Chạy #3 cho một hội thoại đã có phòng, trong session riêng.
+
+    Dùng lại đúng hook post-ingest của #3 sẽ phải dựng ``InboundEvent`` giả, nên
+    thay vào đó gọi thẳng use case với cùng bộ điều kiện mà hook kiểm: chỉ gán
+    khi hội thoại ``DANG_MO``, có phòng, và chưa ai nhận.
+
+    Không ai trong ca → use case trả ``QUEUED`` và hội thoại nằm lại hàng đợi
+    phòng. Đó KHÔNG phải lỗi, nên không ném ra: retry cũng sẽ cho kết quả y hệt
+    chừng nào chưa ai vào ca. Hook ``post_close`` và endpoint kéo tay là đường
+    lấy việc ra khỏi hàng đợi.
+    """
+    from src.modules.assignment.infrastructure.inbox_bridge.pull_queue_factory import (
+        build_auto_assign_conversation,
+    )
+    from src.modules.inbox.domain.entities.conversation import ConversationStatus
+    from src.modules.inbox.infrastructure.repositories.conversation_repository import (
+        SqlAlchemyConversationRepository,
+    )
+    from src.shared.infrastructure.clock import SystemClock
+
+    settings = get_settings()
+    clock = SystemClock()
+    session_factory = _lay_session_factory()
+
+    async with session_factory() as session:
+        hoi_thoai = await SqlAlchemyConversationRepository(session).get_by_id(conversation_id)
+        if (
+            hoi_thoai is None
+            or hoi_thoai.status is not ConversationStatus.DANG_MO
+            or hoi_thoai.department_id is None
+            or hoi_thoai.assigned_user_id is not None
+        ):
+            # Idempotent: job chạy lại sau khi đã gán xong thì rơi vào đây.
+            logger.info("Bỏ qua tự gán hội thoại %s (không đủ điều kiện).", conversation_id)
+            return
+
+        use_case = build_auto_assign_conversation(
+            session,
+            notifier=_KhongBaoRealtime(),
+            clock=clock,
+            timezone=settings.app_timezone,
+        )
+        ket_cuc = await use_case.execute(conversation_id, hoi_thoai.department_id)
+        await session.commit()
+
+    logger.info("Tự gán hội thoại %s: %s", conversation_id, ket_cuc)

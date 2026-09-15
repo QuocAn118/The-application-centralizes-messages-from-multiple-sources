@@ -171,3 +171,14 @@ khi thiếu API key: Manager phân tay như bình thường.
 Spec #2 §10 ghi "LLM (Claude API)" như một quyết định chốt. Từ đợt này, nhà cung
 cấp là **cấu hình** (`LLM_PROVIDER`), không còn cố định Claude — spec đã cập nhật.
 Phần còn lại của §10 (gác kết quả LLM, không gọi lặp, lỗi thì bỏ qua) không đổi.
+
+---
+
+## Hệ quả phát hiện sau (cùng ngày)
+
+Việc chuyển #2 sang nền đã **phá chuỗi hook `post_ingest`**: hook #3 (tự gán
+nhân viên) đăng ký sau #2 và dựa vào giả định "#2 đã phân phòng xong", nên từ
+đợt này nó không bao giờ gán được ai — trong im lặng.
+
+Xem [ADR job riêng cho tự gán nhân viên](2026-09-15-job-rieng-cho-tu-gan-nhan-vien.md)
+để biết cách sửa, kết quả audit cả chuỗi hook, và nguyên tắc rút ra.
