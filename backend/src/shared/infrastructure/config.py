@@ -60,10 +60,25 @@ class Settings(BaseSettings):
     # không phải bỏ qua kiểm tra — webhook công khai không xác thực là lỗ hổng.
     telegram_webhook_secret: str = ""
 
-    # Keyword (#2): Claude API để LLM tự đọc tin và chọn phòng phù hợp.
+    # Keyword (#2): LLM tự đọc tin và chọn phòng phù hợp.
     # Khoá là BÍ MẬT — chỉ đọc từ .env, không commit, không log.
+    #
+    # ``llm_provider`` chọn nhà cung cấp: "gemini" | "claude" | "none".
+    # "none" (hoặc thiếu khoá tương ứng) = TẮT phân tích: mọi hội thoại ở lại
+    # CHO_PHAN cho Manager phân tay — đúng hành vi đã có khi thiếu khoá.
+    llm_provider: str = "gemini"
+
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-5"
+
+    # Gemini (Google AI Studio). Mặc định nhóm Flash: rẻ và nhanh, đủ cho việc
+    # phân loại ngắn vài tin — không cần model mạnh nhất.
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.0-flash"
+
+    # Hàng đợi nền (Procrastinate) cho phân tích LLM. Tắt = chạy đồng bộ trong
+    # webhook như trước (chỉ nên dùng khi chạy test hoặc không bật worker).
+    queue_enabled: bool = True
 
     # Múi giờ nghiệp vụ: giờ ca làm (#4) và các so sánh "đang trong ca" (#3) diễn
     # ra theo giờ địa phương này, dù hệ thống lưu mọi mốc thời gian ở UTC. Nhân

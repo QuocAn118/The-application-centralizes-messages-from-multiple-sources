@@ -381,6 +381,9 @@ def _wire_keyword(app: FastAPI, settings: Settings) -> None:
     from src.modules.keyword.infrastructure.classifier.claude_classifier import (
         ClaudeConversationClassifier,
     )
+    from src.modules.keyword.infrastructure.classifier.gemini_classifier import (
+        GeminiConversationClassifier,
+    )
     from src.modules.keyword.infrastructure.directory.workforce_directory import (
         IdentityWorkforceDirectory,
     )
@@ -417,26 +420,52 @@ def _wire_keyword(app: FastAPI, settings: Settings) -> None:
 
     app.state.keyword_conversation_router_factory = conversation_router_factory
 
-    api_key = settings.anthropic_api_key
-    if api_key:
+    # Chọn nhà cung cấp LLM theo cấu hình. Giữ cả hai adapter: đổi nhà cung cấp
+    # là đổi một biến môi trường, không phải sửa code.
+    nha_cung_cap = settings.llm_provider.strip().lower()
+
+    class _DisabledClassifier:
+        """Classifier luôn lỗi — dùng khi chưa cấu hình LLM.
+
+        Không im lặng bỏ qua: ném ``ClassifierError`` để use case ghi nhận
+        "không phân tích được" và giữ hội thoại ở CHO_PHAN cho Manager phân tay.
+        """
+
+        def __init__(self, ly_do: str) -> None:
+            self._ly_do = ly_do
+
+        async def classify(self, texts, departments):  # type: ignore[no-untyped-def]
+            raise ClassifierError(self._ly_do)
+
+    if nha_cung_cap == "gemini" and settings.gemini_api_key:
+        gemini_key = settings.gemini_api_key
+        gemini_model = settings.gemini_model
+
+        def classifier_factory() -> IConversationClassifier:
+            return GeminiConversationClassifier(gemini_key, gemini_model)
+
+        logger.info("Phân tích #2 dùng Gemini (model %s).", gemini_model)
+    elif nha_cung_cap == "claude" and settings.anthropic_api_key:
         from anthropic import AsyncAnthropic
 
-        anthropic_client = AsyncAnthropic(api_key=api_key)
+        anthropic_client = AsyncAnthropic(api_key=settings.anthropic_api_key)
 
         def classifier_factory() -> IConversationClassifier:
             return ClaudeConversationClassifier(anthropic_client, settings.anthropic_model)
-    else:
-        logger.warning(
-            "ANTHROPIC_API_KEY chưa đặt — phân tích #2 vô hiệu (mọi hội thoại "
-            "NOT_ANALYZED). Đặt khoá thật trong .env để bật tự phân bằng LLM."
-        )
 
-        class _DisabledClassifier:
-            async def classify(self, texts, departments):  # type: ignore[no-untyped-def]
-                raise ClassifierError("Chưa cấu hình ANTHROPIC_API_KEY.")
+        logger.info("Phân tích #2 dùng Claude (model %s).", settings.anthropic_model)
+    else:
+        if nha_cung_cap in ("gemini", "claude"):
+            ly_do = (
+                f"LLM_PROVIDER={nha_cung_cap} nhưng thiếu khoá API tương ứng "
+                f"({'GEMINI_API_KEY' if nha_cung_cap == 'gemini' else 'ANTHROPIC_API_KEY'})."
+            )
+        else:
+            ly_do = f"LLM_PROVIDER={nha_cung_cap or '(rỗng)'} — phân tích tắt."
+        logger.warning("%s Phân tích #2 vô hiệu: mọi hội thoại ở lại CHO_PHAN để phân tay.", ly_do)
 
         def classifier_factory() -> IConversationClassifier:
-            return _DisabledClassifier()
+            return _DisabledClassifier(ly_do)
 
     app.state.keyword_classifier_factory = classifier_factory
 
@@ -454,9 +483,23 @@ def _wire_keyword(app: FastAPI, settings: Settings) -> None:
             clock=clock,
         )
 
-    app.state.post_ingest_hooks.append(
-        make_post_ingest_hook(lambda: app.state.session_factory, analyze_factory)
-    )
+    if settings.queue_enabled:
+        # Mặc định: webhook chỉ ĐẨY job rồi trả 200 ngay; worker riêng gọi LLM.
+        # Trước đây hook gọi LLM đồng bộ trong request, mỗi tin đến phải chờ vài
+        # giây và nền tảng có thể timeout rồi gửi lại (tốn lời gọi LLM thừa).
+        from src.jobs.enqueue_hook import make_enqueue_hook
+
+        app.state.post_ingest_hooks.append(make_enqueue_hook(lambda: app.state.session_factory))
+        logger.info("Phân tích #2 chạy NỀN qua hàng đợi — nhớ bật scripts/run_worker.py.")
+    else:
+        # Đồng bộ: chỉ dùng cho test hoặc khi cố ý không chạy worker.
+        app.state.post_ingest_hooks.append(
+            make_post_ingest_hook(lambda: app.state.session_factory, analyze_factory)
+        )
+        logger.warning(
+            "QUEUE_ENABLED=false — phân tích #2 chạy ĐỒNG BỘ trong webhook; "
+            "nền tảng có thể timeout nếu LLM chậm."
+        )
 
     app.include_router(keyword_router, prefix="/api/v1")
     app.include_router(analysis_router, prefix="/api/v1")
