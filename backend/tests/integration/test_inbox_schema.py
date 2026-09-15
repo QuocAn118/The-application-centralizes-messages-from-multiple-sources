@@ -95,6 +95,11 @@ class TestKenhUnique:
             await _them_kenh(db_session, "TIKTOK", "x")
             await db_session.flush()
 
+    async def test_kenh_telegram_duoc_chap_nhan(self, db_session: AsyncSession) -> None:
+        # Telegram là nền tảng thứ ba (migration e5f6a7b8c9d0 mở rộng CHECK).
+        await _them_kenh(db_session, "TELEGRAM", "bot_123")
+        await db_session.flush()  # không lỗi
+
 
 class TestKhachUnique:
     async def test_khach_trung_kenh_external_bi_chan(self, db_session: AsyncSession) -> None:
