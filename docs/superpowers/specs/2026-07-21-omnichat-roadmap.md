@@ -43,6 +43,14 @@ Mỗi sub-project dưới đây có chu trình riêng: **spec → plan → imple
 
 **Thứ tự khuyến nghị:** 0 → 1 → 4 → 2 → 3 → 5.
 
+**Bổ sung 2026-09-14 — Telegram là kênh thứ ba của #1.** Thêm `TELEGRAM` bên cạnh Zalo/Meta
+để chạy được luồng đầu-cuối thật: Zalo OA yêu cầu giấy phép kinh doanh và tài khoản Meta
+Developer đang lỗi phía Meta, nên không kênh nào trong hai kênh gốc dùng thử được. Telegram
+Bot chỉ cần một tài khoản Telegram thường. Đây là kênh **phục vụ test/demo nội bộ, KHÔNG
+thuộc phạm vi đề bài gốc** và không thay thế Zalo/Meta trong tiêu chí nghiệm thu #1.
+Xem [spec](2026-09-14-omnichat-telegram-channel-design.md) ·
+[ADR](../adr/2026-09-14-telegram-secret-token-va-router-chung.md).
+
 HRM (#4) được đưa lên sớm vì Auto-Assignment (#3) cần dữ liệu ca làm và KPI, trong khi #4
 độc lập với #1 nên có thể triển khai song song.
 
