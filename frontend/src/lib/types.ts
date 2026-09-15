@@ -17,8 +17,14 @@
 /** Vai trò người dùng. Quyết định nút hành động nào hiển thị (spec §3). */
 export type Role = "STAFF" | "MANAGER" | "ADMIN";
 
-/** Kênh tin nhắn. */
-export type Platform = "ZALO" | "FACEBOOK" | "INSTAGRAM";
+/**
+ * Kênh tin nhắn.
+ *
+ * `TELEGRAM` phục vụ test/demo nội bộ (thêm 2026-09-14), không thuộc phạm vi
+ * đề bài gốc — nhưng vẫn hiện trong inbox như mọi kênh khác, nên mọi bảng tra
+ * theo `Platform` phải phủ nó.
+ */
+export type Platform = "ZALO" | "FACEBOOK" | "INSTAGRAM" | "TELEGRAM";
 
 /**
  * Trạng thái hội thoại.

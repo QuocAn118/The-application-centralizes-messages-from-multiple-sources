@@ -109,6 +109,7 @@ const VI = {
   "kenh.ZALO": "Zalo",
   "kenh.FACEBOOK": "Facebook",
   "kenh.INSTAGRAM": "Instagram",
+  "kenh.TELEGRAM": "Telegram",
   "vai.STAFF": "Nhân viên",
   "vai.MANAGER": "Quản lý",
   "vai.ADMIN": "Quản trị",
