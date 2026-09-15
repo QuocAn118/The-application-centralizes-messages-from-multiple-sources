@@ -34,7 +34,10 @@ from src.modules.keyword.domain.repositories.analysis_repository import (
     IAnalysisRepository,
 )
 from src.modules.keyword.domain.repositories.keyword_repository import IKeywordRepository
-from src.modules.keyword.domain.value_objects.extracted_term import DepartmentKeywords
+from src.modules.keyword.domain.value_objects.extracted_term import (
+    AnalysisOutcome,
+    DepartmentKeywords,
+)
 from src.shared.application.ports import IClock
 
 logger = logging.getLogger(__name__)
@@ -94,11 +97,19 @@ class AnalyzeConversation:
         if snapshot is None or not snapshot.is_awaiting or not snapshot.first_texts:
             return None
 
-        # Guard chống gọi LLM lặp: đã phân tích hội thoại này rồi thì thôi, trừ
-        # khi Manager kích hoạt lại (force).
+        # Guard chống gọi LLM lặp (RB-5): đã phân tích hội thoại này rồi thì thôi,
+        # trừ khi Manager kích hoạt lại (force).
+        #
+        # CHỈ tính các lần phân tích THỰC SỰ có kết quả. Bản ghi ``NOT_ANALYZED``
+        # nghĩa là LLM *thất bại* (mạng, quota, sai model...) — đó là trạng thái
+        # TẠM THỜI, không phải kết luận về hội thoại. Nếu tính nó là "đã phân
+        # tích" thì một lần lỗi thoáng qua sẽ khoá hội thoại lại VĨNH VIỄN: mọi
+        # tin sau đó không bao giờ được phân tích, và không có lỗi nào hiện ra.
+        # Đây đúng là lỗi đã gặp thật ngày 2026-09-15 (model Gemini hết hạn →
+        # 404 → NOT_ANALYZED → hội thoại chết lặng).
         if not force:
             da_co = await self._analysis_repo.list_for_conversation(conversation_id)
-            if da_co:
+            if any(a.outcome is not AnalysisOutcome.NOT_ANALYZED for a in da_co):
                 return None
 
         now = self._clock.now()
