@@ -7,6 +7,54 @@ Mục tiêu: khách nhắn Zalo → tin vào inbox → nhân viên trả lời �
 
 ---
 
+## Chạy ứng dụng (đọc trước — có BA tiến trình, không phải hai)
+
+Từ 2026-09-15, phân tích AI (#2) chạy **nền** qua hàng đợi. Nghĩa là môi trường
+dev cần **ba** cửa sổ terminal chạy song song:
+
+```bash
+# 1. Đường hầm công khai (để Zalo/Meta/Telegram gọi vào được)
+cloudflared tunnel --url http://localhost:8003
+
+# 2. Web server
+cd backend
+uv run python -m scripts.run_server --port 8003
+
+# 3. Worker xử lý job nền  ← MỚI, dễ quên nhất
+cd backend
+uv run python -m scripts.run_worker
+```
+
+> **KHÔNG chạy worker thì AI phân loại KHÔNG BAO GIỜ chạy.** Webhook vẫn nhận tin
+> bình thường, tin vẫn vào inbox, **không có lỗi nào hiện ra** — nhưng mọi hội
+> thoại nằm mãi ở "Chờ phân" vì job chỉ xếp hàng chứ không ai xử lý. Đây là triệu
+> chứng dễ nhầm với "AI hỏng" nhất.
+>
+> Kiểm tra nhanh xem có job đang ứ không:
+> ```sql
+> SELECT status, count(*) FROM procrastinate_jobs GROUP BY status;
+> ```
+> `todo` tăng dần mà không có `succeeded` = worker chưa chạy.
+
+Thứ tự bật không quan trọng: job nằm trong PostgreSQL nên bật worker sau vẫn xử
+lý hết phần tồn đọng. Tắt worker rồi bật lại cũng không mất job.
+
+Dừng worker bằng `Ctrl+C` — nó chờ job đang chạy xong rồi mới thoát.
+
+### Cấu hình AI (#2)
+
+| Biến | Ý nghĩa |
+|---|---|
+| `LLM_PROVIDER` | `gemini` (mặc định) \| `claude` \| `none` |
+| `GEMINI_API_KEY` | Khoá từ [aistudio.google.com/api-keys](https://aistudio.google.com/api-keys) |
+| `GEMINI_MODEL` | Mặc định `gemini-2.0-flash` — rẻ, nhanh, đủ cho phân loại |
+| `QUEUE_ENABLED` | `true` (mặc định) = chạy nền. `false` = đồng bộ trong webhook |
+
+Thiếu khoá tương ứng thì phân tích **tắt an toàn**: hội thoại ở lại "Chờ phân"
+cho Manager phân tay, không có gì kẹt.
+
+---
+
 ## Bước 1 — Mở một địa chỉ công khai (bắt buộc)
 
 Zalo/Meta phải gọi được vào máy bạn. Máy dev nằm sau NAT nên cần đường hầm:

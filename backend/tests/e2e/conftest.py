@@ -15,10 +15,24 @@ async def app_test(engine: AsyncEngine):  # type: ignore[no-untyped-def]
     """Ứng dụng trỏ vào cơ sở dữ liệu test.
 
     Ghi đè ``session_factory`` để test không chạm vào dữ liệu phát triển.
+
+    **Phân tích #2 chạy ĐỒNG BỘ ở đây** (``QUEUE_ENABLED=false``): test e2e kiểm
+    hành vi đầu-cuối trong một request, mà chế độ hàng đợi thì đẩy việc phân tích
+    sang tiến trình worker — không có worker trong test thì hội thoại mãi ở
+    ``CHO_PHAN``. Bản thân hàng đợi được kiểm riêng ở
+    ``tests/integration/test_jobs_queue.py``.
     """
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-    ung_dung = create_app()
+    from src.shared.infrastructure.config import get_settings
+
+    cau_hinh = get_settings()
+    goc = cau_hinh.queue_enabled
+    object.__setattr__(cau_hinh, "queue_enabled", False)
+    try:
+        ung_dung = create_app()
+    finally:
+        object.__setattr__(cau_hinh, "queue_enabled", goc)
     ung_dung.state.engine = engine
     ung_dung.state.session_factory = async_sessionmaker(
         engine, class_=AsyncSession, expire_on_commit=False

@@ -98,14 +98,21 @@ Webhook router (composition root) sau ingest gọi `AnalyzeConversation` cho h�
 ## 9. Giới hạn đã biết (ghi rõ, không giấu)
 
 - **Trích chỉ từ text.** Ảnh/file/giọng nói không phân tích ở #2.
-- **Phân tích đồng bộ trong request webhook.** Nếu LLM chậm làm webhook lâu, cần đẩy hàng đợi nền — ghi nợ (chưa có hạ tầng queue ở #0–#4), làm khi thấy chậm thật.
-- **Không retry LLM.** Lỗi tạm thời → bỏ qua luôn; phân tích lại thủ công/khi có tin mới. Thêm retry sau nếu cần.
+- ~~**Phân tích đồng bộ trong request webhook.**~~ **ĐÃ TRẢ (2026-09-15):** phân tích chạy nền qua hàng đợi Procrastinate (PostgreSQL). Webhook chỉ lưu tin + đẩy job rồi trả 200. Xem [ADR](../adr/2026-09-15-gemini-va-hang-doi-procrastinate.md).
+- ~~**Không retry LLM.**~~ **ĐÃ TRẢ (2026-09-15):** hàng đợi retry 3 lần với backoff 8s/16s/32s. Hết lượt → hội thoại ở lại `CHO_PHAN` cho Manager phân tay.
 - **Khớp keyword theo danh mục phòng.** Nhu cầu mới chưa có trong danh mục nào sẽ không tự phân được (đúng ý: không phân bừa); các cụm đó vẫn lưu để #5 phát hiện nhu cầu mới.
-- **Chi phí/độ trễ LLM.** Mỗi hội thoại mới tốn một lời gọi Claude; giới hạn đọc N tin đầu để kiểm soát. Cân nhắc cache/gộp ở #5.
+- **Chi phí/độ trễ LLM.** Mỗi hội thoại mới tốn một lời gọi LLM; giới hạn đọc N tin đầu để kiểm soát. Cân nhắc cache/gộp ở #5.
 
 ## 10. Quyết định đã chốt (khép câu hỏi mở)
 
-- **LLM (Claude API) tự đọc hiểu và tự chọn phòng** sau port `IConversationClassifier`, dựa trên danh mục keyword các phòng bơm vào prompt (không khớp chuỗi thủ công — tránh khớp bừa với keyword ngắn tiếng Việt); chạy **sau ingest**, tách lỗi khỏi nhận tin.
+**Cập nhật 2026-09-15 — nhà cung cấp LLM là CẤU HÌNH, không cố định Claude.**
+`LLM_PROVIDER=gemini|claude|none` chọn adapter; mặc định `gemini` (Google AI
+Studio, model nhóm Flash). Hai adapter dùng chung phần dựng prompt và parse/gác
+JSON ở `prompt_parsing.py`, chỉ khác lời gọi API. `none` hoặc thiếu khoá tương
+ứng = tắt phân tích, mọi hội thoại ở lại `CHO_PHAN` cho Manager phân tay.
+
+
+- **LLM tự đọc hiểu và tự chọn phòng** sau port `IConversationClassifier`, dựa trên danh mục keyword các phòng bơm vào prompt (không khớp chuỗi thủ công — tránh khớp bừa với keyword ngắn tiếng Việt); chạy **sau ingest**, tách lỗi khỏi nhận tin.
 - **Danh mục keyword của Manager là ngữ cảnh cho LLM** để chọn phòng; cụm nhu cầu LLM trả được lưu lại (kể cả khi không phân được) cho #5.
 - **Code vẫn gác kết quả LLM**: phòng LLM chọn phải tồn tại + đủ tin cậy mới tự phân, qua cổng `IConversationRouter` gọi use case phân của #1 (không đụng thẳng máy trạng thái). Không rõ / phòng không tồn tại / tin cậy thấp → giữ `CHO_PHAN`.
 - **Không gọi LLM lặp**: hội thoại đã phân tích thì bỏ qua (trừ khi kích hoạt lại thủ công).
