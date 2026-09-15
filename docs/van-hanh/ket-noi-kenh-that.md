@@ -25,10 +25,10 @@ cd backend
 uv run python -m scripts.run_worker
 ```
 
-> **KHÔNG chạy worker thì AI phân loại KHÔNG BAO GIỜ chạy.** Webhook vẫn nhận tin
-> bình thường, tin vẫn vào inbox, **không có lỗi nào hiện ra** — nhưng mọi hội
-> thoại nằm mãi ở "Chờ phân" vì job chỉ xếp hàng chứ không ai xử lý. Đây là triệu
-> chứng dễ nhầm với "AI hỏng" nhất.
+> **KHÔNG chạy worker thì AI phân loại KHÔNG BAO GIỜ chạy, và cũng không ai được
+> gán việc.** Webhook vẫn nhận tin bình thường, tin vẫn vào inbox, **không có lỗi
+> nào hiện ra** — nhưng mọi hội thoại nằm mãi ở "Chờ phân" vì job chỉ xếp hàng
+> chứ không ai xử lý. Đây là triệu chứng dễ nhầm với "AI hỏng" nhất.
 >
 > Kiểm tra nhanh xem có job đang ứ không:
 > ```sql
@@ -40,6 +40,29 @@ Thứ tự bật không quan trọng: job nằm trong PostgreSQL nên bật work
 lý hết phần tồn đọng. Tắt worker rồi bật lại cũng không mất job.
 
 Dừng worker bằng `Ctrl+C` — nó chờ job đang chạy xong rồi mới thoát.
+
+### Worker chạy HAI loại job
+
+Một tin của khách sinh ra hai job nối tiếp, cùng hàng đợi `phan_tich`:
+
+| Job | Việc | Thời gian điển hình |
+|---|---|---|
+| `phan_tich_hoi_thoai` | Gọi Gemini, chọn phòng cho hội thoại (#2) | ~10–17 giây |
+| `tu_gan_nhan_vien` | Chọn nhân viên **đang trong ca** và gán (#3) | dưới 1 giây |
+
+Job thứ hai chỉ được đẩy khi job đầu phân được phòng. Xem nhanh:
+
+```sql
+SELECT task_name, status, count(*) FROM procrastinate_jobs GROUP BY 1,2;
+```
+
+> **Hội thoại có phòng nhưng không ai phụ trách** thường KHÔNG phải lỗi: nghĩa là
+> không nhân viên nào của phòng đó đang trong ca. Hội thoại nằm trong hàng đợi
+> phòng, sẽ được lấy ra khi có người vào ca, khi ai đó đóng một việc khác, hoặc
+> khi Manager bấm kéo hàng đợi thủ công.
+>
+> Muốn #3 gán được người, phòng phải có nhân viên **được phân ca hôm nay** (mục
+> Ca làm việc của #4). Không có ca = không có ứng viên.
 
 ### Cấu hình AI (#2)
 
