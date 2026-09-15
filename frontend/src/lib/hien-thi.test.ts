@@ -7,7 +7,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { chuCaiDau, mocNgan, tenKhach } from "./hien-thi";
+import { LOP_BADGE_KENH, NHAN_KENH, chuCaiDau, mocNgan, tenKhach } from "./hien-thi";
+import type { Platform } from "./types";
 
 describe("mocNgan", () => {
   beforeEach(() => {
@@ -53,5 +54,26 @@ describe("tenKhach / chuCaiDau", () => {
   it("chữ cái đầu viết hoa, thiếu tên vẫn có ký tự hiển thị", () => {
     expect(chuCaiDau("nguyễn thị mai")).toBe("N");
     expect(chuCaiDau(null)).toBe("K");
+  });
+});
+
+/**
+ * Khoá lỗi 2026-09-15: backend thêm kênh TELEGRAM (2026-09-14) nhưng frontend
+ * không cập nhật theo. `NHAN_KENH` và `LOP_BADGE_KENH` là `Record<Platform,…>`
+ * nên tra khoá `TELEGRAM` trả `undefined` — badge hiện trống, không có lỗi nào
+ * nổ ra. Đúng trên kênh DUY NHẤT đang chạy thật.
+ *
+ * Test duyệt qua MỌI giá trị của `Platform` thay vì liệt kê tay: thêm kênh mới
+ * mà quên khai nhãn/màu thì đỏ ngay, không phải nhớ sửa test.
+ */
+describe("bảng nhãn kênh phủ đủ mọi nền tảng", () => {
+  const MOI_KENH: Platform[] = ["ZALO", "FACEBOOK", "INSTAGRAM", "TELEGRAM"];
+
+  it.each(MOI_KENH)("kênh %s có nhãn hiển thị", (kenh) => {
+    expect(NHAN_KENH[kenh]).toBeTruthy();
+  });
+
+  it.each(MOI_KENH)("kênh %s có lớp màu badge", (kenh) => {
+    expect(LOP_BADGE_KENH[kenh]).toBeTruthy();
   });
 });
