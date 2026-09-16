@@ -369,3 +369,95 @@ class TestGetMetricsForUsers:
     async def test_danh_sach_rong_khong_goi_db(self, db_session: AsyncSession) -> None:
         source = InboxPerformanceSource(db_session)
         assert await source.get_metrics_for_users([], KpiMetricType.CONVERSATIONS_CLOSED, KY) == {}
+
+
+class TestGetMetricsForDepartments:
+    """Bản gom lô CẤP PHÒNG trên Postgres thật.
+
+    Khác bản nhân viên ở chiều gom: KPI phòng tính trên **mọi hội thoại của
+    phòng**, bất kể ai trả lời — còn KPI nhân viên quy cho người gửi tin
+    OUTBOUND đầu. Gom nhầm chiều thì số vẫn ra, chỉ là sai.
+    """
+
+    async def test_dem_khop_ban_mot_phong_va_bu_0(self, db_session: AsyncSession) -> None:
+        source = InboxPerformanceSource(db_session)
+        phong1, phong2, phong3 = new_id(), new_id(), new_id()
+        for _ in range(3):
+            await _hoi_thoai_dong(
+                db_session, phong1, new_id(), updated_at=datetime(2026, 8, 10, tzinfo=UTC)
+            )
+        await _hoi_thoai_dong(
+            db_session, phong2, new_id(), updated_at=datetime(2026, 8, 11, tzinfo=UTC)
+        )
+        await db_session.flush()
+
+        lo = await source.get_metrics_for_departments(
+            [phong1, phong2, phong3], KpiMetricType.CONVERSATIONS_CLOSED, KY
+        )
+
+        assert lo[phong1] == Decimal(3)
+        assert lo[phong2] == Decimal(1)
+        assert lo[phong3] == Decimal(0)  # phòng trống: đã đếm, bằng không
+
+        for p in (phong1, phong2, phong3):
+            mot = await source.get_metric_for_department(p, KpiMetricType.CONVERSATIONS_CLOSED, KY)
+            assert lo[p] == mot, f"lô lệch bản một-phòng cho {p}"
+
+    async def test_avg_gom_theo_phong_khong_theo_nguoi_tra_loi(
+        self, db_session: AsyncSession
+    ) -> None:
+        # Hai hội thoại CÙNG phòng do HAI người khác nhau trả lời (4 và 6 phút).
+        # KPI phòng phải là trung bình của cả hai = 5.0, không tách theo người.
+        source = InboxPerformanceSource(db_session)
+        phong, nv1, nv2 = new_id(), new_id(), new_id()
+        c1 = await _hoi_thoai_dong(
+            db_session, phong, nv1, updated_at=datetime(2026, 8, 10, tzinfo=UTC)
+        )
+        await _tin(db_session, c1, "INBOUND", datetime(2026, 8, 10, 10, 0, tzinfo=UTC))
+        await _tin(db_session, c1, "OUTBOUND", datetime(2026, 8, 10, 10, 4, tzinfo=UTC), nv1)
+        c2 = await _hoi_thoai_dong(
+            db_session, phong, nv2, updated_at=datetime(2026, 8, 11, tzinfo=UTC)
+        )
+        await _tin(db_session, c2, "INBOUND", datetime(2026, 8, 11, 9, 0, tzinfo=UTC))
+        await _tin(db_session, c2, "OUTBOUND", datetime(2026, 8, 11, 9, 6, tzinfo=UTC), nv2)
+        await db_session.flush()
+
+        lo = await source.get_metrics_for_departments(
+            [phong], KpiMetricType.AVG_RESPONSE_MINUTES, KY
+        )
+
+        assert lo[phong] == Decimal("5.0")
+        mot = await source.get_metric_for_department(phong, KpiMetricType.AVG_RESPONSE_MINUTES, KY)
+        assert lo[phong] == mot
+
+    async def test_avg_tung_phong_rieng_biet(self, db_session: AsyncSession) -> None:
+        # Nếu GROUP BY sai thì hai phòng ra cùng một số.
+        source = InboxPerformanceSource(db_session)
+        phong1, phong2, phong_trong = new_id(), new_id(), new_id()
+        c1 = await _hoi_thoai_dong(
+            db_session, phong1, new_id(), updated_at=datetime(2026, 8, 10, tzinfo=UTC)
+        )
+        await _tin(db_session, c1, "INBOUND", datetime(2026, 8, 10, 10, 0, tzinfo=UTC))
+        await _tin(db_session, c1, "OUTBOUND", datetime(2026, 8, 10, 10, 2, tzinfo=UTC), new_id())
+        c2 = await _hoi_thoai_dong(
+            db_session, phong2, new_id(), updated_at=datetime(2026, 8, 11, tzinfo=UTC)
+        )
+        await _tin(db_session, c2, "INBOUND", datetime(2026, 8, 11, 9, 0, tzinfo=UTC))
+        await _tin(db_session, c2, "OUTBOUND", datetime(2026, 8, 11, 9, 20, tzinfo=UTC), new_id())
+        await db_session.flush()
+
+        lo = await source.get_metrics_for_departments(
+            [phong1, phong2, phong_trong], KpiMetricType.AVG_RESPONSE_MINUTES, KY
+        )
+
+        assert lo[phong1] == Decimal("2.0")
+        assert lo[phong2] == Decimal("20.0")
+        # Phòng không có mẫu -> vắng khoá -> None (KHÁC 0).
+        assert lo.get(phong_trong) is None
+
+    async def test_danh_sach_rong(self, db_session: AsyncSession) -> None:
+        source = InboxPerformanceSource(db_session)
+        assert (
+            await source.get_metrics_for_departments([], KpiMetricType.CONVERSATIONS_CLOSED, KY)
+            == {}
+        )

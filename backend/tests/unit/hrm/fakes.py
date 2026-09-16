@@ -272,6 +272,22 @@ class FakePerformanceSource:
             ket_qua[uid] = gia
         return ket_qua
 
+    async def get_metrics_for_departments(
+        self,
+        department_ids: Sequence[UUID],
+        metric_type: KpiMetricType,
+        period: KpiPeriod,
+    ) -> dict[UUID, Decimal | None]:
+        """Bản gom lô cấp phòng — cùng ngữ nghĩa None-vs-0 với bản nhân viên."""
+        self.batch_calls += 1
+        ket_qua: dict[UUID, Decimal | None] = {}
+        for did in department_ids:
+            gia = self.dept_metrics.get((did, metric_type, period))
+            if gia is None and metric_type is KpiMetricType.CONVERSATIONS_CLOSED:
+                gia = Decimal(0)
+            ket_qua[did] = gia
+        return ket_qua
+
 
 class FakeNotifier:
     def __init__(self) -> None:

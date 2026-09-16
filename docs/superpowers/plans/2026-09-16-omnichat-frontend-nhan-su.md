@@ -165,14 +165,33 @@ thực đạt, % hoàn thành, mục tiêu).
   gọi chỉ nhận 2 dòng của chính mình, không có dòng cấp phòng.
 - Ba kịch bản trình duyệt chạy lại: GĐ1 27/27, GĐ2 27/27, GĐ3 29/29.
 
-### Còn lại
+### Đợt 2 — gom nốt cấp phòng
 
-Mục tiêu **cấp phòng** vẫn gọi lẻ từng dòng. Thường chỉ vài dòng mỗi phòng nên
-gom thêm một lớp nữa là thêm mã cho một khoản lợi không đo được — để lại khi nào
-đo thấy đáng.
+Lần đầu tôi để mục tiêu **cấp phòng** gọi lẻ, lý do ghi trong mã là "phòng thường
+chỉ vài dòng, gom thêm là thêm mã cho khoản lợi không đo được". **Đo lại thì
+ngược:**
 
-**Nợ có sẵn, không thuộc đợt này:** `ruff format --check` đang đỏ ở 3 file trên
-`main` (`migrations/versions/c3d4e5f6a7b8_*.py`,
-`tests/integration/test_assignment_bridges.py`,
-`tests/unit/hrm/test_kpi_achievement.py`) — tức CI backend đã đỏ từ trước. Không
-gộp vào commit này để diff giữ đúng một chủ đề.
+| | Trước | Sau |
+|---|---|---|
+| 18 mục tiêu cấp phòng | **222 ms** | **62 ms** |
+| Bảng hỗn hợp 68 dòng (50 nhân viên + 18 phòng) | — | **94 ms** |
+
+222 ms cho 18 dòng còn **chậm hơn 172 ms cho 68 dòng** đã gom lô — vì 18 dòng đó
+là 18 truy vấn, còn 68 dòng kia chỉ là 2. Phỏng đoán "ít dòng nên rẻ" sai vì chi
+phí nằm ở **số lời gọi**, không ở số dòng.
+
+`get_metrics_for_departments()` gom theo `conversations.department_id` — **khác
+chiều** bản nhân viên (gom theo người gửi tin OUTBOUND đầu): KPI phòng tính trên
+mọi hội thoại của phòng, bất kể ai trả lời. Gom nhầm chiều thì số vẫn ra, chỉ là
+sai; có integration test riêng cho chiều này.
+
+Nay cả bảng tối đa **4 truy vấn** (2 chỉ số cho 2 cấp), bất kể bao nhiêu dòng.
+Đối chiếu: **0/68 dòng** lệch so với bản một-dòng.
+
+### Nợ có sẵn — đã trả luôn
+
+`ruff format --check` đỏ ở 3 file trên `main` (`migrations/versions/c3d4e5f6a7b8_*.py`,
+`tests/integration/test_assignment_bridges.py`, `tests/unit/hrm/test_kpi_achievement.py`)
+— **CI backend đã đỏ từ trước đợt #F3**, phát hiện khi trả nợ N4. Thuần trình
+bày (`line-length` đổi thành 100), `git diff -w` ra đúng cùng số dòng. Tách
+thành commit riêng (`f81d38d9`) để diff giữ đúng một chủ đề.
