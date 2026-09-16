@@ -5,8 +5,9 @@
  *
  * "Báo cáo" còn để dạng chưa dùng được — thuộc #F5.
  *
- * Hai mục đã mở khác nhau ở chỗ ai vào được:
+ * Ba mục đã mở khác nhau ở chỗ ai vào được:
  * - "Nhân sự" (#F3): **mọi vai**, Staff cũng xem ca và gửi đơn được.
+ * - "Từ khoá" (#F4): **mọi vai**, Staff xem được nhưng không sửa.
  * - "Cấu hình" (#F2): chỉ Admin/Manager; Staff vẫn thấy mục khoá.
  */
 
@@ -22,6 +23,7 @@ export function NavRail() {
   const dangOInbox = pathname.startsWith("/inbox");
   const dangOQuanTri = pathname.startsWith("/quan-tri");
   const dangONhanSu = pathname.startsWith("/nhan-su");
+  const dangOTuKhoa = pathname.startsWith("/tu-khoa");
   const moKhoaCauHinh = user ? vaoDuocKhuQuanTri(user.role) : false;
 
   const chuCaiDau = user?.full_name?.trim()?.[0]?.toUpperCase() ?? "?";
@@ -56,6 +58,19 @@ export function NavRail() {
       >
         <IconNhanSu />
         {t("nav.nhanSu")}
+      </Link>
+
+      <Link
+        href="/tu-khoa/danh-sach"
+        aria-current={dangOTuKhoa ? "true" : undefined}
+        className={`flex w-14 flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-medium transition ${
+          dangOTuKhoa
+            ? "bg-primary-soft text-primary"
+            : "text-muted-soft hover:bg-surface"
+        }`}
+      >
+        <IconTuKhoa />
+        {t("nav.tuKhoa")}
       </Link>
 
       <span
@@ -126,6 +141,15 @@ function IconNhanSu() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <circle cx="9" cy="8" r="3" />
       <path d="M3 20a6 6 0 0 1 12 0M16 11a3 3 0 1 0 0-6M18 20a5 5 0 0 0-3-4.58" />
+    </svg>
+  );
+}
+
+function IconTuKhoa() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M20.6 13.4 12 22l-9-9V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z" />
+      <circle cx="7.5" cy="7.5" r="1.5" />
     </svg>
   );
 }

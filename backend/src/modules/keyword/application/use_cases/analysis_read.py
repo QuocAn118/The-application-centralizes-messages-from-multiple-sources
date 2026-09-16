@@ -77,3 +77,47 @@ class GetConversationAnalyses:
                 )
 
         return [_view(a) for a in items]
+
+
+class BaoDamKichHoatPhanTichDuoc:
+    """Gác phạm vi cho việc **kích hoạt phân tích lại** (nợ N5).
+
+    Trước đây ``POST /conversations/{id}/analyses`` chỉ kiểm vai Manager/Admin,
+    không kiểm phòng — trong khi ``GET`` cùng đường dẫn đó lại kiểm. Đo thật:
+    một Manager **GET** phân tích của hội thoại phòng khác nhận **403**, nhưng
+    **POST** kích hoạt lại chính hội thoại đó nhận **200**. Đường GHI dễ hơn
+    đường ĐỌC là ngược đời, và ghi ở đây nghĩa là gọi LLM (tốn tiền) rồi có thể
+    định tuyến lại hội thoại của phòng khác.
+
+    Quy tắc, cố ý khớp với ``GetConversationAnalyses``:
+
+    - Admin: mọi hội thoại.
+    - Manager: hội thoại **đã có** bản ghi phân tích đề xuất về phòng mình.
+    - Hội thoại **chưa có bản ghi nào**: cho qua. ``CHO_PHAN`` nghĩa là chưa
+      thuộc phòng nào (``status`` suy ra từ ``department_id`` ở #1), nên không
+      có phòng để mà xâm phạm — đây chính là trường hợp dùng chính đáng: Manager
+      vừa thêm từ khoá và muốn AI thử phân lại hàng chờ chung.
+
+    Nói cách khác: chặn việc *đụng vào hội thoại của phòng khác*, không chặn
+    việc *giúp phân hàng chờ chưa của ai*.
+    """
+
+    def __init__(self, analysis_repo: IAnalysisRepository) -> None:
+        self._analysis_repo = analysis_repo
+
+    async def execute(self, actor: KeywordActor, conversation_id: UUID) -> None:
+        if actor.role is ActorRole.ADMIN:
+            return
+
+        items = await self._analysis_repo.list_for_conversation(conversation_id)
+        if not items:
+            # Chưa phân tích lần nào -> chưa thuộc phòng nào -> ai cũng giúp được.
+            return
+
+        if any(a.suggested_department_id == actor.department_id for a in items):
+            return
+
+        raise PermissionDeniedError(
+            "Bạn không có quyền phân tích lại hội thoại của phòng khác.",
+            code="ANALYSIS_FORBIDDEN",
+        )

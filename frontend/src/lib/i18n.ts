@@ -37,6 +37,7 @@ const VI = {
   "nav.hopThu": "Hộp thư",
   "nav.nhanSu": "Nhân sự",
   "nav.baoCao": "Báo cáo",
+  "nav.tuKhoa": "Từ khoá",
   "nav.cauHinh": "Cấu hình",
   "nav.dangXuat": "Đăng xuất",
   "nav.sauNay": "Sẽ có ở phiên bản sau",
@@ -423,6 +424,7 @@ const VI = {
   "quanTri.tabTuKhoa": "Từ khoá",
   "quanTri.tabPhanTich": "Phân tích AI",
 
+  "tuKhoa.tieuDeKhu": "Từ khoá & AI",
   "tuKhoa.tieuDe": "Từ khoá theo phòng",
   "tuKhoa.them": "Thêm từ khoá",
   "tuKhoa.suaTieuDe": "Sửa từ khoá",
@@ -431,6 +433,9 @@ const VI = {
   "tuKhoa.sua": "Sửa",
   "tuKhoa.xoa": "Xoá",
   "tuKhoa.chuaCo": "Chưa có từ khoá nào. Thêm từ khoá để AI biết phòng này phụ trách việc gì.",
+  // Staff không có nút Thêm — bảo họ "thêm từ khoá" là chỉ vào một nút không
+  // tồn tại, cùng loại lỗi với nút chết. Nói ai làm được việc đó.
+  "tuKhoa.chuaCoChiXem": "Chưa có từ khoá nào. Quản lý phòng là người thêm từ khoá cho AI.",
   "tuKhoa.chuaCoTrongPhong": "Phòng này chưa có từ khoá nào.",
   "tuKhoa.loiTai": "Không tải được danh sách từ khoá.",
   "tuKhoa.xacNhanXoa": "Xoá từ khoá {ten}? AI sẽ không còn dùng từ này để phân phòng.",

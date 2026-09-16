@@ -30,10 +30,6 @@ const TAB: Tab[] = [
   { duongDan: "/quan-tri/phong-ban", nhan: "quanTri.tabPhongBan", riengAdmin: true },
   { duongDan: "/quan-tri/kenh", nhan: "quanTri.tabKenh", riengAdmin: true },
   { duongDan: "/quan-tri/nhat-ky", nhan: "quanTri.tabNhatKy", riengAdmin: true },
-  // #F4: Manager quản lý từ khoá phòng mình nên `riengAdmin: false`, cùng luật
-  // với tab "Người dùng". Màn Phân tích chỉ đọc nhưng phạm vi cũng theo phòng.
-  { duongDan: "/quan-tri/tu-khoa", nhan: "quanTri.tabTuKhoa", riengAdmin: false },
-  { duongDan: "/quan-tri/phan-tich", nhan: "quanTri.tabPhanTich", riengAdmin: false },
 ];
 
 export function TabQuanTri() {

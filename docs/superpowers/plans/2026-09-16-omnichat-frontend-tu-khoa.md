@@ -93,14 +93,54 @@ không đoán ra**:
    nhánh. Nếu viết UI rồi mới xem, tôi sẽ chỉ kiểm được nhánh `AUTO_ASSIGNED` và
    hai nhánh kia hỏng âm thầm trên production.
 
-## Nợ ghi nhận
+## Nợ ghi nhận — ĐÃ TRẢ CẢ HAI
 
-- **N5** — nút "Phân tích lại" (`POST /conversations/{id}/analyses`): endpoint có
-  nợ phạm vi đã biết (chỉ kiểm vai, không kiểm phòng của hội thoại). Thuộc màn
-  Hộp thư hơn. Xem RB-10.
-- **N6** — mở hai màn cho Staff: backend cho phép (200) nhưng UI cố ý hẹp hơn vì
-  cổng `ChanTheoVai` đang bảo vệ bốn màn #F2. Khi cần thì **tách khu riêng** như
-  `/nhan-su` của #F3, đừng nới cổng cũ.
+### N5 — lỗ hổng phạm vi ở đường GHI (sửa backend)
+
+Đo thật trước khi sửa, và nó **ngược đời**:
+
+| mgrA, trên hội thoại của phòng khác | Trước | Sau |
+|---|---|---|
+| **GET** `/conversations/{id}/analyses` (xem) | 403 | 403 |
+| **POST** `/conversations/{id}/analyses` (kích hoạt lại) | **200** | **403** |
+
+Đường **ghi** dễ hơn đường **đọc** — mà ghi ở đây nghĩa là gọi LLM (tốn tiền) và
+có thể định tuyến lại hội thoại của phòng khác.
+
+`BaoDamKichHoatPhanTichDuoc` dùng **đúng quy tắc của `GetConversationAnalyses`**,
+có test khoá rằng hai đường cùng kết luận trên cùng dữ liệu.
+
+**Cố ý KHÔNG chặn** hội thoại chưa có bản ghi phân tích nào: chưa phân tích lần
+nào nghĩa là còn `CHO_PHAN`, mà `CHO_PHAN` nghĩa là **chưa thuộc phòng nào**
+(`status` của #1 suy ra từ `department_id`) — không có phòng để xâm phạm, và đây
+chính là trường hợp dùng chính đáng (Manager vừa thêm từ khoá, muốn AI thử phân
+lại hàng chờ chung). Chặn cả ca này là sửa quá tay, biến bản vá quyền thành một
+lỗi chức năng. Đã kiểm chứng: vẫn 200.
+
+Nút "Phân tích lại" ở UI **vẫn chưa dựng** — lỗ hổng đã bịt ở API, còn chỗ đặt
+nút thì thuộc màn Hộp thư (#F1), không phải màn danh sách này.
+
+### N6 — tách khu riêng `/tu-khoa` (không nới cổng cũ)
+
+Hai màn chuyển từ `/quan-tri/*` sang **`/tu-khoa/*`**, layout riêng **không có**
+`ChanTheoVai`, thanh tab riêng, mục nav-rail mới cho mọi vai — đúng cách đã ghi
+trong nợ, giống `/nhan-su` của #F3.
+
+Kết quả: Staff **vào được**, thấy từ khoá và kết quả phân tích của phòng mình,
+**không** thấy nút Thêm/Sửa/Xoá. Khu Cấu hình của #F2 **không bị đụng tới**:
+kiểm chứng xác nhận thanh tab trở lại đúng bốn tab và Staff vẫn bị chặn ở đó.
+
+Một lỗi phụ phát hiện khi xem ảnh chụp: câu "Chưa có từ khoá nào. **Thêm từ
+khoá** để AI biết…" hiện cho cả Staff — bảo người ta bấm một nút họ không có,
+cùng loại với lỗi nút chết ở #F2. Nay Staff thấy câu khác: "Quản lý phòng là
+người thêm từ khoá cho AI."
+
+### Kiểm chứng trả nợ
+
+- 891 test backend (+5), 232 test FE (+3), 16 hợp đồng import-linter giữ.
+- Mutation: gỡ guard N5 → đúng 2 test đỏ; khôi phục → xanh.
+- Trình duyệt: N5+N6 20/20; #F4 GĐ1 30/30 (×3), GĐ2 23/23; hồi quy #F3
+  27/27 + 27/27 + 29/29, #F2 GĐ4 33/33.
 
 ## Dữ liệu gieo sẵn trong DB dev
 
