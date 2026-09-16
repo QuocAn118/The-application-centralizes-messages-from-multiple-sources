@@ -3,20 +3,23 @@
 /**
  * Thanh điều hướng dọc bên trái (mockup Stitch).
  *
- * Ba mục "Nhân sự" / "Báo cáo" / "Cấu hình" cố ý để dạng chưa dùng được: chúng
- * thuộc các sub-project FE sau (#4, #5, #2 — nợ spec §9c). Giữ chỗ sẵn để khi
- * làm tới không phải dựng lại khung.
+ * "Nhân sự" / "Báo cáo" còn để dạng chưa dùng được: chúng thuộc các sub-project
+ * FE sau (#F3, #F5). "Cấu hình" đã mở ở #F2 — nhưng chỉ cho Admin/Manager;
+ * Staff vẫn thấy mục khoá như cũ vì họ không có màn nào bên trong.
  */
 
 import Link from "next/link";
 import { t } from "@/lib/i18n";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { vaoDuocKhuQuanTri } from "@/lib/quyen-quan-tri";
 
 export function NavRail() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const dangOInbox = pathname.startsWith("/inbox");
+  const dangOQuanTri = pathname.startsWith("/quan-tri");
+  const moKhoaCauHinh = user ? vaoDuocKhuQuanTri(user.role) : false;
 
   const chuCaiDau = user?.full_name?.trim()?.[0]?.toUpperCase() ?? "?";
 
@@ -42,7 +45,6 @@ export function NavRail() {
       {[
         { nhan: t("nav.nhanSu"), icon: <IconNhanSu /> },
         { nhan: t("nav.baoCao"), icon: <IconBaoCao /> },
-        { nhan: t("nav.cauHinh"), icon: <IconCauHinh /> },
       ].map((muc) => (
         <span
           key={muc.nhan}
@@ -54,6 +56,30 @@ export function NavRail() {
           {muc.nhan}
         </span>
       ))}
+
+      {moKhoaCauHinh ? (
+        <Link
+          href="/quan-tri/nguoi-dung"
+          aria-current={dangOQuanTri ? "page" : undefined}
+          className={`flex w-14 flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-medium transition ${
+            dangOQuanTri
+              ? "bg-primary-soft text-primary"
+              : "text-muted-soft hover:bg-surface"
+          }`}
+        >
+          <IconCauHinh />
+          {t("nav.cauHinh")}
+        </Link>
+      ) : (
+        <span
+          title={t("nav.khongDuQuyen")}
+          aria-disabled="true"
+          className="flex w-14 cursor-not-allowed flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-medium text-muted-soft/50"
+        >
+          <IconCauHinh />
+          {t("nav.cauHinh")}
+        </span>
+      )}
 
       <div className="mt-auto flex flex-col items-center gap-2">
         <div

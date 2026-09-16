@@ -112,11 +112,17 @@ export function kichHoatLaiNguoiDung(userId: string): Promise<UserResponse> {
   return api.post<UserResponse>(`/users/${userId}/reactivate`);
 }
 
-export function datLaiMatKhau(
-  userId: string,
-  matKhauMoi: string,
-): Promise<UserResponse> {
-  return api.post<UserResponse>(`/users/${userId}/reset-password`, {
+/**
+ * Đặt lại mật khẩu.
+ *
+ * Trả **204 No Content**, KHÔNG trả `UserResponse` như mọi thao tác khác trên
+ * `/users` — đã đối chiếu `openapi.json` và xác nhận bằng lời gọi thật. Khai là
+ * `UserResponse` thì `tsc` vẫn xanh (api-client trả `undefined as T` cho 204)
+ * còn UI nhận `undefined` rồi vỡ lúc chạy. Vì vậy trả `void` và nơi gọi phải
+ * refetch nếu cần dữ liệu mới.
+ */
+export function datLaiMatKhau(userId: string, matKhauMoi: string): Promise<void> {
+  return api.post<void>(`/users/${userId}/reset-password`, {
     new_password: matKhauMoi,
   });
 }
