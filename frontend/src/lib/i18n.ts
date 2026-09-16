@@ -40,6 +40,7 @@ const VI = {
   "nav.cauHinh": "Cấu hình",
   "nav.dangXuat": "Đăng xuất",
   "nav.sauNay": "Sẽ có ở phiên bản sau",
+  "nav.khongDuQuyen": "Bạn không có quyền vào mục này",
 
   // Danh sách inbox
   "inbox.tieuDe": "Hộp thư",
@@ -140,6 +141,7 @@ const VI = {
   "quanTri.sau": "Sau",
   "quanTri.hienThi": "Hiển thị {tu}–{den} trong {tong}",
   "quanTri.tatCa": "Tất cả",
+  "quanTri.veHopThu": "Về hộp thư",
 
   // Quản trị — người dùng
   "nguoiDung.tieuDe": "Người dùng",
@@ -179,6 +181,21 @@ const VI = {
     "Vô hiệu hoá {ten}? Người này sẽ bị đăng xuất khỏi mọi thiết bị và không đăng nhập lại được.",
   "nguoiDung.xacNhanKichHoat": "Kích hoạt lại {ten}?",
   "nguoiDung.luu": "Lưu",
+  "nguoiDung.chinhBan": "(bạn)",
+  "nguoiDung.an": "Ẩn",
+  "nguoiDung.hien": "Hiện",
+  "nguoiDung.matKhauMoi": "Mật khẩu mới",
+  "nguoiDung.canhBaoDatLai": "Người này sẽ bị đăng xuất và phải đổi mật khẩu ở lần đăng nhập kế tiếp.",
+  "nguoiDung.daDatLai": "Đã đặt lại mật khẩu",
+  "nguoiDung.vaiMoi": "Vai trò mới",
+  "nguoiDung.khongDoiSangQuanTri": "Chỉ đổi qua lại giữa Nhân viên và Quản lý.",
+  "nguoiDung.phongMoi": "Phòng ban mới",
+  "nguoiDung.loiTai": "Không tải được danh sách người dùng.",
+  "nguoiDung.moThaoTac": "Mở menu thao tác",
+
+  // Quản trị — phòng ban
+  "phongBan.daNgung": "đã ngừng",
+
   "nguoiDung.dangLuu": "Đang lưu…",
 
   // Quản trị — lỗi
