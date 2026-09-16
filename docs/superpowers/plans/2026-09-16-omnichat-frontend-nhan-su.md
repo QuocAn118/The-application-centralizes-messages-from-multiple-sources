@@ -109,6 +109,70 @@ im lặng (RB-11).
 
 ## Nợ còn lại
 
-- **N4 — mỗi dòng KPI một lời gọi `/kpi-progress`.** Không có API lấy hàng
-  loạt, nên bảng N dòng tốn N lời gọi. Hiện tại mỗi phòng vài chục mục tiêu nên
-  chấp nhận được; nếu bảng phình to thì cần backend cho phép truy vấn theo lô.
+- ~~**N4 — mỗi dòng KPI một lời gọi `/kpi-progress`.**~~ **ĐÃ TRẢ** — xem mục
+  dưới.
+
+
+---
+
+## Trả nợ N4 — tiến độ KPI gom lô
+
+### Đo trước khi sửa
+
+Không ước lượng, đo thật trên DB dev (chỉ có **172 tin nhắn**, 20 hội thoại) với
+bảng 68 dòng của Admin — con số thực tế cho một công ty 27 nhân viên × 2 chỉ số
++ 9 phòng × 2:
+
+| | Trước | Sau |
+|---|---|---|
+| Lời gọi `/kpi-progress` từ trình duyệt | **68** | **0** |
+| Bảng đầy đủ (trình duyệt) | 3 170 ms | **1 057 ms** |
+| Phía server, 68 dòng | 2 472 ms | **172 ms** |
+
+Song song 6 kết nối chỉ kéo 2 472 → 2 110 ms, tức nghẽn ở **server**, không phải
+ở mạng: mỗi lời gọi quét lại toàn bộ `messages`/`conversations` rồi vứt đi
+67/68 phần việc.
+
+### Sửa ở đâu
+
+Sửa **tận gốc tại port**, không vá riêng màn KPI — vì cùng một lỗi có ở hai nơi:
+
+1. `IPerformanceSource.get_metrics_for_users()` (mới) — một `GROUP BY` thay N
+   truy vấn.
+2. `ListKpiProgress` + `GET /kpi-progress-batch` — FE gọi **1 lần** thay 68.
+3. **#5 Analytics** (`hrm_stats_source.py:106`) có **đúng** lỗi N+1 này trong
+   vòng lặp; đã sửa luôn cùng đợt.
+
+### Giữ đúng ngữ nghĩa None-vs-0
+
+Đây là chỗ dễ làm hỏng nhất khi gom lô, vì hai chỉ số khác nhau:
+
+- `CONVERSATIONS_CLOSED`: người không có dòng nào **không** biến mất khỏi
+  `GROUP BY` mà phải bù `Decimal(0)` — "đã đếm, bằng không".
+- `AVG_RESPONSE_MINUTES`: người không có mẫu thì **vắng khoá** → `None`.
+
+Đối chiếu máy móc: **68/68 dòng** của bản lô trùng khít bản một-dòng (giá trị
+thực đạt, % hoàn thành, mục tiêu).
+
+### Kiểm chứng
+
+- 878 test backend xanh (+11), 212 test FE xanh, 16 hợp đồng import-linter giữ.
+- Test khoá N+1 **đếm số lời gọi**: 10 dòng phải là 1 lời gọi, 2 chỉ số là 2 lời
+  gọi. Quay lại vòng lặp → 2 test đỏ (đã thử).
+- Integration test chạy SQL thật: trung bình **từng người** đúng (nếu `GROUP BY`
+  sai thì mọi người ra cùng một số), không lẫn người ngoài danh sách.
+- Phạm vi: endpoint lô **không nhận `subject_id`**, suy từ vai người gọi. Staff
+  gọi chỉ nhận 2 dòng của chính mình, không có dòng cấp phòng.
+- Ba kịch bản trình duyệt chạy lại: GĐ1 27/27, GĐ2 27/27, GĐ3 29/29.
+
+### Còn lại
+
+Mục tiêu **cấp phòng** vẫn gọi lẻ từng dòng. Thường chỉ vài dòng mỗi phòng nên
+gom thêm một lớp nữa là thêm mã cho một khoản lợi không đo được — để lại khi nào
+đo thấy đáng.
+
+**Nợ có sẵn, không thuộc đợt này:** `ruff format --check` đang đỏ ở 3 file trên
+`main` (`migrations/versions/c3d4e5f6a7b8_*.py`,
+`tests/integration/test_assignment_bridges.py`,
+`tests/unit/hrm/test_kpi_achievement.py`) — tức CI backend đã đỏ từ trước. Không
+gộp vào commit này để diff giữ đúng một chủ đề.

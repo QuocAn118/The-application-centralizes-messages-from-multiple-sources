@@ -98,12 +98,18 @@ class HrmStatsSource:
         }
         ky_str = f"{ky.year:04d}-{ky.month:02d}"
 
+        # Thực đạt của MỌI người có target lấy trong một lời gọi. Trước đây gọi
+        # trong vòng lặp -> N+1: mỗi người một truy vấn quét lại toàn bộ dữ liệu
+        # inbox. Cùng gốc với nợ N4 của màn KPI (#F3), sửa một lần ở port.
+        can_thuc_dat = [r.user_id for r in ket_qua if r.user_id in muc_tieu]
+        thuc_dat = await self._performance.get_metrics_for_users(can_thuc_dat, _METRIC_KPI, ky)
+
         rows: list[WorkforceRow] = []
         for r in ket_qua:
             target = muc_tieu.get(r.user_id)
             kpi: Decimal | None = None
             if target is not None:
-                actual = await self._performance.get_metric_for_user(r.user_id, _METRIC_KPI, ky)
+                actual = thuc_dat.get(r.user_id)
                 kpi = tinh_phan_tram_kpi(_METRIC_KPI, target, actual)
             rows.append(
                 WorkforceRow(

@@ -130,6 +130,83 @@ class ListKpiTargets:
         return [_target_view(t) for t in targets]
 
 
+class ListKpiProgress:
+    """Tiến độ của **mọi** mục tiêu trong phạm vi người gọi, gom theo lô.
+
+    Thay cho việc client gọi ``GET /kpi-progress`` từng dòng: bảng KPI của Admin
+    có thể vài chục dòng, mỗi dòng một lời gọi thì mỗi lời gọi lại quét lại toàn
+    bộ dữ liệu inbox. Đo thật trên DB dev: 68 dòng ~2,1 giây, gom lại còn ~1 lời
+    gọi.
+
+    **Phạm vi an toàn theo thiết kế:** danh sách mục tiêu lấy qua đúng
+    ``list_in_scope`` mà ``ListKpiTargets`` dùng (Staff chỉ mục tiêu của mình,
+    Manager phòng mình, Admin tất cả), rồi chỉ tính tiến độ cho **chính những
+    mục tiêu đó**. Không có tham số nào cho client chỉ định đối tượng, nên không
+    có đường dò dữ liệu người khác — khác ``GetKpiProgress``, nơi client tự nêu
+    ``subject_id`` nên bắt buộc phải kiểm quyền.
+    """
+
+    def __init__(
+        self,
+        target_repo: IKpiTargetRepository,
+        performance: IPerformanceSource,
+    ) -> None:
+        self._target_repo = target_repo
+        self._performance = performance
+
+    async def execute(self, actor: HrmActor, period: KpiPeriod) -> list[KpiProgressView]:
+        if actor.role is ActorRole.STAFF:
+            department_ids: list[UUID] | None = None
+            subject_id: UUID | None = actor.user_id
+        elif actor.role is ActorRole.MANAGER:
+            department_ids = [actor.department_id] if actor.department_id else []
+            subject_id = None
+        else:
+            department_ids = None
+            subject_id = None
+
+        targets = await self._target_repo.list_in_scope(department_ids, subject_id, period)
+        if not targets:
+            return []
+
+        # Gom theo chỉ số: mỗi chỉ số là một truy vấn cho tất cả nhân viên của
+        # chỉ số đó. Hai chỉ số -> tối đa hai truy vấn, thay vì N.
+        theo_chi_so: dict[KpiMetricType, list[UUID]] = {}
+        for t in targets:
+            if t.subject_type is KpiSubjectType.USER:
+                theo_chi_so.setdefault(t.metric_type, []).append(t.subject_id)
+
+        thuc_dat_user: dict[tuple[KpiMetricType, UUID], Decimal | None] = {}
+        for metric_type, uids in theo_chi_so.items():
+            ket_qua = await self._performance.get_metrics_for_users(uids, metric_type, period)
+            for uid in uids:
+                thuc_dat_user[(metric_type, uid)] = ket_qua.get(uid)
+
+        views: list[KpiProgressView] = []
+        for t in targets:
+            if t.subject_type is KpiSubjectType.USER:
+                actual = thuc_dat_user.get((t.metric_type, t.subject_id))
+            else:
+                # Mục tiêu cấp phòng thường chỉ vài dòng nên chưa cần gom lô
+                # riêng; gom thêm một lớp nữa là thêm mã cho một khoản lợi
+                # không đo được.
+                actual = await self._performance.get_metric_for_department(
+                    t.subject_id, t.metric_type, period
+                )
+            views.append(
+                KpiProgressView(
+                    subject_type=t.subject_type,
+                    subject_id=t.subject_id,
+                    metric_type=t.metric_type,
+                    period=t.period,
+                    target_value=t.target_value,
+                    actual_value=actual,
+                    achievement_percent=tinh_phan_tram_kpi(t.metric_type, t.target_value, actual),
+                )
+            )
+        return views
+
+
 class GetKpiProgress:
     """Trả mục tiêu KPI ghép với thực đạt và % hoàn thành cho một đối tượng/kỳ."""
 

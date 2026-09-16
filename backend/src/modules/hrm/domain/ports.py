@@ -5,6 +5,7 @@ domain và use case không biết identity, inbox, hay WebSocket tồn tại —
 chỉ biết các hợp đồng này. Đây là ranh giới giữ module hrm độc lập.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Protocol
@@ -60,6 +61,23 @@ class IPerformanceSource(Protocol):
     async def get_metric_for_department(
         self, department_id: UUID, metric_type: KpiMetricType, period: KpiPeriod
     ) -> Decimal | None: ...
+
+    async def get_metrics_for_users(
+        self,
+        user_ids: Sequence[UUID],
+        metric_type: KpiMetricType,
+        period: KpiPeriod,
+    ) -> dict[UUID, Decimal | None]:
+        """Như ``get_metric_for_user`` nhưng cho nhiều người trong một lần.
+
+        Có mặt vì gọi từng người sinh N+1: bảng KPI vài chục dòng thì mỗi dòng
+        lại quét lại toàn bộ dữ liệu inbox. Đo thật: 68 dòng ~2,1 giây.
+
+        Khoá vắng mặt = không có dữ liệu. **Ngữ nghĩa None-vs-0 phải giống hệt
+        bản một người**: chỉ số đếm được trả ``Decimal(0)`` khi không có gì,
+        chỉ số trung bình trả ``None`` khi không có mẫu.
+        """
+        ...
 
 
 class INotifier(Protocol):

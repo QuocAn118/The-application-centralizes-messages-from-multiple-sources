@@ -271,12 +271,101 @@ class TestInboxPerformanceSource:
         await _tin(db_session, c1, "OUTBOUND", datetime(2026, 8, 10, 10, 5, tzinfo=UTC), nv_tra)
         await db_session.flush()
 
-        assert (
-            await source.get_metric_for_user(nv_tra, KpiMetricType.AVG_RESPONSE_MINUTES, KY)
-            == Decimal("5.0")
-        )
+        assert await source.get_metric_for_user(
+            nv_tra, KpiMetricType.AVG_RESPONSE_MINUTES, KY
+        ) == Decimal("5.0")
         # Người được gán nhưng KHÔNG gửi tin đầu → không có mẫu.
         assert (
-            await source.get_metric_for_user(nv_gan, KpiMetricType.AVG_RESPONSE_MINUTES, KY)
-            is None
+            await source.get_metric_for_user(nv_gan, KpiMetricType.AVG_RESPONSE_MINUTES, KY) is None
         )
+
+
+class TestGetMetricsForUsers:
+    """Bản gom lô chạy trên Postgres thật — nợ N4.
+
+    Test unit dùng fake nên không kiểm được SQL; ``GROUP BY`` sai (gom nhầm
+    người, mất người không có dữ liệu, trung bình tính trên sai tập) chỉ lộ ra ở
+    đây. Mỗi test đối chiếu thẳng với bản một-người: hai bản lệch nhau là lỗi
+    im lặng, vì UI chỉ gọi bản lô.
+    """
+
+    async def test_dem_khop_ban_mot_nguoi_va_bu_0(self, db_session: AsyncSession) -> None:
+        source = InboxPerformanceSource(db_session)
+        phong, nv1, nv2, nv3 = new_id(), new_id(), new_id(), new_id()
+        # nv1: 2 hội thoại đóng; nv2: 1; nv3: không có gì.
+        for _ in range(2):
+            await _hoi_thoai_dong(
+                db_session, phong, nv1, updated_at=datetime(2026, 8, 10, tzinfo=UTC)
+            )
+        await _hoi_thoai_dong(db_session, phong, nv2, updated_at=datetime(2026, 8, 11, tzinfo=UTC))
+        await db_session.flush()
+
+        lo = await source.get_metrics_for_users(
+            [nv1, nv2, nv3], KpiMetricType.CONVERSATIONS_CLOSED, KY
+        )
+
+        assert lo[nv1] == Decimal(2)
+        assert lo[nv2] == Decimal(1)
+        # Người không có dòng nào KHÔNG biến mất, và là 0 chứ không phải None:
+        # "đã đếm, bằng không". Đây là ngữ nghĩa màn KPI dựa vào.
+        assert lo[nv3] == Decimal(0)
+        assert lo[nv3] is not None
+
+        for nv in (nv1, nv2, nv3):
+            mot = await source.get_metric_for_user(nv, KpiMetricType.CONVERSATIONS_CLOSED, KY)
+            assert lo[nv] == mot, f"lô lệch bản một-người cho {nv}"
+
+    async def test_avg_khop_ban_mot_nguoi_va_thieu_khoa_la_none(
+        self, db_session: AsyncSession
+    ) -> None:
+        source = InboxPerformanceSource(db_session)
+        phong, nv1, nv2, nv3 = new_id(), new_id(), new_id(), new_id()
+        # nv1: 5 phút và 15 phút -> 10.0
+        c1 = await _hoi_thoai_dong(
+            db_session, phong, nv1, updated_at=datetime(2026, 8, 10, tzinfo=UTC)
+        )
+        await _tin(db_session, c1, "INBOUND", datetime(2026, 8, 10, 10, 0, tzinfo=UTC))
+        await _tin(db_session, c1, "OUTBOUND", datetime(2026, 8, 10, 10, 5, tzinfo=UTC), nv1)
+        c2 = await _hoi_thoai_dong(
+            db_session, phong, nv1, updated_at=datetime(2026, 8, 11, tzinfo=UTC)
+        )
+        await _tin(db_session, c2, "INBOUND", datetime(2026, 8, 11, 9, 0, tzinfo=UTC))
+        await _tin(db_session, c2, "OUTBOUND", datetime(2026, 8, 11, 9, 15, tzinfo=UTC), nv1)
+        # nv2: 4 phút
+        c3 = await _hoi_thoai_dong(
+            db_session, phong, nv2, updated_at=datetime(2026, 8, 12, tzinfo=UTC)
+        )
+        await _tin(db_session, c3, "INBOUND", datetime(2026, 8, 12, 8, 0, tzinfo=UTC))
+        await _tin(db_session, c3, "OUTBOUND", datetime(2026, 8, 12, 8, 4, tzinfo=UTC), nv2)
+        await db_session.flush()
+
+        lo = await source.get_metrics_for_users(
+            [nv1, nv2, nv3], KpiMetricType.AVG_RESPONSE_MINUTES, KY
+        )
+
+        # Trung bình của TỪNG người, không phải trung bình chung của cả nhóm
+        # (nếu GROUP BY sai thì cả hai ra cùng một số).
+        assert lo[nv1] == Decimal("10.0")
+        assert lo[nv2] == Decimal("4.0")
+        # nv3 không có mẫu -> None, KHÁC 0 (chỉ số trung bình không tính được).
+        assert lo.get(nv3) is None
+
+        for nv in (nv1, nv2, nv3):
+            mot = await source.get_metric_for_user(nv, KpiMetricType.AVG_RESPONSE_MINUTES, KY)
+            assert lo.get(nv) == mot, f"lô lệch bản một-người cho {nv}"
+
+    async def test_khong_lan_sang_nguoi_ngoai_danh_sach(self, db_session: AsyncSession) -> None:
+        # Hỏi nv1 thì không được dính dữ liệu của nv2 (lọc IN phải đúng).
+        source = InboxPerformanceSource(db_session)
+        phong, nv1, nv2 = new_id(), new_id(), new_id()
+        await _hoi_thoai_dong(db_session, phong, nv2, updated_at=datetime(2026, 8, 10, tzinfo=UTC))
+        await db_session.flush()
+
+        lo = await source.get_metrics_for_users([nv1], KpiMetricType.CONVERSATIONS_CLOSED, KY)
+
+        assert set(lo) == {nv1}
+        assert lo[nv1] == Decimal(0)
+
+    async def test_danh_sach_rong_khong_goi_db(self, db_session: AsyncSession) -> None:
+        source = InboxPerformanceSource(db_session)
+        assert await source.get_metrics_for_users([], KpiMetricType.CONVERSATIONS_CLOSED, KY) == {}
