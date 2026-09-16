@@ -320,3 +320,62 @@ class TestListKpiProgress:
         views = await bc.progress_lo.execute(_admin(), KY)
         assert views == []
         assert bc.perf.batch_calls == 0
+
+    async def test_muc_tieu_cap_phong_cung_duoc_gom_lo(self) -> None:
+        # Ban đầu tôi để cấp phòng gọi lẻ vì đoán "phòng thì ít dòng". Đo thật:
+        # 18 mục tiêu cấp phòng tốn 222 ms — chậm hơn cả 68 dòng cấp nhân viên
+        # đã gom lô (172 ms). Test này khoá lại để không quay về vòng lặp.
+        bc = _Boi()
+        for phong in (PHONG_A, PHONG_B):
+            await bc.set.execute(
+                _admin(), KpiSubjectType.DEPARTMENT, phong, DONG, KY, Decimal("500")
+            )
+            await bc.set.execute(
+                _admin(), KpiSubjectType.DEPARTMENT, phong, PHAN_HOI, KY, Decimal("10")
+            )
+
+        views = await bc.progress_lo.execute(_admin(), KY)
+
+        assert len(views) == 4
+        # Hai chỉ số cho cấp phòng -> đúng hai lời gọi, không phải bốn.
+        assert bc.perf.batch_calls == 2
+
+    async def test_tron_ca_hai_cap_toi_da_bon_loi_goi(self) -> None:
+        bc = _Boi()
+        for _ in range(5):
+            nv = bc.them_nhan_vien(PHONG_A)
+            await bc.set.execute(_manager(), KpiSubjectType.USER, nv, DONG, KY, Decimal("50"))
+            await bc.set.execute(_manager(), KpiSubjectType.USER, nv, PHAN_HOI, KY, Decimal("15"))
+        await bc.set.execute(_admin(), KpiSubjectType.DEPARTMENT, PHONG_A, DONG, KY, Decimal("500"))
+        await bc.set.execute(
+            _admin(), KpiSubjectType.DEPARTMENT, PHONG_A, PHAN_HOI, KY, Decimal("10")
+        )
+
+        views = await bc.progress_lo.execute(_admin(), KY)
+
+        assert len(views) == 12
+        # 2 chỉ số cho nhân viên + 2 chỉ số cho phòng = 4, dù có 12 dòng.
+        assert bc.perf.batch_calls == 4
+
+    async def test_cap_phong_giu_phan_biet_none_voi_0(self) -> None:
+        bc = _Boi()
+        await bc.set.execute(_admin(), KpiSubjectType.DEPARTMENT, PHONG_A, DONG, KY, Decimal("500"))
+        await bc.set.execute(
+            _admin(), KpiSubjectType.DEPARTMENT, PHONG_A, PHAN_HOI, KY, Decimal("10")
+        )
+
+        views = {v.metric_type: v for v in await bc.progress_lo.execute(_admin(), KY)}
+
+        assert views[DONG].actual_value == Decimal(0)
+        assert views[PHAN_HOI].actual_value is None
+
+    async def test_cap_phong_khop_ban_mot_dong(self) -> None:
+        bc = _Boi()
+        await bc.set.execute(_admin(), KpiSubjectType.DEPARTMENT, PHONG_A, DONG, KY, Decimal("500"))
+        bc.perf.set_department_metric(PHONG_A, DONG, KY, Decimal("400"))
+
+        mot = await bc.progress.execute(_admin(), KpiSubjectType.DEPARTMENT, PHONG_A, DONG, KY)
+        lo = (await bc.progress_lo.execute(_admin(), KY))[0]
+
+        assert lo.actual_value == mot.actual_value
+        assert lo.achievement_percent == mot.achievement_percent

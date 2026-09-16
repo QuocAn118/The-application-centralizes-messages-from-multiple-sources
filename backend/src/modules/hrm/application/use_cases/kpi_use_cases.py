@@ -169,30 +169,27 @@ class ListKpiProgress:
         if not targets:
             return []
 
-        # Gom theo chỉ số: mỗi chỉ số là một truy vấn cho tất cả nhân viên của
-        # chỉ số đó. Hai chỉ số -> tối đa hai truy vấn, thay vì N.
-        theo_chi_so: dict[KpiMetricType, list[UUID]] = {}
+        # Gom theo chỉ số: mỗi chỉ số là một truy vấn cho tất cả đối tượng của
+        # chỉ số đó. Hai chỉ số cho hai cấp -> tối đa BỐN truy vấn, thay vì N.
+        nguoi_theo_chi_so: dict[KpiMetricType, list[UUID]] = {}
+        phong_theo_chi_so: dict[KpiMetricType, list[UUID]] = {}
         for t in targets:
-            if t.subject_type is KpiSubjectType.USER:
-                theo_chi_so.setdefault(t.metric_type, []).append(t.subject_id)
+            gio = nguoi_theo_chi_so if t.subject_type is KpiSubjectType.USER else phong_theo_chi_so
+            gio.setdefault(t.metric_type, []).append(t.subject_id)
 
-        thuc_dat_user: dict[tuple[KpiMetricType, UUID], Decimal | None] = {}
-        for metric_type, uids in theo_chi_so.items():
+        thuc_dat: dict[tuple[KpiSubjectType, KpiMetricType, UUID], Decimal | None] = {}
+        for metric_type, uids in nguoi_theo_chi_so.items():
             ket_qua = await self._performance.get_metrics_for_users(uids, metric_type, period)
             for uid in uids:
-                thuc_dat_user[(metric_type, uid)] = ket_qua.get(uid)
+                thuc_dat[(KpiSubjectType.USER, metric_type, uid)] = ket_qua.get(uid)
+        for metric_type, dids in phong_theo_chi_so.items():
+            ket_qua = await self._performance.get_metrics_for_departments(dids, metric_type, period)
+            for did in dids:
+                thuc_dat[(KpiSubjectType.DEPARTMENT, metric_type, did)] = ket_qua.get(did)
 
         views: list[KpiProgressView] = []
         for t in targets:
-            if t.subject_type is KpiSubjectType.USER:
-                actual = thuc_dat_user.get((t.metric_type, t.subject_id))
-            else:
-                # Mục tiêu cấp phòng thường chỉ vài dòng nên chưa cần gom lô
-                # riêng; gom thêm một lớp nữa là thêm mã cho một khoản lợi
-                # không đo được.
-                actual = await self._performance.get_metric_for_department(
-                    t.subject_id, t.metric_type, period
-                )
+            actual = thuc_dat.get((t.subject_type, t.metric_type, t.subject_id))
             views.append(
                 KpiProgressView(
                     subject_type=t.subject_type,
