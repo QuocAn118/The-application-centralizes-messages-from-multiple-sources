@@ -154,6 +154,29 @@ Nên:
 gỡ phòng khỏi kênh phải gửi `clear_department: true`; gửi `department_id: null`
 sẽ bị hiểu là "không đổi". Đây là chỗ dễ viết sai.
 
+Quy tắc này **và** quy tắc "token trống = giữ nguyên" đều sai một cách **im
+lặng**: server vẫn trả 200, người dùng tưởng đã làm xong. Vì vậy logic dựng
+thân yêu cầu tách ra `thanSuaKenh` trong `quan-tri-api.ts` (không nằm trong
+component) để test gọi được đúng mã đang chạy.
+
+### RB-7b — Kênh cũng KHÔNG kết nối lại được
+
+Phát hiện khi dựng GĐ3: `channel_router.py` chỉ có `deactivate`, không có
+`reactivate` — giống phòng ban, khác người dùng. Nên dòng kênh đã ngắt không
+hiện nút "Ngắt kênh" nữa, và hộp xác nhận nói rõ điều đó.
+
+### RB-6b — Ô token KHÔNG có nút hiện/ẩn
+
+Khác ô mật khẩu tạm lúc tạo tài khoản (ở đó Admin phải đọc để gửi cho người
+dùng). Token nền tảng thì dán vào là xong, không ai cần nhìn lại — bỏ nút
+hiện/ẩn là bớt một đường lộ token trên màn hình.
+
+Khi sửa, ô token để **trống**, không điền dấu sao giả: điền dấu sao sẽ khiến
+người dùng tưởng đó là token thật và bấm sao chép. Ghi chú phải nói cả hai ý
+("để trống = giữ nguyên" + "token đã lưu không đọc lại được") trong dòng chữ
+thật, **không dựa vào placeholder** — placeholder biến mất ngay khi người dùng
+gõ ký tự đầu, đúng lúc họ cần biết nhất.
+
 ## 7. Màn Nhật ký
 
 `GET /audit-logs` với bộ lọc `actor_id`, `action`, `resource_type`, `from_time`,

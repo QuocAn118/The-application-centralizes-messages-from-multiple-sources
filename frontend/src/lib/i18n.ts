@@ -219,6 +219,40 @@ const VI = {
 
   "nguoiDung.dangLuu": "Đang lưu…",
 
+  // Quản trị — kênh
+  "kenh.tieuDe": "Kênh",
+  "kenh.ketNoi": "Kết nối kênh",
+  "kenh.cotKenh": "Kênh",
+  "kenh.cotNenTang": "Nền tảng",
+  "kenh.cotPhongBan": "Phòng phụ trách",
+  "kenh.cotTrangThai": "Trạng thái",
+  "kenh.dangKetNoi": "Đang kết nối",
+  "kenh.daNgat": "Đã ngắt",
+  "kenh.ten": "Tên kênh",
+  "kenh.nenTang": "Nền tảng",
+  "kenh.maKenh": "Mã kênh trên nền tảng",
+  "kenh.maKenhGoiY": "OA ID, Page ID, hoặc chat ID của bot",
+  "kenh.phongPhuTrach": "Phòng phụ trách",
+  "kenh.khongPhong": "Không gắn phòng",
+  // Nhãn NÚT trong bảng: cột hẹp nên để ngắn.
+  "kenh.sua": "Sửa",
+  // Tiêu đề HỘP THOẠI: "Sửa" trơ trọi trên đầu hộp thì không rõ đang sửa gì.
+  "kenh.suaTieuDe": "Sửa kênh",
+  "kenh.ngat": "Ngắt kênh",
+  "kenh.loiTai": "Không tải được danh sách kênh.",
+  "kenh.timKiem": "Tìm theo tên kênh",
+  // Nói "token/bí mật" chứ không nói "mật khẩu": đây là token của nền tảng
+  // (Zalo OA, Meta, bot Telegram), không phải mật khẩu tài khoản OmniChat.
+  "kenh.token": "Token kết nối",
+  "kenh.tokenGoiY": "Token do nền tảng cấp (Zalo OA / Meta / bot Telegram)",
+  "kenh.tokenGiuNguyen": "Để trống = giữ token hiện tại",
+  // Nói cả hai ý trong MỘT dòng ghi chú, không dựa vào placeholder: placeholder
+  // biến mất ngay khi người dùng gõ ký tự đầu, đúng lúc họ cần biết nhất.
+  "kenh.tokenKhongDocLai":
+    "Để trống = giữ token hiện tại. Vì lý do bảo mật, token đã lưu không đọc lại được; muốn đổi thì nhập token mới.",
+  "kenh.xacNhanNgat":
+    "Ngắt kênh {ten}? Hội thoại và tin nhắn cũ vẫn xem được, nhưng kênh sẽ không nhận tin mới và KHÔNG KẾT NỐI LẠI ĐƯỢC từ màn này.",
+
   // Quản trị — lỗi
   //
   // Backend ĐÃ trả thông điệp tiếng Việt đầy đủ cho mọi vi phạm quy tắc nghiệp
