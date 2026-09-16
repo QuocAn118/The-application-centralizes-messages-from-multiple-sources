@@ -31,7 +31,7 @@ export function NavRail() {
 
       <Link
         href="/inbox"
-        aria-current={dangOInbox ? "page" : undefined}
+        aria-current={dangOInbox ? "true" : undefined}
         className={`flex w-14 flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-medium transition ${
           dangOInbox
             ? "bg-primary-soft text-primary"
@@ -60,7 +60,10 @@ export function NavRail() {
       {moKhoaCauHinh ? (
         <Link
           href="/quan-tri/nguoi-dung"
-          aria-current={dangOQuanTri ? "page" : undefined}
+          // `"true"` chứ không phải `"page"`: mục này chỉ ra KHU VỰC đang mở,
+          // còn trang cụ thể do thanh tab bên trong đánh dấu. Để cả hai cùng
+          // `"page"` thì trình đọc màn hình báo hai "trang hiện tại".
+          aria-current={dangOQuanTri ? "true" : undefined}
           className={`flex w-14 flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-medium transition ${
             dangOQuanTri
               ? "bg-primary-soft text-primary"

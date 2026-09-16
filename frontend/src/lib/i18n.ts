@@ -253,6 +253,45 @@ const VI = {
   "kenh.xacNhanNgat":
     "Ngắt kênh {ten}? Hội thoại và tin nhắn cũ vẫn xem được, nhưng kênh sẽ không nhận tin mới và KHÔNG KẾT NỐI LẠI ĐƯỢC từ màn này.",
 
+  // Quản trị — nhật ký
+  "nhatKy.tieuDe": "Nhật ký",
+  "nhatKy.cotThoiGian": "Thời gian",
+  "nhatKy.cotHanhDong": "Hành động",
+  "nhatKy.cotNguoiThucHien": "Người thực hiện",
+  "nhatKy.cotDoiTuong": "Đối tượng",
+  "nhatKy.locHanhDong": "Hành động",
+  "nhatKy.locLoaiDoiTuong": "Loại đối tượng",
+  "nhatKy.locTuNgay": "Từ ngày",
+  "nhatKy.locDenNgay": "Đến ngày",
+  "nhatKy.heThong": "Hệ thống",
+  "nhatKy.khongRo": "Không rõ",
+  "nhatKy.xoaLoc": "Xoá bộ lọc",
+  "nhatKy.chiDoc": "Nhật ký chỉ để tra cứu, không sửa hay xoá được.",
+  "nhatKy.loaiUser": "Người dùng",
+  "nhatKy.loaiDepartment": "Phòng ban",
+  "nhatKy.loaiAuth": "Xác thực",
+
+  // Nhãn 15 giá trị AuditAction. Nhóm theo tiền tố `user.` / `department.` /
+  // `auth.` đúng như backend đặt tên (RB-9: bảng tra phải phủ ĐỦ, có test duyệt
+  // toàn bộ enum — bài học TELEGRAM).
+  "hanhDong.user.created": "Tạo tài khoản",
+  "hanhDong.user.updated": "Sửa hồ sơ",
+  "hanhDong.user.deactivated": "Vô hiệu hoá tài khoản",
+  "hanhDong.user.reactivated": "Kích hoạt lại tài khoản",
+  "hanhDong.user.role_changed": "Đổi vai trò",
+  "hanhDong.user.department_changed": "Đổi phòng ban",
+  "hanhDong.user.password_reset": "Đặt lại mật khẩu",
+  "hanhDong.user.password_changed": "Tự đổi mật khẩu",
+  "hanhDong.department.created": "Tạo phòng ban",
+  "hanhDong.department.updated": "Sửa phòng ban",
+  "hanhDong.department.deactivated": "Ngừng hoạt động phòng ban",
+  "hanhDong.auth.login_succeeded": "Đăng nhập thành công",
+  "hanhDong.auth.login_failed": "Đăng nhập thất bại",
+  "hanhDong.auth.logout": "Đăng xuất",
+  // Không dịch thành câu kỹ thuật: đây là dấu hiệu token bị dùng lại sau khi
+  // đã xoay — thường là bị đánh cắp. Người đọc nhật ký cần thấy ngay mức độ.
+  "hanhDong.auth.token_reuse_detected": "Phát hiện token bị dùng lại (nghi ngờ đánh cắp)",
+
   // Quản trị — lỗi
   //
   // Backend ĐÃ trả thông điệp tiếng Việt đầy đủ cho mọi vi phạm quy tắc nghiệp
