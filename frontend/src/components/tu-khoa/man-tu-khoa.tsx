@@ -1,14 +1,18 @@
 "use client";
 
 /**
- * Màn Từ khoá (#F4 GĐ1) — Manager (phòng mình) và Admin.
+ * Màn Từ khoá (#F4 GĐ1; trả nợ N6) — **mọi vai**.
  *
  * Nhóm theo phòng vì từ khoá chỉ có nghĩa trong ngữ cảnh phòng: "bảo hành" của
  * Kỹ thuật và của Kinh doanh là hai thứ khác nhau, và AI dùng cả danh mục của
  * từng phòng để chọn nơi phân hội thoại.
  *
  * **Phạm vi do backend lọc** (`pham_vi_phong_doc`): Admin thấy mọi phòng,
- * Manager chỉ phòng mình. FE không lọc lại — lọc chồng chỉ tạo cơ hội lệch.
+ * Manager/Staff chỉ phòng mình. FE không lọc lại — lọc chồng chỉ tạo cơ hội lệch.
+ *
+ * **Staff XEM được, chỉ không SỬA được** (`GET /keywords` trả 200 cho Staff;
+ * `POST/PATCH/DELETE` mới 403 `KEYWORD_MANAGER_REQUIRED`). Trước đây màn này
+ * nằm trong `/quan-tri` nên Staff bị chặn ở cửa — nợ N6, nay đã tách khu riêng.
  *
  * `GET /keywords` trả **mảng trần**, không phân trang: danh mục từ khoá mỗi
  * phòng vốn ngắn (vài chục), nên lọc tại client cho gọn.
@@ -23,6 +27,7 @@ import { khoaTuKhoa, layDanhSachTuKhoa, xoaTuKhoa } from "@/lib/tu-khoa-api";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { OTimKiem } from "@/components/o-tim-kiem";
 import { HopXacNhan } from "@/components/hop-xac-nhan";
+import { quanLyDuocTuKhoa } from "@/lib/quyen-tu-khoa";
 import { HopThoaiTuKhoa } from "./hop-thoai-tu-khoa";
 import type { Keyword } from "@/lib/types";
 
@@ -85,9 +90,13 @@ export function ManTuKhoa() {
 
   if (!user) return null;
 
+  // Staff không sửa được gì (`KEYWORD_MANAGER_REQUIRED`) nên không hiện nút nào.
+  const suaDuocNoiChung = quanLyDuocTuKhoa(user.role);
+
   // Manager chỉ thêm được cho phòng mình; Admin cho mọi phòng đang hoạt động.
-  const phongThemDuoc =
-    user.role === "ADMIN"
+  const phongThemDuoc = !suaDuocNoiChung
+    ? []
+    : user.role === "ADMIN"
       ? phongBan.filter((p) => p.is_active)
       : phongBan.filter((p) => p.id === user.department_id);
 
@@ -101,7 +110,8 @@ export function ManTuKhoa() {
    * sửa không phụ thuộc việc tải được danh sách phòng.
    */
   const suaDuoc = (k: Keyword) =>
-    user.role === "ADMIN" || k.department_id === user.department_id;
+    suaDuocNoiChung &&
+    (user.role === "ADMIN" || k.department_id === user.department_id);
 
   // Phòng có từ khoá, theo thứ tự của danh sách phòng ban; phòng lạ (đã ngừng
   // chẳng hạn) vẫn phải hiện, nếu không từ khoá của nó biến mất không dấu vết.
@@ -148,7 +158,7 @@ export function ManTuKhoa() {
         )}
         {truyVan.data && phongHien.length === 0 && (
           <p className="px-5 py-8 text-center text-sm text-muted">
-            {t("tuKhoa.chuaCo")}
+            {suaDuocNoiChung ? t("tuKhoa.chuaCo") : t("tuKhoa.chuaCoChiXem")}
           </p>
         )}
 

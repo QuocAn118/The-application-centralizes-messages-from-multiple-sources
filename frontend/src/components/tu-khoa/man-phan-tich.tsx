@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Màn Phân tích AI (#F4 GĐ2) — chỉ đọc.
+ * Màn Phân tích AI (#F4 GĐ2; trả nợ N6) — **mọi vai**, chỉ đọc.
  *
  * Không có nút nào sửa dữ liệu: kết quả do AI tự chạy nền khi có hội thoại mới.
  * (Endpoint chạy lại `POST /conversations/{id}/analyses` cố ý KHÔNG dựng ở đây

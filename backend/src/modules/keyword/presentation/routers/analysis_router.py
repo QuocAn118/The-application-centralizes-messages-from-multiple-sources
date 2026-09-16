@@ -11,6 +11,7 @@ from uuid import UUID
 from fastapi import APIRouter, Query, Request
 
 from src.modules.keyword.application.use_cases.analysis_read import (
+    BaoDamKichHoatPhanTichDuoc,
     GetConversationAnalyses,
     ListConversationAnalyses,
 )
@@ -68,19 +69,21 @@ async def kich_hoat_phan_tich_lai(
 ) -> AnalysisResponse | None:
     """Chạy lại phân tích cho một hội thoại (bỏ qua guard chưa-phân-tích).
 
-    Chỉ Manager/Admin. Trả ``None`` (200) nếu hội thoại không đủ điều kiện phân
-    tích (không CHO_PHAN / không có tin); ngược lại trả bản ghi phân tích mới.
+    Chỉ Manager/Admin, và **chỉ trong phạm vi phòng** — xem
+    ``BaoDamKichHoatPhanTichDuoc``. Trả ``None`` (200) nếu hội thoại không đủ
+    điều kiện phân tích (không CHO_PHAN / không có tin); ngược lại trả bản ghi
+    phân tích mới.
 
-    NỢ phạm vi (chấp nhận — chốt ở review GĐ4): chỉ kiểm vai Manager/Admin, KHÔNG
-    kiểm phòng của hội thoại. Một Manager có thể kích hoạt lại một hội thoại
-    ``CHO_PHAN`` bất kỳ và LLM tự phân về *bất kỳ* phòng nào (rộng hơn #1, nơi
-    Manager chỉ phân về phòng mình). Chấp nhận vì ``CHO_PHAN`` chưa thuộc ai và
-    kết quả vẫn được gác (phòng phải tồn tại/đang hoạt động); #3 (auto-assignment)
-    sẽ cân nhắc lại mô hình quyền định tuyến.
+    Nợ N5 ĐÃ TRẢ: trước đây chỉ kiểm vai, không kiểm phòng, nên Manager
+    **GET** bị 403 mà **POST** lại được 200 trên cùng một hội thoại của phòng
+    khác. Nay hai đường dùng chung một quy tắc.
     """
     from src.modules.keyword.application.authorization import bao_dam_quan_ly_hoac_admin
 
     bao_dam_quan_ly_hoac_admin(actor)
+    await BaoDamKichHoatPhanTichDuoc(SqlAlchemyAnalysisRepository(session)).execute(
+        actor, conversation_id
+    )
     use_case = build_analyze_conversation(request, session)
     view = await use_case.execute(conversation_id, force=True)
     return AnalysisResponse.from_view(view) if view is not None else None
