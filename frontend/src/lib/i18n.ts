@@ -195,6 +195,27 @@ const VI = {
 
   // Quản trị — phòng ban
   "phongBan.daNgung": "đã ngừng",
+  "phongBan.tieuDe": "Phòng ban",
+  "phongBan.taoMoi": "Tạo phòng ban",
+  "phongBan.timKiem": "Tìm theo tên phòng ban",
+  "phongBan.cotTen": "Phòng ban",
+  "phongBan.cotSoNhanVien": "Nhân viên",
+  "phongBan.cotTrangThai": "Trạng thái",
+  "phongBan.dangHoatDong": "Đang hoạt động",
+  "phongBan.khongMoTa": "—",
+  "phongBan.ten": "Tên phòng ban",
+  "phongBan.moTa": "Mô tả",
+  "phongBan.sua": "Sửa",
+  "phongBan.ngungHoatDong": "Ngừng hoạt động",
+  "phongBan.loiTai": "Không tải được danh sách phòng ban.",
+  "phongBan.dangDemNhanVien": "đang đếm…",
+  "phongBan.conNhanVien":
+    "Phòng này còn {so} nhân viên đang hoạt động. Hãy chuyển họ sang phòng khác hoặc vô hiệu hoá họ trước.",
+  // Nói rõ KHÔNG hoàn tác được: backend không có endpoint kích hoạt lại phòng
+  // ban (khác với người dùng — người dùng có `reactivate`). Nếu chỉ nói "dữ
+  // liệu vẫn còn" thì người dùng sẽ tưởng bật lại được.
+  "phongBan.xacNhanNgung":
+    "Ngừng hoạt động phòng {ten}? Hội thoại và nhật ký cũ vẫn giữ nguyên, nhưng phòng sẽ không nhận việc mới và KHÔNG BẬT LẠI ĐƯỢC.",
 
   "nguoiDung.dangLuu": "Đang lưu…",
 

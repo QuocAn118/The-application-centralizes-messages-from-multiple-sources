@@ -35,8 +35,12 @@ export function ChanTheoVai({
     cho === "chiAdmin" ? chiAdmin(user.role) : vaoDuocKhuQuanTri(user.role);
 
   if (!duocVao) {
+    // `min-h-[60vh]` chứ không chỉ `flex-1`: component này dùng ở HAI chỗ —
+    // trực tiếp trong layout (cha là flex ngang, `flex-1` ăn) và lồng trong
+    // page (cha là khối cuộn thường, `flex-1` vô tác dụng và nội dung sẽ dính
+    // sát mép trên). Chiều cao tối thiểu giữ cho cả hai trường hợp cùng căn giữa.
     return (
-      <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-3 bg-surface px-6 text-center">
+      <div className="flex min-h-[60vh] min-w-0 flex-1 flex-col items-center justify-center gap-3 bg-surface px-6 text-center">
         <p className="text-sm text-muted">{t("quanTri.khongCoQuyen")}</p>
         <Link
           href="/inbox"

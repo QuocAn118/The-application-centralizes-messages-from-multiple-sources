@@ -11,6 +11,8 @@ import { __resetApiClientState, setAccessToken } from "./api-client";
 import {
   KICH_THUOC_TRANG,
   datLaiMatKhau,
+  demNhanVienCuaPhong,
+  khoaQuanTri,
   doiPhongBan,
   layDanhSachNguoiDung,
   layDanhSachPhongBan,
@@ -90,6 +92,37 @@ describe("layDanhSachPhongBan", () => {
     expect(url.searchParams.get("limit")).toBe("100");
     // KHÔNG lọc `is_active`: khác `layPhongBanHoatDong` của #F1.
     expect(url.searchParams.has("is_active")).toBe(false);
+  });
+});
+
+describe("demNhanVienCuaPhong", () => {
+  it("chỉ xin limit=1 vì chỉ cần `total`, không kéo cả danh sách về", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ items: [], total: 7, limit: 1, offset: 0 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const so = await demNhanVienCuaPhong("p-1");
+
+    expect(so).toBe(7);
+    const url = urlDaGoi();
+    expect(url.pathname).toMatch(/\/users$/);
+    expect(url.searchParams.get("department_id")).toBe("p-1");
+    expect(url.searchParams.get("limit")).toBe("1");
+    // Chỉ đếm người ĐANG hoạt động — số này dùng để quyết định có ngừng được
+    // phòng không, mà backend cũng chỉ chặn theo người đang hoạt động.
+    expect(url.searchParams.get("is_active")).toBe("true");
+  });
+});
+
+describe("khoá cache đếm nhân viên", () => {
+  it("nằm dưới nhánh nguoi-dung để thao tác trên người dùng tự làm mới nó", () => {
+    // Nếu để dưới nhánh `phong-ban` thì mỗi lần đổi phòng của một nhân viên
+    // phải nhớ vô hiệu hoá hai nhánh — và sẽ có lúc quên, khiến con số trong
+    // bảng Phòng ban đứng yên sai.
+    const khoa = khoaQuanTri.phongBan.demNhanVien("p-1");
+    expect(khoa.slice(0, 2)).toEqual(khoaQuanTri.nguoiDung.all);
   });
 });
 

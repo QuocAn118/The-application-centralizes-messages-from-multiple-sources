@@ -111,11 +111,25 @@ có lựa chọn "Quản trị".
 Hiển thị kèm **số nhân viên** mỗi phòng — lấy bằng `GET /users?department_id=…`
 đọc trường `total`, không tải hết danh sách.
 
-### RB-5 — "Ngắt" không phải "Xoá"
+### RB-5 — "Ngắt" không phải "Xoá", và là MỘT CHIỀU
 
 Backend chỉ có `deactivate`, không có `DELETE`. Nhãn nút phải là "Ngừng hoạt
 động", và hộp xác nhận nói rõ dữ liệu cũ vẫn còn. Dùng chữ "Xoá" sẽ khiến người
 dùng tưởng mất dữ liệu.
+
+**Phát hiện khi dựng GĐ2 — không có trong bản spec đầu:** phòng ban **không bật
+lại được**. `department_router.py` chỉ có `deactivate`, không có `reactivate`;
+entity `Department` cũng chỉ có `deactivate()`. Đây là điểm KHÁC người dùng —
+người dùng có `POST /users/{id}/reactivate`.
+
+Hệ quả lên UI:
+
+- Hộp xác nhận phải nói rõ "**KHÔNG BẬT LẠI ĐƯỢC**". Chỉ nói "dữ liệu vẫn còn"
+  là chưa đủ, người dùng sẽ tưởng bật lại lúc nào cũng được.
+- Dòng phòng đã ngừng **không hiện nút** nào ngoài "Sửa".
+- Trước khi cho bấm, UI đếm trước số nhân viên (`GET /users` đọc `total`) và
+  khoá nút nếu phòng còn người — backend sẽ từ chối bằng
+  `DEPARTMENT_HAS_ACTIVE_MEMBERS`, nói trước thì tử tế hơn.
 
 ## 6. Màn Kênh
 
