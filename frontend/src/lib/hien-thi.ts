@@ -6,7 +6,7 @@
  */
 
 import { t } from "./i18n";
-import type { ConversationStatus, Platform, Role } from "./types";
+import type { AuditAction, ConversationStatus, Platform, Role } from "./types";
 
 // Nhãn lấy từ từ điển i18n — một nguồn duy nhất, đổi ngôn ngữ là đổi cả đây.
 export const NHAN_TRANG_THAI: Record<ConversationStatus, string> = {
@@ -101,4 +101,68 @@ export function mocDayDu(isoString: string): string {
   const t = new Date(isoString);
   if (Number.isNaN(t.getTime())) return "";
   return t.toLocaleString("vi-VN");
+}
+
+/**
+ * Lớp Tailwind cho badge vai trò (#F2).
+ *
+ * "Quản trị" dùng tím để tách hẳn khỏi primary xanh — nhìn lướt bảng là thấy
+ * ngay ai có toàn quyền.
+ */
+export const LOP_BADGE_VAI: Record<Role, string> = {
+  ADMIN: "bg-admin-bg text-admin-fg",
+  MANAGER: "bg-zalo-bg text-zalo-fg",
+  STAFF: "bg-da-dong-bg text-da-dong-fg",
+};
+
+/**
+ * Nhãn tiếng Việt cho 15 hành động nhật ký (#F2 GĐ4).
+ *
+ * RB-9: `Record<AuditAction, string>` bắt TypeScript đòi đủ 15 khoá — thiếu
+ * một khoá là lỗi biên dịch, không phải `undefined` lặng lẽ hiện giữa bảng
+ * (đúng cái đã xảy ra với `TELEGRAM`). Có thêm test duyệt toàn bộ enum ở
+ * `hien-thi.test.ts` để phòng trường hợp ai đó bỏ chú thích kiểu hoặc ép kiểu.
+ */
+export const NHAN_HANH_DONG: Record<AuditAction, string> = {
+  "user.created": t("hanhDong.user.created"),
+  "user.updated": t("hanhDong.user.updated"),
+  "user.deactivated": t("hanhDong.user.deactivated"),
+  "user.reactivated": t("hanhDong.user.reactivated"),
+  "user.role_changed": t("hanhDong.user.role_changed"),
+  "user.department_changed": t("hanhDong.user.department_changed"),
+  "user.password_reset": t("hanhDong.user.password_reset"),
+  "user.password_changed": t("hanhDong.user.password_changed"),
+  "department.created": t("hanhDong.department.created"),
+  "department.updated": t("hanhDong.department.updated"),
+  "department.deactivated": t("hanhDong.department.deactivated"),
+  "auth.login_succeeded": t("hanhDong.auth.login_succeeded"),
+  "auth.login_failed": t("hanhDong.auth.login_failed"),
+  "auth.logout": t("hanhDong.auth.logout"),
+  "auth.token_reuse_detected": t("hanhDong.auth.token_reuse_detected"),
+};
+
+/** Tiền tố nhóm của một hành động — dùng để tô màu và lọc. */
+export type NhomHanhDong = "user" | "department" | "auth";
+
+export function nhomCuaHanhDong(hanhDong: AuditAction): NhomHanhDong {
+  // Backend đặt tên dạng `<đối tượng>.<hành động>` chính là để tách được thế này.
+  return hanhDong.split(".")[0] as NhomHanhDong;
+}
+
+/**
+ * Lớp Tailwind cho badge hành động.
+ *
+ * `auth.login_failed` và `auth.token_reuse_detected` tô màu cảnh báo: đó là hai
+ * dòng người đọc nhật ký cần thấy ngay khi lướt qua.
+ */
+export function lopBadgeHanhDong(hanhDong: AuditAction): string {
+  if (hanhDong === "auth.token_reuse_detected") {
+    return "bg-danger-bg text-danger-fg";
+  }
+  if (hanhDong === "auth.login_failed") return "bg-cho-phan-bg text-cho-phan-fg";
+
+  const nhom = nhomCuaHanhDong(hanhDong);
+  if (nhom === "user") return "bg-zalo-bg text-zalo-fg";
+  if (nhom === "department") return "bg-admin-bg text-admin-fg";
+  return "bg-da-dong-bg text-da-dong-fg";
 }
