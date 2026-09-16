@@ -31,9 +31,7 @@ def upgrade() -> None:
         "conversations",
         sa.Column("closed_at", sa.DateTime(timezone=True), nullable=True),
     )
-    op.execute(
-        "UPDATE conversations SET closed_at = updated_at WHERE status = 'DA_DONG'"
-    )
+    op.execute("UPDATE conversations SET closed_at = updated_at WHERE status = 'DA_DONG'")
 
 
 def downgrade() -> None:

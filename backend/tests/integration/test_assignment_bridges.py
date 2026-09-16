@@ -240,9 +240,7 @@ class TestAgentPool:
         cands = {c.user_id: c for c in await pool.candidates_for_department(phong.id)}
         assert cands[nv.id].kpi_percent == Decimal("40.0")
 
-    async def test_last_assigned_at_lay_tu_assignment_log(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_last_assigned_at_lay_tu_assignment_log(self, db_session: AsyncSession) -> None:
         # Mốc gán gần nhất đọc từ assignment_log, không phải updated_at hội thoại.
         phong = await _phong(db_session)
         nv = await _nhan_vien(db_session, phong.id)
