@@ -13,8 +13,23 @@ Nhật ký):
 
 | Màn | Đường dẫn | Ai vào được |
 |---|---|---|
-| Từ khoá | `/quan-tri/tu-khoa` | **Mọi vai** — Staff xem, Manager/Admin sửa |
-| Phân tích AI | `/quan-tri/phan-tich` | **Mọi vai** — chỉ đọc |
+| Từ khoá | `/quan-tri/tu-khoa` | Manager (phòng mình) · Admin |
+| Phân tích AI | `/quan-tri/phan-tich` | Manager (phòng mình) · Admin — chỉ đọc |
+
+### Quyết định: UI HẸP HƠN quyền của backend
+
+Backend **cho phép Staff xem** cả hai màn (đã đo: 200, không phải 403 — xem
+RB-1). Nhưng khu `/quan-tri` đang được `ChanTheoVai cho="khuQuanTri"` chặn Staff
+ngay từ cửa, và cổng đó đang bảo vệ bốn màn của #F2. Nới nó ra để Staff vào được
+hai màn mới là đụng vào đúng cơ chế đang giữ an toàn cho bốn màn cũ.
+
+**Chốt (user quyết định): giữ trong `/quan-tri`, không mở cho Staff.** Đổi lại,
+Staff không có chỗ tra cứu từ khoá phòng mình dù backend cho phép — ghi thành
+**N6**, mở khi nào thực sự cần (khi đó nên tách khu riêng như `/nhan-su` của #F3
+thay vì nới cổng cũ).
+
+Ghi rõ ở đây vì đây là chỗ FE **cố ý hẹp hơn** backend: người đọc code sau này
+thấy `GET /keywords` trả 200 cho Staff sẽ tưởng UI bị lỗi.
 
 ## 2. Quyền — đã đo, không suy
 
@@ -31,8 +46,11 @@ Nhật ký):
 
 *(phép thử 5, 9, 10, 11)*
 
-Nên **không dùng `ChanTheoVai`** cho hai màn này — giống khu Nhân sự của #F3,
-khác khu Cấu hình của #F2. Chặn ở cửa là chặn nhầm.
+Bảng trên là **quyền thật của backend**. UI của #F4 cố ý dùng hẹp hơn (chỉ
+Manager/Admin) vì lý do ở §1 — không phải vì backend chặn Staff.
+
+Trong phạm vi Manager/Admin, hai mức quyền vẫn phải phân biệt đúng: Manager chỉ
+sửa được từ khoá **phòng mình** (`KEYWORD_OUT_OF_SCOPE`), Admin mọi phòng.
 
 ### RB-2 — Phạm vi dữ liệu do backend lọc
 
@@ -135,19 +153,22 @@ Dùng lại nền #F1/#F2/#F3, không dựng lại: `HopThoai`, `HopXacNhan`, `N
 
 Thêm `lib/tu-khoa-api.ts` theo mẫu `nhan-su-api.ts`.
 
-**Thanh tab Cấu hình** (`tab-quan-tri.tsx`) hiện có luật "ba tab chỉ Admin" —
-hai tab mới phải hiện cho **mọi vai**, nên cần sửa component đó chứ không nhồi
-cờ.
+**Thanh tab Cấu hình** (`tab-quan-tri.tsx`) đang có cờ `riengAdmin`. Hai tab mới
+thuộc nhóm "Manager thấy" — trùng đúng luật của tab "Người dùng"
+(`riengAdmin: false`), nên **thêm hai dòng vào mảng `TAB` là đủ**, không cần đổi
+cấu trúc component.
 
 ## 6. Tiêu chí nghiệm thu
 
-1. Staff **vào được** cả hai màn, thấy dữ liệu phòng mình, **không** thấy nút sửa.
+1. Manager vào được cả hai màn; Staff vẫn bị chặn ở cửa như bốn màn #F2 (quyết
+   định ở §1, không phải giới hạn của backend).
 2. Manager tạo/sửa/xoá được từ khoá phòng mình; không thấy phòng khác.
 3. Gõ từ khoá khác dấu/hoa-thường với từ đã có → hiện thông điệp trùng của server.
 4. Xoá từ khoá chạy đúng (204, không vỡ UI).
 5. Cả ba `outcome` hiện đúng; `null` ra dấu gạch, không ra `0%` hay `undefined`.
 6. `npm test` xanh, `tsc`/`eslint`/`next build` sạch.
-7. Kiểm chứng trình duyệt thật với cả ba vai.
+7. Kiểm chứng trình duyệt thật: Manager, Admin, và **Staff bị chặn đúng cách**
+   (thấy màn "không có quyền", không phải trang vỡ).
 
 ## 7. Rủi ro
 
