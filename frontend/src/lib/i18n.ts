@@ -40,6 +40,7 @@ const VI = {
   "nav.cauHinh": "Cấu hình",
   "nav.dangXuat": "Đăng xuất",
   "nav.sauNay": "Sẽ có ở phiên bản sau",
+  "nav.khongDuQuyen": "Bạn không có quyền vào mục này",
 
   // Danh sách inbox
   "inbox.tieuDe": "Hộp thư",
@@ -127,6 +128,181 @@ const VI = {
   "doiMatKhau.khongKhop": "Hai ô mật khẩu mới không khớp.",
   "doiMatKhau.quaNgan": "Mật khẩu mới phải có ít nhất 8 ký tự.",
   "doiMatKhau.loiChung": "Không đổi được mật khẩu.",
+
+  // Quản trị (#F2) — chung
+  "quanTri.tieuDe": "Quản trị",
+  "quanTri.tabNguoiDung": "Người dùng",
+  "quanTri.tabPhongBan": "Phòng ban",
+  "quanTri.tabKenh": "Kênh",
+  "quanTri.tabNhatKy": "Nhật ký",
+  "quanTri.khongCoQuyen": "Bạn không có quyền vào khu vực này.",
+  "quanTri.trong": "Không có dữ liệu.",
+  "quanTri.truoc": "Trước",
+  "quanTri.sau": "Sau",
+  "quanTri.hienThi": "Hiển thị {tu}–{den} trong {tong}",
+  "quanTri.tatCa": "Tất cả",
+  "quanTri.veHopThu": "Về hộp thư",
+
+  // Quản trị — người dùng
+  "nguoiDung.tieuDe": "Người dùng",
+  "nguoiDung.taoMoi": "Tạo tài khoản",
+  "nguoiDung.timKiem": "Tìm theo tên hoặc email",
+  "nguoiDung.locVaiTro": "Vai trò",
+  "nguoiDung.locPhongBan": "Phòng ban",
+  "nguoiDung.locTrangThai": "Trạng thái",
+  "nguoiDung.dangHoatDong": "Đang hoạt động",
+  "nguoiDung.daVoHieuHoa": "Đã vô hiệu hoá",
+  "nguoiDung.cotNguoiDung": "Người dùng",
+  "nguoiDung.cotVaiTro": "Vai trò",
+  "nguoiDung.cotPhongBan": "Phòng ban",
+  "nguoiDung.cotTrangThai": "Trạng thái",
+  "nguoiDung.khongPhong": "—",
+  "nguoiDung.thaoTac": "Thao tác",
+  "nguoiDung.suaHoSo": "Sửa hồ sơ",
+  "nguoiDung.doiVaiTro": "Đổi vai trò",
+  "nguoiDung.doiPhongBan": "Đổi phòng ban",
+  "nguoiDung.datLaiMatKhau": "Đặt lại mật khẩu",
+  "nguoiDung.voHieuHoa": "Vô hiệu hoá",
+  "nguoiDung.kichHoatLai": "Kích hoạt lại",
+  "nguoiDung.hoTen": "Họ và tên",
+  "nguoiDung.email": "Email",
+  "nguoiDung.dienThoai": "Số điện thoại",
+  "nguoiDung.khongBatBuoc": "(không bắt buộc)",
+  "nguoiDung.matKhauTam": "Mật khẩu tạm",
+  "nguoiDung.toiThieu8": "Tối thiểu 8 ký tự",
+  "nguoiDung.phaiDoiLanDau": "Tài khoản mới sẽ phải đổi mật khẩu ở lần đăng nhập đầu tiên.",
+  "nguoiDung.daTao": "Đã tạo tài khoản",
+  "nguoiDung.canhBaoMotLan":
+    "Mật khẩu tạm chỉ hiện MỘT LẦN. Hãy sao chép và gửi cho người dùng ngay bây giờ.",
+  "nguoiDung.saoChep": "Sao chép",
+  "nguoiDung.daSaoChep": "Đã sao chép",
+  "nguoiDung.dongLai": "Đã sao chép, đóng lại",
+  "nguoiDung.xacNhanVoHieu":
+    "Vô hiệu hoá {ten}? Người này sẽ bị đăng xuất khỏi mọi thiết bị và không đăng nhập lại được.",
+  "nguoiDung.xacNhanKichHoat": "Kích hoạt lại {ten}?",
+  "nguoiDung.luu": "Lưu",
+  "nguoiDung.chinhBan": "(bạn)",
+  "nguoiDung.an": "Ẩn",
+  "nguoiDung.hien": "Hiện",
+  "nguoiDung.matKhauMoi": "Mật khẩu mới",
+  "nguoiDung.canhBaoDatLai": "Người này sẽ bị đăng xuất và phải đổi mật khẩu ở lần đăng nhập kế tiếp.",
+  "nguoiDung.daDatLai": "Đã đặt lại mật khẩu",
+  "nguoiDung.vaiMoi": "Vai trò mới",
+  "nguoiDung.khongDoiSangQuanTri": "Chỉ đổi qua lại giữa Nhân viên và Quản lý.",
+  "nguoiDung.phongMoi": "Phòng ban mới",
+  "nguoiDung.loiTai": "Không tải được danh sách người dùng.",
+  "nguoiDung.moThaoTac": "Mở menu thao tác",
+
+  // Quản trị — phòng ban
+  "phongBan.daNgung": "đã ngừng",
+  "phongBan.tieuDe": "Phòng ban",
+  "phongBan.taoMoi": "Tạo phòng ban",
+  "phongBan.timKiem": "Tìm theo tên phòng ban",
+  "phongBan.cotTen": "Phòng ban",
+  "phongBan.cotSoNhanVien": "Nhân viên",
+  "phongBan.cotTrangThai": "Trạng thái",
+  "phongBan.dangHoatDong": "Đang hoạt động",
+  "phongBan.khongMoTa": "—",
+  "phongBan.ten": "Tên phòng ban",
+  "phongBan.moTa": "Mô tả",
+  "phongBan.sua": "Sửa",
+  "phongBan.ngungHoatDong": "Ngừng hoạt động",
+  "phongBan.loiTai": "Không tải được danh sách phòng ban.",
+  "phongBan.dangDemNhanVien": "đang đếm…",
+  "phongBan.conNhanVien":
+    "Phòng này còn {so} nhân viên đang hoạt động. Hãy chuyển họ sang phòng khác hoặc vô hiệu hoá họ trước.",
+  // Nói rõ KHÔNG hoàn tác được: backend không có endpoint kích hoạt lại phòng
+  // ban (khác với người dùng — người dùng có `reactivate`). Nếu chỉ nói "dữ
+  // liệu vẫn còn" thì người dùng sẽ tưởng bật lại được.
+  "phongBan.xacNhanNgung":
+    "Ngừng hoạt động phòng {ten}? Hội thoại và nhật ký cũ vẫn giữ nguyên, nhưng phòng sẽ không nhận việc mới và KHÔNG BẬT LẠI ĐƯỢC.",
+
+  "nguoiDung.dangLuu": "Đang lưu…",
+
+  // Quản trị — kênh
+  "kenh.tieuDe": "Kênh",
+  "kenh.ketNoi": "Kết nối kênh",
+  "kenh.cotKenh": "Kênh",
+  "kenh.cotNenTang": "Nền tảng",
+  "kenh.cotPhongBan": "Phòng phụ trách",
+  "kenh.cotTrangThai": "Trạng thái",
+  "kenh.dangKetNoi": "Đang kết nối",
+  "kenh.daNgat": "Đã ngắt",
+  "kenh.ten": "Tên kênh",
+  "kenh.nenTang": "Nền tảng",
+  "kenh.maKenh": "Mã kênh trên nền tảng",
+  "kenh.maKenhGoiY": "OA ID, Page ID, hoặc chat ID của bot",
+  "kenh.phongPhuTrach": "Phòng phụ trách",
+  "kenh.khongPhong": "Không gắn phòng",
+  // Nhãn NÚT trong bảng: cột hẹp nên để ngắn.
+  "kenh.sua": "Sửa",
+  // Tiêu đề HỘP THOẠI: "Sửa" trơ trọi trên đầu hộp thì không rõ đang sửa gì.
+  "kenh.suaTieuDe": "Sửa kênh",
+  "kenh.ngat": "Ngắt kênh",
+  "kenh.loiTai": "Không tải được danh sách kênh.",
+  "kenh.timKiem": "Tìm theo tên kênh",
+  // Nói "token/bí mật" chứ không nói "mật khẩu": đây là token của nền tảng
+  // (Zalo OA, Meta, bot Telegram), không phải mật khẩu tài khoản OmniChat.
+  "kenh.token": "Token kết nối",
+  "kenh.tokenGoiY": "Token do nền tảng cấp (Zalo OA / Meta / bot Telegram)",
+  "kenh.tokenGiuNguyen": "Để trống = giữ token hiện tại",
+  // Nói cả hai ý trong MỘT dòng ghi chú, không dựa vào placeholder: placeholder
+  // biến mất ngay khi người dùng gõ ký tự đầu, đúng lúc họ cần biết nhất.
+  "kenh.tokenKhongDocLai":
+    "Để trống = giữ token hiện tại. Vì lý do bảo mật, token đã lưu không đọc lại được; muốn đổi thì nhập token mới.",
+  "kenh.xacNhanNgat":
+    "Ngắt kênh {ten}? Hội thoại và tin nhắn cũ vẫn xem được, nhưng kênh sẽ không nhận tin mới và KHÔNG KẾT NỐI LẠI ĐƯỢC từ màn này.",
+
+  // Quản trị — nhật ký
+  "nhatKy.tieuDe": "Nhật ký",
+  "nhatKy.cotThoiGian": "Thời gian",
+  "nhatKy.cotHanhDong": "Hành động",
+  "nhatKy.cotNguoiThucHien": "Người thực hiện",
+  "nhatKy.cotDoiTuong": "Đối tượng",
+  "nhatKy.locHanhDong": "Hành động",
+  "nhatKy.locLoaiDoiTuong": "Loại đối tượng",
+  "nhatKy.locTuNgay": "Từ ngày",
+  "nhatKy.locDenNgay": "Đến ngày",
+  "nhatKy.heThong": "Hệ thống",
+  "nhatKy.khongRo": "Không rõ",
+  "nhatKy.xoaLoc": "Xoá bộ lọc",
+  "nhatKy.chiDoc": "Nhật ký chỉ để tra cứu, không sửa hay xoá được.",
+  "nhatKy.loaiUser": "Người dùng",
+  "nhatKy.loaiDepartment": "Phòng ban",
+  "nhatKy.loaiAuth": "Xác thực",
+
+  // Nhãn 15 giá trị AuditAction. Nhóm theo tiền tố `user.` / `department.` /
+  // `auth.` đúng như backend đặt tên (RB-9: bảng tra phải phủ ĐỦ, có test duyệt
+  // toàn bộ enum — bài học TELEGRAM).
+  "hanhDong.user.created": "Tạo tài khoản",
+  "hanhDong.user.updated": "Sửa hồ sơ",
+  "hanhDong.user.deactivated": "Vô hiệu hoá tài khoản",
+  "hanhDong.user.reactivated": "Kích hoạt lại tài khoản",
+  "hanhDong.user.role_changed": "Đổi vai trò",
+  "hanhDong.user.department_changed": "Đổi phòng ban",
+  "hanhDong.user.password_reset": "Đặt lại mật khẩu",
+  "hanhDong.user.password_changed": "Tự đổi mật khẩu",
+  "hanhDong.department.created": "Tạo phòng ban",
+  "hanhDong.department.updated": "Sửa phòng ban",
+  "hanhDong.department.deactivated": "Ngừng hoạt động phòng ban",
+  "hanhDong.auth.login_succeeded": "Đăng nhập thành công",
+  "hanhDong.auth.login_failed": "Đăng nhập thất bại",
+  "hanhDong.auth.logout": "Đăng xuất",
+  // Không dịch thành câu kỹ thuật: đây là dấu hiệu token bị dùng lại sau khi
+  // đã xoay — thường là bị đánh cắp. Người đọc nhật ký cần thấy ngay mức độ.
+  "hanhDong.auth.token_reuse_detected": "Phát hiện token bị dùng lại (nghi ngờ đánh cắp)",
+
+  // Quản trị — lỗi
+  //
+  // Backend ĐÃ trả thông điệp tiếng Việt đầy đủ cho mọi vi phạm quy tắc nghiệp
+  // vụ (xem `identity/domain/entities/user.py`: DEPARTMENT_ALREADY_HAS_MANAGER,
+  // LAST_ADMIN_CANNOT_BE_DEACTIVATED, INACTIVE_DEPARTMENT, CANNOT_CHANGE_TO_ADMIN…).
+  // Nên UI HIỆN THẲNG message của server thay vì dịch lại mã lỗi ở đây — hai
+  // bản thông điệp song song chắc chắn sẽ lệch nhau khi backend đổi.
+  //
+  // Chỉ giữ ở đây các trường hợp server KHÔNG nói được: lỗi mạng, và mã lỗi lạ.
+  "loiQuanTri.khongDuQuyen": "Bạn không có quyền thực hiện thao tác này.",
+  "loiQuanTri.chung": "Không thực hiện được. Hãy thử lại.",
 } as const;
 
 export type KhoaChuoi = keyof typeof VI;

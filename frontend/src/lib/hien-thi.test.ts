@@ -7,8 +7,19 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LOP_BADGE_KENH, NHAN_KENH, chuCaiDau, mocNgan, tenKhach } from "./hien-thi";
-import type { Platform } from "./types";
+import {
+  LOP_BADGE_KENH,
+  LOP_BADGE_VAI,
+  NHAN_HANH_DONG,
+  NHAN_KENH,
+  NHAN_VAI,
+  chuCaiDau,
+  lopBadgeHanhDong,
+  mocNgan,
+  nhomCuaHanhDong,
+  tenKhach,
+} from "./hien-thi";
+import type { AuditAction, Platform, Role } from "./types";
 
 describe("mocNgan", () => {
   beforeEach(() => {
@@ -75,5 +86,89 @@ describe("bảng nhãn kênh phủ đủ mọi nền tảng", () => {
 
   it.each(MOI_KENH)("kênh %s có lớp màu badge", (kenh) => {
     expect(LOP_BADGE_KENH[kenh]).toBeTruthy();
+  });
+});
+
+/** Cùng lý do RB-9: bảng vai trò thiếu khoá thì badge trống, không có lỗi. */
+describe("bảng nhãn vai trò phủ đủ mọi vai", () => {
+  const MOI_VAI: Role[] = ["STAFF", "MANAGER", "ADMIN"];
+
+  it.each(MOI_VAI)("vai %s có nhãn hiển thị", (vai) => {
+    expect(NHAN_VAI[vai]).toBeTruthy();
+  });
+
+  it.each(MOI_VAI)("vai %s có lớp màu badge", (vai) => {
+    expect(LOP_BADGE_VAI[vai]).toBeTruthy();
+  });
+});
+
+/**
+ * RB-9 — bảng nhãn hành động nhật ký phải phủ ĐỦ 15 giá trị.
+ *
+ * Danh sách dưới đây chép từ `AuditAction` ở
+ * `identity/domain/entities/audit_log.py`. Cố ý liệt kê tay **ở đây** (chứ
+ * không đọc từ `NHAN_HANH_DONG`) để test là một nguồn kiểm tra ĐỘC LẬP: đọc
+ * ngược từ chính bảng đang kiểm thì bảng thiếu khoá nào test cũng không biết.
+ */
+const MOI_HANH_DONG: AuditAction[] = [
+  "user.created",
+  "user.updated",
+  "user.deactivated",
+  "user.reactivated",
+  "user.role_changed",
+  "user.department_changed",
+  "user.password_reset",
+  "user.password_changed",
+  "department.created",
+  "department.updated",
+  "department.deactivated",
+  "auth.login_succeeded",
+  "auth.login_failed",
+  "auth.logout",
+  "auth.token_reuse_detected",
+];
+
+describe("NHAN_HANH_DONG (RB-9)", () => {
+  it("có đúng 15 giá trị, khớp enum backend", () => {
+    expect(Object.keys(NHAN_HANH_DONG)).toHaveLength(15);
+    expect(Object.keys(NHAN_HANH_DONG).sort()).toEqual([...MOI_HANH_DONG].sort());
+  });
+
+  it.each(MOI_HANH_DONG)("%s có nhãn tiếng Việt, không undefined", (hanhDong) => {
+    const nhan = NHAN_HANH_DONG[hanhDong];
+    expect(nhan).toBeDefined();
+    expect(nhan.trim().length).toBeGreaterThan(0);
+    // Không được rơi lại giá trị enum thô như "user.created".
+    expect(nhan).not.toBe(hanhDong);
+  });
+
+  it.each(MOI_HANH_DONG)("%s có lớp badge", (hanhDong) => {
+    expect(lopBadgeHanhDong(hanhDong).trim().length).toBeGreaterThan(0);
+  });
+});
+
+describe("nhomCuaHanhDong", () => {
+  it("tách đúng tiền tố của cả ba nhóm", () => {
+    expect(nhomCuaHanhDong("user.created")).toBe("user");
+    expect(nhomCuaHanhDong("department.deactivated")).toBe("department");
+    expect(nhomCuaHanhDong("auth.logout")).toBe("auth");
+  });
+
+  it("mọi hành động đều thuộc một trong ba nhóm đã biết", () => {
+    for (const hanhDong of MOI_HANH_DONG) {
+      expect(["user", "department", "auth"]).toContain(nhomCuaHanhDong(hanhDong));
+    }
+  });
+});
+
+describe("lopBadgeHanhDong — hai dòng cần thấy ngay", () => {
+  it("token bị dùng lại tô màu nguy hiểm", () => {
+    expect(lopBadgeHanhDong("auth.token_reuse_detected")).toContain("danger");
+  });
+
+  it("đăng nhập thất bại tô màu cảnh báo, khác với đăng nhập thành công", () => {
+    expect(lopBadgeHanhDong("auth.login_failed")).not.toBe(
+      lopBadgeHanhDong("auth.login_succeeded"),
+    );
   });
 });

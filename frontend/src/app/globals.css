@@ -31,6 +31,10 @@
   --telegram-bg: #e6f4fb;
   --telegram-fg: #2481cc;
 
+  /* Badge vai trò quản trị (#F2) — tím, tách hẳn khỏi primary xanh */
+  --admin-bg: #ede9fe;
+  --admin-fg: #6941c6;
+
   /* Badge trạng thái hội thoại */
   --cho-phan-bg: #fff4e5;
   --cho-phan-fg: #b54708;
@@ -63,6 +67,8 @@
   --color-instagram-fg: var(--instagram-fg);
   --color-telegram-bg: var(--telegram-bg);
   --color-telegram-fg: var(--telegram-fg);
+  --color-admin-bg: var(--admin-bg);
+  --color-admin-fg: var(--admin-fg);
 
   --color-cho-phan-bg: var(--cho-phan-bg);
   --color-cho-phan-fg: var(--cho-phan-fg);
