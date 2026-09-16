@@ -19,36 +19,17 @@ interface Tab {
   nhan: KhoaChuoi;
   /** true = chỉ Admin thấy. */
   riengAdmin: boolean;
-  /**
-   * Route đã dựng chưa.
-   *
-   * Next prefetch mọi `<Link>` trong tầm nhìn, nên tab trỏ tới route chưa có
-   * sẽ bắn 404 vào console ngay khi mở màn. Tắt prefetch cho tới khi màn đó
-   * ra đời (GĐ2–4) — xoá cờ này khi dựng xong.
-   */
-  daDung: boolean;
 }
 
+// Cả bốn route đã dựng xong (GĐ1–4) nên prefetch để nguyên mặc định. Trong lúc
+// GĐ2–4 còn dở, ba tab dưới phải đặt `prefetch={false}`: Next prefetch mọi
+// `<Link>` trong tầm nhìn nên tab trỏ tới route chưa có sẽ bắn 404 vào console
+// ngay khi mở màn. Nhớ lại điều này nếu sau có thêm tab chưa dựng.
 const TAB: Tab[] = [
-  {
-    duongDan: "/quan-tri/nguoi-dung",
-    nhan: "quanTri.tabNguoiDung",
-    riengAdmin: false,
-    daDung: true,
-  },
-  {
-    duongDan: "/quan-tri/phong-ban",
-    nhan: "quanTri.tabPhongBan",
-    riengAdmin: true,
-    daDung: true,
-  },
-  { duongDan: "/quan-tri/kenh", nhan: "quanTri.tabKenh", riengAdmin: true, daDung: true },
-  {
-    duongDan: "/quan-tri/nhat-ky",
-    nhan: "quanTri.tabNhatKy",
-    riengAdmin: true,
-    daDung: false,
-  },
+  { duongDan: "/quan-tri/nguoi-dung", nhan: "quanTri.tabNguoiDung", riengAdmin: false },
+  { duongDan: "/quan-tri/phong-ban", nhan: "quanTri.tabPhongBan", riengAdmin: true },
+  { duongDan: "/quan-tri/kenh", nhan: "quanTri.tabKenh", riengAdmin: true },
+  { duongDan: "/quan-tri/nhat-ky", nhan: "quanTri.tabNhatKy", riengAdmin: true },
 ];
 
 export function TabQuanTri() {
@@ -69,7 +50,6 @@ export function TabQuanTri() {
             <Link
               key={tab.duongDan}
               href={tab.duongDan}
-              prefetch={tab.daDung ? undefined : false}
               aria-current={dangO ? "page" : undefined}
               className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition ${
                 dangO

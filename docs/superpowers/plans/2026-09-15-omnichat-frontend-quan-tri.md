@@ -83,3 +83,42 @@ Giai đoạn nhạy cảm nhất vì chạm token thật.
 
 GĐ1 lớn hơn ba giai đoạn còn lại cộng lại. Nếu phải cắt bớt, GĐ4 (Nhật ký) là
 phần hoãn được — nó chỉ để tra cứu, không chặn sub-project nào khác.
+
+---
+
+## Kết quả (2026-09-16)
+
+**Cả bốn giai đoạn HOÀN TẤT.** 148 test xanh, `tsc` sạch, `eslint` sạch,
+`next build` sạch.
+
+| GĐ | Commit | Kiểm chứng thật |
+|---|---|---|
+| Nền chung | `2cfb0bb9` | — |
+| GĐ1 Người dùng | `04f997b2` | 36/36 qua API · 35/35 qua trình duyệt, 3 vai |
+| GĐ2 Phòng ban | `c99fc946` | 23/23 qua trình duyệt |
+| GĐ3 Kênh | `24e6f43e` | 25/25, gồm truy tìm token bằng máy |
+| GĐ4 Nhật ký + review | *(commit này)* | 33/33, gồm review tổng bốn màn |
+
+### Bốn điều phát hiện khi dựng, đã cập nhật vào spec
+
+1. **`POST /users/{id}/reset-password` trả 204**, không trả `UserResponse` như
+   mọi endpoint khác của `/users`. `tsc` không bắt được vì `api-client` trả
+   `undefined as T`; chỉ lộ khi gọi thật.
+2. **Phòng ban không bật lại được** — chỉ có `deactivate`, không có
+   `reactivate` (RB-5).
+3. **Kênh cũng không kết nối lại được** — cùng lý do (RB-7b).
+4. **Ba quy tắc nghiệp vụ** không có trong spec đầu:
+   `INACTIVE_DEPARTMENT`, `CANNOT_CHANGE_TO_ADMIN`,
+   `DEPARTMENT_HAS_ACTIVE_MEMBERS`. Cái thứ hai đổi cả thiết kế UI: ô "Đổi vai
+   trò" không được có lựa chọn "Quản trị".
+
+### Nợ để lại
+
+- **Dữ liệu kiểm chứng trong DB dev**: ~20 tài khoản (tiền tố `nv.`, `mgr.`,
+  `ui.`, `kiemchung.f2`) và ~7 phòng ban (`Phong kiem chung *`, `Phong khac *`,
+  `Phong UI *`, `Phong GD2 *`). User đã quyết định **giữ lại làm dữ liệu mẫu**
+  cho #F3/#F4.
+- **Chưa merge vào `main`.**
+- Màn Nhật ký tra tên người thực hiện từ 100 người dùng đầu; ai nằm ngoài sẽ
+  hiện "Không rõ". Chấp nhận được ở quy mô hiện tại, nhưng nếu số tài khoản
+  vượt 100 thì phải đổi cách tra.
