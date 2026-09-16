@@ -15,6 +15,9 @@ import {
   NHAN_KENH,
   DAU_GACH,
   DON_VI_KPI,
+  LOP_BADGE_KET_QUA_PHAN_TICH,
+  NHAN_KET_QUA_PHAN_TICH,
+  doTinCay,
   NHAN_CHI_SO_KPI,
   NHAN_DOI_TUONG_KPI,
   NHAN_LOAI_DON,
@@ -34,6 +37,7 @@ import {
   tuanChua,
 } from "./hien-thi";
 import type {
+  AnalysisOutcome,
   AuditAction,
   KpiMetricType,
   KpiSubjectType,
@@ -440,5 +444,58 @@ describe("lopMucKpi (RB-8)", () => {
 
   it("chuỗi không phải số thì xám, không vỡ", () => {
     expect(lopMucKpi("khong-phai-so")).toBe("text-muted");
+  });
+});
+
+
+/**
+ * RB-9 cho #F4 — enum `AnalysisOutcome`.
+ *
+ * Liệt kê tay cả ba, KHÔNG đọc ngược từ chính bảng đang kiểm.
+ */
+const MOI_KET_QUA: AnalysisOutcome[] = ["AUTO_ASSIGNED", "AMBIGUOUS", "NOT_ANALYZED"];
+
+describe("NHAN_KET_QUA_PHAN_TICH / LOP_BADGE_KET_QUA_PHAN_TICH (RB-9)", () => {
+  it("phủ đủ ba kết cục, không thừa không thiếu", () => {
+    expect(Object.keys(NHAN_KET_QUA_PHAN_TICH).sort()).toEqual([...MOI_KET_QUA].sort());
+    expect(Object.keys(LOP_BADGE_KET_QUA_PHAN_TICH).sort()).toEqual([...MOI_KET_QUA].sort());
+  });
+
+  it.each(MOI_KET_QUA)("%s có nhãn tiếng Việt và lớp badge", (kq) => {
+    expect(NHAN_KET_QUA_PHAN_TICH[kq]?.trim().length).toBeGreaterThan(0);
+    expect(NHAN_KET_QUA_PHAN_TICH[kq]).not.toBe(kq);
+    expect(LOP_BADGE_KET_QUA_PHAN_TICH[kq]?.trim().length).toBeGreaterThan(0);
+  });
+
+  it("ba kết cục có ba nhãn KHÁC nhau", () => {
+    // Trùng nhãn thì người đọc không phân biệt được "đã tự phân" với "không
+    // phân tích được" — hai tình huống cần hành động khác hẳn nhau.
+    expect(new Set(MOI_KET_QUA.map((k) => NHAN_KET_QUA_PHAN_TICH[k])).size).toBe(3);
+  });
+});
+
+/**
+ * RB-8 — `confidence` `null` là "không có độ tin cậy" (NOT_ANALYZED), KHÔNG
+ * phải 0%. Cùng bài học với `phanTramKpi` của #F3.
+ */
+describe("doTinCay", () => {
+  it("null hiện dấu gạch, KHÔNG hiện 0%", () => {
+    expect(doTinCay(null)).toBe(DAU_GACH);
+    expect(doTinCay(null)).not.toContain("0");
+  });
+
+  it("chuỗi Decimal thành phần trăm", () => {
+    expect(doTinCay("0.950")).toBe("95%");
+    expect(doTinCay("1.000")).toBe("100%");
+    expect(doTinCay("0.310")).toBe("31%");
+  });
+
+  it('"0.000" hiện "0%" — có đo, và bằng không', () => {
+    // Khác hẳn null: LLM có trả độ tin cậy, chỉ là bằng 0.
+    expect(doTinCay("0.000")).toBe("0%");
+  });
+
+  it("chuỗi không phải số thì dấu gạch, không vỡ", () => {
+    expect(doTinCay("khong-phai-so")).toBe(DAU_GACH);
   });
 });
