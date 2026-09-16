@@ -292,6 +292,50 @@ const VI = {
   // đã xoay — thường là bị đánh cắp. Người đọc nhật ký cần thấy ngay mức độ.
   "hanhDong.auth.token_reuse_detected": "Phát hiện token bị dùng lại (nghi ngờ đánh cắp)",
 
+  // Nhân sự (#F3) — chung
+  "nhanSu.tieuDe": "Nhân sự",
+  "nhanSu.tabCa": "Ca làm việc",
+  "nhanSu.tabDon": "Đơn từ",
+  "nhanSu.tabKpi": "KPI",
+
+  // Nhân sự — đơn từ
+  "don.tieuDe": "Đơn từ",
+  "don.guiDon": "Gửi đơn",
+  "don.cotNguoiGui": "Người gửi",
+  "don.cotLoaiDon": "Loại đơn",
+  "don.cotNoiDung": "Nội dung",
+  "don.cotTrangThai": "Trạng thái",
+  "don.cotNgayGui": "Ngày gửi",
+  "don.locTrangThai": "Trạng thái",
+  "don.loaiDon": "Loại đơn",
+  "don.lyDo": "Lý do",
+  "don.tuNgay": "Từ ngày",
+  "don.denNgay": "Đến ngày",
+  "don.duyet": "Duyệt",
+  "don.tuChoi": "Từ chối",
+  "don.thuHoi": "Thu hồi",
+  "don.lyDoTuChoi": "Lý do từ chối",
+  "don.batBuocLyDoTuChoi": "Từ chối bắt buộc phải nêu lý do.",
+  "don.xacNhanDuyet": "Duyệt đơn {loai} của {ten}? Quyết định này không sửa lại được.",
+  "don.xacNhanThuHoi": "Thu hồi đơn này? Đơn đã thu hồi không gửi lại được, phải tạo đơn mới.",
+  "don.chinhBan": "(bạn)",
+  "don.loiTai": "Không tải được danh sách đơn.",
+  "don.khoangNghi": "{tu} → {den}",
+  "don.adminKhongGuiDuoc":
+    "Quản trị viên không thuộc phòng ban nào nên không gửi được đơn từ.",
+  "don.daQuyetDinh": "{nguoi} · {luc}",
+
+  // Nhãn RequestType (3 giá trị) — RB-9: bảng tra phải phủ đủ.
+  "loaiDon.NGHI_PHEP": "Nghỉ phép",
+  "loaiDon.TANG_LUONG": "Tăng lương",
+  "loaiDon.KHAC": "Khác",
+
+  // Nhãn RequestStatus (4 giá trị).
+  "trangThaiDon.CHO_DUYET": "Chờ duyệt",
+  "trangThaiDon.DA_DUYET": "Đã duyệt",
+  "trangThaiDon.TU_CHOI": "Từ chối",
+  "trangThaiDon.DA_HUY": "Đã thu hồi",
+
   // Quản trị — lỗi
   //
   // Backend ĐÃ trả thông điệp tiếng Việt đầy đủ cho mọi vi phạm quy tắc nghiệp

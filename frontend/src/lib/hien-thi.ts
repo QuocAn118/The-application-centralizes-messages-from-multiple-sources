@@ -6,7 +6,14 @@
  */
 
 import { t } from "./i18n";
-import type { AuditAction, ConversationStatus, Platform, Role } from "./types";
+import type {
+  AuditAction,
+  ConversationStatus,
+  Platform,
+  RequestStatus,
+  RequestType,
+  Role,
+} from "./types";
 
 // Nhãn lấy từ từ điển i18n — một nguồn duy nhất, đổi ngôn ngữ là đổi cả đây.
 export const NHAN_TRANG_THAI: Record<ConversationStatus, string> = {
@@ -165,4 +172,53 @@ export function lopBadgeHanhDong(hanhDong: AuditAction): string {
   if (nhom === "user") return "bg-zalo-bg text-zalo-fg";
   if (nhom === "department") return "bg-admin-bg text-admin-fg";
   return "bg-da-dong-bg text-da-dong-fg";
+}
+
+// ---------------------------------------------------------------------------
+// Nhân sự (#F3)
+// ---------------------------------------------------------------------------
+
+/** Nhãn 3 loại đơn. RB-9: `Record` bắt TypeScript đòi đủ khoá. */
+export const NHAN_LOAI_DON: Record<RequestType, string> = {
+  NGHI_PHEP: t("loaiDon.NGHI_PHEP"),
+  TANG_LUONG: t("loaiDon.TANG_LUONG"),
+  KHAC: t("loaiDon.KHAC"),
+};
+
+/** Nhãn 4 trạng thái đơn. */
+export const NHAN_TRANG_THAI_DON: Record<RequestStatus, string> = {
+  CHO_DUYET: t("trangThaiDon.CHO_DUYET"),
+  DA_DUYET: t("trangThaiDon.DA_DUYET"),
+  TU_CHOI: t("trangThaiDon.TU_CHOI"),
+  DA_HUY: t("trangThaiDon.DA_HUY"),
+};
+
+/**
+ * Lớp badge trạng thái đơn.
+ *
+ * `DA_HUY` dùng màu xám như `TU_CHOI` nhưng KHÔNG cùng ý nghĩa: từ chối là
+ * quyết định của người duyệt, thu hồi là người gửi tự rút. Nhãn chữ phân biệt
+ * hai cái đó, màu chỉ nói "không còn chờ xử lý".
+ */
+export const LOP_BADGE_TRANG_THAI_DON: Record<RequestStatus, string> = {
+  CHO_DUYET: "bg-cho-phan-bg text-cho-phan-fg",
+  DA_DUYET: "bg-dang-mo-bg text-dang-mo-fg",
+  TU_CHOI: "bg-danger-bg text-danger-fg",
+  DA_HUY: "bg-da-dong-bg text-da-dong-fg",
+};
+
+/**
+ * Giờ "HH:MM" từ chuỗi "HH:MM:SS" của backend.
+ *
+ * Cắt chuỗi chứ không qua `Date`: giá trị này là giờ trong ngày, không gắn với
+ * ngày nào cả — đưa qua `Date` sẽ kéo theo múi giờ và làm lệch giờ hiển thị.
+ */
+export function gioNgan(gio: string): string {
+  return gio.slice(0, 5);
+}
+
+/** Ngày "DD/MM/YYYY" từ chuỗi ISO "YYYY-MM-DD". Ghép tay, không qua `Date`. */
+export function ngayVN(iso: string): string {
+  const [nam, thang, ngay] = iso.slice(0, 10).split("-");
+  return `${ngay}/${thang}/${nam}`;
 }
