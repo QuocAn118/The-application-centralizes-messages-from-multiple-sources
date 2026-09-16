@@ -345,3 +345,64 @@ export interface KpiProgress {
   actual_value: string | null;
   achievement_percent: string | null;
 }
+
+
+// ---------------------------------------------------------------------------
+// Từ khoá & Phân tích AI (#F4)
+// ---------------------------------------------------------------------------
+
+/**
+ * Từ khoá của một phòng.
+ *
+ * `normalized` do **backend** sinh (bỏ dấu tiếng Việt, thường hoá, gộp khoảng
+ * trắng): `"Bảo Hành"`, `"bao hanh"` và `"  Bảo   Hành  "` đều ra `"bao hanh"`.
+ * FE chỉ HIỂN THỊ trường này, tuyệt đối không tự tính lại để đoán trùng — chép
+ * thuật toán bỏ dấu sang chỗ thứ hai là hẹn ngày hai bản lệch nhau.
+ */
+export interface Keyword {
+  id: string;
+  department_id: string;
+  text: string;
+  normalized: string;
+}
+
+/**
+ * Kết cục một lần LLM phân tích hội thoại.
+ *
+ * - `AUTO_ASSIGNED`: chọn được phòng, đủ tin cậy → đã tự phân.
+ * - `AMBIGUOUS`: đọc được nhu cầu nhưng không chọn được phòng rõ ràng.
+ * - `NOT_ANALYZED`: không phân tích được (LLM lỗi hoặc chưa đủ tin).
+ */
+export type AnalysisOutcome = "AUTO_ASSIGNED" | "AMBIGUOUS" | "NOT_ANALYZED";
+
+/** Một cụm nhu cầu LLM nhận ra trong hội thoại. */
+export interface ExtractedTerm {
+  text: string;
+  normalized: string;
+}
+
+/**
+ * Một lần phân tích hội thoại.
+ *
+ * **Ba `outcome` có ba hình dạng `null` KHÁC nhau** — đã đối chiếu bằng lời gọi
+ * thật, và phải gieo thêm dữ liệu mới thấy đủ (LLM thật hầu như luôn trả
+ * `AUTO_ASSIGNED`):
+ *
+ * | outcome | suggested_department_id | confidence | extracted_terms |
+ * |---|---|---|---|
+ * | `AUTO_ASSIGNED` | có | có | có |
+ * | `AMBIGUOUS` | **null** | có | có |
+ * | `NOT_ANALYZED` | **null** | **null** | **rỗng** |
+ *
+ * `confidence` là chuỗi `Decimal` ba chữ số thập phân (`"0.950"`), không phải
+ * số — giữ nguyên chuỗi, đừng parse rồi làm tròn tuỳ tiện.
+ */
+export interface ConversationAnalysis {
+  id: string;
+  conversation_id: string;
+  outcome: AnalysisOutcome;
+  extracted_terms: ExtractedTerm[];
+  created_at: string;
+  suggested_department_id: string | null;
+  confidence: string | null;
+}
