@@ -419,6 +419,44 @@ const VI = {
   // bản thông điệp song song chắc chắn sẽ lệch nhau khi backend đổi.
   //
   // Chỉ giữ ở đây các trường hợp server KHÔNG nói được: lỗi mạng, và mã lỗi lạ.
+  // Từ khoá & Phân tích AI (#F4)
+  "quanTri.tabTuKhoa": "Từ khoá",
+  "quanTri.tabPhanTich": "Phân tích AI",
+
+  "tuKhoa.tieuDe": "Từ khoá theo phòng",
+  "tuKhoa.them": "Thêm từ khoá",
+  "tuKhoa.suaTieuDe": "Sửa từ khoá",
+  "tuKhoa.noiDung": "Từ khoá",
+  "tuKhoa.phongBan": "Phòng ban",
+  "tuKhoa.sua": "Sửa",
+  "tuKhoa.xoa": "Xoá",
+  "tuKhoa.chuaCo": "Chưa có từ khoá nào. Thêm từ khoá để AI biết phòng này phụ trách việc gì.",
+  "tuKhoa.chuaCoTrongPhong": "Phòng này chưa có từ khoá nào.",
+  "tuKhoa.loiTai": "Không tải được danh sách từ khoá.",
+  "tuKhoa.xacNhanXoa": "Xoá từ khoá {ten}? AI sẽ không còn dùng từ này để phân phòng.",
+  // Nói cho người dùng biết vì sao "Bảo Hành" bị coi là trùng với "bao hanh".
+  "tuKhoa.dangKhop": "dạng khớp: {chuan}",
+  "tuKhoa.giaiThichChuanHoa":
+    "Hệ thống bỏ dấu và không phân biệt hoa thường, nên \"Bảo Hành\" và \"bao hanh\" là một.",
+  "tuKhoa.demTrongPhong": "{so} từ khoá",
+  "tuKhoa.timGoiY": "Tìm từ khoá…",
+
+  "phanTich.tieuDe": "Phân tích hội thoại bằng AI",
+  "phanTich.cotHoiThoai": "Hội thoại",
+  "phanTich.cotKetQua": "Kết quả",
+  "phanTich.cotPhongDeXuat": "Phòng đề xuất",
+  "phanTich.cotTinCay": "Độ tin cậy",
+  "phanTich.cotNhuCau": "Nhu cầu nhận ra",
+  "phanTich.cotThoiDiem": "Thời điểm",
+  "phanTich.AUTO_ASSIGNED": "Đã tự phân",
+  "phanTich.AMBIGUOUS": "Chưa rõ phòng",
+  "phanTich.NOT_ANALYZED": "Không phân tích được",
+  "phanTich.chuaCo": "Chưa có kết quả phân tích nào.",
+  "phanTich.loiTai": "Không tải được kết quả phân tích.",
+  "phanTich.khongCoNhuCau": "Không trích được nhu cầu nào",
+  "phanTich.chiDoc": "Màn này chỉ để xem. Kết quả do AI tự chạy khi có hội thoại mới.",
+  "phanTich.khongRoPhong": "Không xác định được phòng",
+
   "loiQuanTri.khongDuQuyen": "Bạn không có quyền thực hiện thao tác này.",
   "loiQuanTri.chung": "Không thực hiện được. Hãy thử lại.",
 } as const;
