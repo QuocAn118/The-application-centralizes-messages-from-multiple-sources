@@ -7,6 +7,7 @@
 
 import { t } from "./i18n";
 import type {
+  AnalysisOutcome,
   AuditAction,
   ConversationStatus,
   KpiMetricType,
@@ -349,4 +350,43 @@ export function lopMucKpi(phanTram: string | null): string {
 /** Kỳ KPI dạng "Tháng 9/2026". */
 export function kyKpi(nam: number, thang: number): string {
   return t("kpi.ky", { thang: String(thang), nam: String(nam) });
+}
+
+
+// ---------------------------------------------------------------------------
+// Phân tích AI (#F4)
+// ---------------------------------------------------------------------------
+
+/** Nhãn 3 kết cục phân tích. RB-9: `Record` bắt TypeScript đòi đủ khoá. */
+export const NHAN_KET_QUA_PHAN_TICH: Record<AnalysisOutcome, string> = {
+  AUTO_ASSIGNED: t("phanTich.AUTO_ASSIGNED"),
+  AMBIGUOUS: t("phanTich.AMBIGUOUS"),
+  NOT_ANALYZED: t("phanTich.NOT_ANALYZED"),
+};
+
+/**
+ * Lớp badge theo kết cục.
+ *
+ * `AUTO_ASSIGNED` là kết quả tốt (xanh); `AMBIGUOUS` là "cần người xem lại"
+ * (vàng); `NOT_ANALYZED` là hỏng/chưa chạy (xám — KHÔNG đỏ: không phân tích
+ * được thường là chưa đủ tin nhắn, không phải lỗi).
+ */
+export const LOP_BADGE_KET_QUA_PHAN_TICH: Record<AnalysisOutcome, string> = {
+  AUTO_ASSIGNED: "bg-dang-mo-bg text-dang-mo-fg",
+  AMBIGUOUS: "bg-cho-phan-bg text-cho-phan-fg",
+  NOT_ANALYZED: "bg-da-dong-bg text-da-dong-fg",
+};
+
+/**
+ * Độ tin cậy `Decimal` 0..1 (chuỗi "0.950") thành phần trăm để đọc.
+ *
+ * `null` nghĩa là **không có** độ tin cậy (`NOT_ANALYZED`), không phải 0% —
+ * hiện dấu gạch. Cùng bài học với `phanTramKpi` của #F3: "0%" nói rằng đã đo và
+ * kết quả bằng không, sai hẳn nghĩa.
+ */
+export function doTinCay(giaTri: string | null): string {
+  if (giaTri === null) return DAU_GACH;
+  const so = Number(giaTri);
+  if (!Number.isFinite(so)) return DAU_GACH;
+  return `${Math.round(so * 100)}%`;
 }
