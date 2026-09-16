@@ -4,6 +4,7 @@ Fake phản ánh hành vi thật của repository/port; khi hợp đồng đổi
 test đỏ — đúng thứ ta muốn. Mock thì không.
 """
 
+from collections.abc import Sequence
 from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -226,6 +227,8 @@ class FakePerformanceSource:
     def __init__(self) -> None:
         self.user_metrics: dict[tuple[UUID, KpiMetricType, KpiPeriod], Decimal] = {}
         self.dept_metrics: dict[tuple[UUID, KpiMetricType, KpiPeriod], Decimal] = {}
+        # Đếm số lần gọi lô — test khoá N+1 dựa vào con số này.
+        self.batch_calls = 0
 
     def set_user_metric(
         self, user_id: UUID, metric: KpiMetricType, period: KpiPeriod, value: Decimal
@@ -246,6 +249,28 @@ class FakePerformanceSource:
         self, department_id: UUID, metric_type: KpiMetricType, period: KpiPeriod
     ) -> Decimal | None:
         return self.dept_metrics.get((department_id, metric_type, period))
+
+    async def get_metrics_for_users(
+        self,
+        user_ids: Sequence[UUID],
+        metric_type: KpiMetricType,
+        period: KpiPeriod,
+    ) -> dict[UUID, Decimal | None]:
+        """Bản gom lô — phải khớp ngữ nghĩa None-vs-0 của nguồn thật.
+
+        Nguồn thật (``InboxPerformanceSource``) trả ``Decimal(0)`` cho chỉ số
+        ĐẾM khi người đó không có dòng nào, nhưng ``None`` cho chỉ số TRUNG BÌNH
+        khi không có mẫu. Fake mà trả giống nhau cho cả hai thì test vẫn xanh
+        trong khi thật thì lệch — đúng loại lỗi mà lô này sinh ra để chặn.
+        """
+        self.batch_calls += 1
+        ket_qua: dict[UUID, Decimal | None] = {}
+        for uid in user_ids:
+            gia = self.user_metrics.get((uid, metric_type, period))
+            if gia is None and metric_type is KpiMetricType.CONVERSATIONS_CLOSED:
+                gia = Decimal(0)
+            ket_qua[uid] = gia
+        return ket_qua
 
 
 class FakeNotifier:

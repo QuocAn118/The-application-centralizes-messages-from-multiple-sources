@@ -44,10 +44,18 @@ export const khoaNhanSu = {
   kpi: {
     all: ["nhan-su", "kpi"] as const,
     /**
-     * Tiến độ của một đối tượng/kỳ/chỉ số.
+     * Tiến độ CẢ KỲ trong một lời gọi — bảng KPI dùng khoá này.
      *
      * Đặt dưới `kpi.all` để đặt mục tiêu mới là làm mới luôn tiến độ — phần
      * trăm hoàn thành phụ thuộc chính mục tiêu vừa đổi.
+     */
+    tienDoKy: (nam: number, thang: number) =>
+      ["nhan-su", "kpi", "tien-do-ky", nam, thang] as const,
+    /**
+     * Tiến độ của MỘT đối tượng/kỳ/chỉ số.
+     *
+     * Bảng KPI không dùng nữa (đã chuyển sang `tienDoKy` để trả nợ N4); giữ lại
+     * vì endpoint một-dòng vẫn còn và hữu ích cho màn chi tiết sau này.
      */
     tienDo: (
       subjectType: KpiSubjectType,
@@ -204,6 +212,26 @@ export function datMucTieuKpi(duLieu: {
   target_value: string;
 }): Promise<KpiTarget> {
   return api.post<KpiTarget>("/kpi-targets", duLieu);
+}
+
+/**
+ * Tiến độ của **mọi** mục tiêu trong phạm vi người gọi — một lời gọi cho cả bảng.
+ *
+ * Thay cho việc gọi `layTienDoKpi` từng dòng (nợ N4): đo thật trên DB dev, bảng
+ * 68 dòng của Admin tốn 68 lời gọi và ~3,2 giây trước khi bảng đầy đủ.
+ *
+ * Không nhận `subject_id` — phạm vi do backend suy ra từ vai, giống
+ * `layMucTieuKpi`. Nhờ vậy Staff không dò được KPI người khác.
+ */
+export function layTienDoKpiTheoKy(
+  ky: { nam: number; thang: number },
+  signal?: AbortSignal,
+): Promise<KpiProgress[]> {
+  return api.get<KpiProgress[]>(
+    "/kpi-progress-batch",
+    { period_year: ky.nam, period_month: ky.thang },
+    signal,
+  );
 }
 
 export function layTienDoKpi(

@@ -18,13 +18,13 @@ import { useQuery } from "@tanstack/react-query";
 import { t } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-context";
 import { NHAN_DOI_TUONG_KPI, kyKpi } from "@/lib/hien-thi";
-import { khoaNhanSu, layMucTieuKpi } from "@/lib/nhan-su-api";
+import { khoaNhanSu, layMucTieuKpi, layTienDoKpiTheoKy } from "@/lib/nhan-su-api";
 import { khoaQuanTri, layDanhSachNguoiDung, layDanhSachPhongBan } from "@/lib/quan-tri-api";
-import { datDuocMucTieuKpi, xemDuocKpiPhong } from "@/lib/quyen-nhan-su";
+import { datDuocMucTieuKpi } from "@/lib/quyen-nhan-su";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { HangKpi } from "./hang-kpi";
 import { HopThoaiKpi } from "./hop-thoai-kpi";
-import type { KpiTarget } from "@/lib/types";
+import type { KpiProgress, KpiTarget } from "@/lib/types";
 
 const LOP_O_CHON =
   "rounded-lg border border-border-subtle bg-white px-3 py-1.5 text-xs font-medium text-foreground outline-none transition focus:border-primary";
@@ -43,6 +43,15 @@ export function ManKpi() {
   const truyVan = useQuery({
     queryKey: [...khoaNhanSu.kpi.all, "danh-sach", nam, thang],
     queryFn: ({ signal }) => layMucTieuKpi({ nam, thang }, signal),
+  });
+
+  // Tiến độ CẢ BẢNG trong một lời gọi (trả nợ N4). Trước đây mỗi dòng tự gọi
+  // `/kpi-progress` của riêng nó: 68 dòng = 68 lời gọi, ~3,2 giây. Backend lọc
+  // phạm vi theo vai nên không cần truyền đối tượng, và Staff cũng không dò
+  // được KPI người khác.
+  const truyVanTienDo = useQuery({
+    queryKey: khoaNhanSu.kpi.tienDoKy(nam, thang),
+    queryFn: ({ signal }) => layTienDoKpiTheoKy({ nam, thang }, signal),
   });
 
   // Tên đối tượng: mục tiêu chỉ có `subject_id` thuần, không kèm tên. Staff bị
@@ -72,6 +81,12 @@ export function ManKpi() {
 
   const datDuoc = datDuocMucTieuKpi(user.role);
   const danhSach = truyVan.data ?? [];
+
+  // Tra tiến độ theo (đối tượng, chỉ số) — khoá gồm cả chỉ số vì một đối tượng
+  // có thể có mục tiêu cho cả hai chỉ số.
+  const tienDoTheoKhoa = new Map<string, KpiProgress>(
+    (truyVanTienDo.data ?? []).map((p) => [`${p.subject_id}|${p.metric_type}`, p]),
+  );
 
   // Năm chọn được: quanh năm nay. Mục tiêu là thứ đặt cho kỳ sắp tới hoặc xem
   // lại kỳ đã qua, không cần cả thế kỷ.
@@ -193,11 +208,8 @@ export function ManKpi() {
                     key={mt.id}
                     mucTieu={mt}
                     tenDoiTuong={tenDoiTuong(mt)}
-                    // Staff bị `KPI_FORBIDDEN` với mục tiêu cấp phòng — không
-                    // gọi API cho dòng đó thay vì gọi rồi nuốt 403.
-                    xemDuocTienDo={
-                      mt.subject_type === "USER" || xemDuocKpiPhong(user.role)
-                    }
+                    tienDo={tienDoTheoKhoa.get(`${mt.subject_id}|${mt.metric_type}`)}
+                    dangTai={truyVanTienDo.isPending}
                     onSua={datDuoc ? () => setDangSua(mt) : null}
                   />
                 ))}

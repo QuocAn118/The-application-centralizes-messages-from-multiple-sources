@@ -7,6 +7,7 @@ from fastapi import APIRouter, Query
 
 from src.modules.hrm.application.use_cases.kpi_use_cases import (
     GetKpiProgress,
+    ListKpiProgress,
     ListKpiTargets,
     SetKpiTarget,
 )
@@ -91,3 +92,23 @@ async def xem_tien_do(
         period=KpiPeriod(year=period_year, month=period_month),
     )
     return KpiProgressResponse.from_view(v)
+
+
+@router.get("/kpi-progress-batch", response_model=list[KpiProgressResponse])
+async def liet_ke_tien_do(
+    actor: Actor,
+    session: DbSession,
+    performance: Performance,
+    period_year: int,
+    period_month: Annotated[int, Query(ge=1, le=12)],
+) -> list[KpiProgressResponse]:
+    """Tiến độ mọi mục tiêu trong phạm vi người gọi, một lời gọi thay vì N.
+
+    Không nhận ``subject_id``: phạm vi suy ra từ vai của người gọi, giống
+    ``GET /kpi-targets``. Nhờ vậy không có đường dò KPI của người khác.
+    """
+    ds = await ListKpiProgress(SqlAlchemyKpiTargetRepository(session), performance).execute(
+        actor,
+        period=KpiPeriod(year=period_year, month=period_month),
+    )
+    return [KpiProgressResponse.from_view(v) for v in ds]

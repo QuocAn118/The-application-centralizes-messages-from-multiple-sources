@@ -6,6 +6,7 @@ import pytest
 from src.modules.hrm.application.actor import ActorRole, HrmActor
 from src.modules.hrm.application.use_cases.kpi_use_cases import (
     GetKpiProgress,
+    ListKpiProgress,
     ListKpiTargets,
     SetKpiTarget,
 )
@@ -54,6 +55,7 @@ class _Boi:
         self.set = SetKpiTarget(self.repo, self.directory, self.clock)
         self.list = ListKpiTargets(self.repo)
         self.progress = GetKpiProgress(self.repo, self.perf, self.directory)
+        self.progress_lo = ListKpiProgress(self.repo, self.perf)
 
     def them_nhan_vien(self, department_id=PHONG_A):
         nv = new_id()
@@ -224,3 +226,97 @@ class TestListKpiTargets:
         views = await bc.list.execute(_manager(PHONG_A))
 
         assert {v.subject_id for v in views} == {nv, PHONG_A}
+
+
+class TestListKpiProgress:
+    """Nợ N4 — tiến độ gom lô thay cho N+1.
+
+    Màn KPI trước đây gọi ``GET /kpi-progress`` cho TỪNG dòng. Đo thật trên DB
+    dev (chỉ 172 tin nhắn): bảng 68 dòng của Admin tốn ~2,1 giây và 68 lời gọi,
+    mỗi lời gọi quét lại toàn bộ dữ liệu inbox rồi vứt đi phần của người khác.
+    """
+
+    async def test_so_loi_goi_khong_tang_theo_so_dong(self) -> None:
+        # Đây là test khoá chính của N4: 10 nhân viên, CÙNG một chỉ số, phải
+        # gom về ĐÚNG MỘT lời gọi tới nguồn hiệu suất. Quay lại vòng lặp là đỏ.
+        bc = _Boi()
+        for _ in range(10):
+            nv = bc.them_nhan_vien(PHONG_A)
+            await bc.set.execute(_manager(), KpiSubjectType.USER, nv, DONG, KY, Decimal("50"))
+
+        views = await bc.progress_lo.execute(_admin(), KY)
+
+        assert len(views) == 10
+        assert bc.perf.batch_calls == 1, (
+            f"10 dòng lẽ ra 1 lời gọi lô, thực tế {bc.perf.batch_calls} — N+1 quay lại?"
+        )
+
+    async def test_hai_chi_so_thi_hai_loi_goi_khong_phai_hai_muoi(self) -> None:
+        bc = _Boi()
+        for _ in range(10):
+            nv = bc.them_nhan_vien(PHONG_A)
+            await bc.set.execute(_manager(), KpiSubjectType.USER, nv, DONG, KY, Decimal("50"))
+            await bc.set.execute(_manager(), KpiSubjectType.USER, nv, PHAN_HOI, KY, Decimal("15"))
+
+        views = await bc.progress_lo.execute(_admin(), KY)
+
+        assert len(views) == 20
+        # Gom theo chỉ số: hai chỉ số -> hai lời gọi, không phải 20.
+        assert bc.perf.batch_calls == 2
+
+    async def test_giu_nguyen_phan_biet_none_voi_0(self) -> None:
+        # Ngữ nghĩa quan trọng nhất của màn KPI: "chưa đo được" khác "bằng 0".
+        # Bản gom lô mà làm mất phân biệt này thì UI hiện sai mà không ai biết.
+        bc = _Boi()
+        nv = bc.them_nhan_vien(PHONG_A)
+        await bc.set.execute(_manager(), KpiSubjectType.USER, nv, DONG, KY, Decimal("50"))
+        await bc.set.execute(_manager(), KpiSubjectType.USER, nv, PHAN_HOI, KY, Decimal("15"))
+        # KHÔNG bơm số liệu nào -> nguồn thật trả 0 cho chỉ số đếm, None cho TB.
+
+        views = {v.metric_type: v for v in await bc.progress_lo.execute(_admin(), KY)}
+
+        assert views[DONG].actual_value == Decimal(0), "chỉ số đếm: đã đo, bằng không"
+        assert views[PHAN_HOI].actual_value is None, "chỉ số trung bình: chưa có mẫu"
+
+    async def test_ket_qua_trung_khop_ban_mot_dong(self) -> None:
+        # Bản lô và bản một-dòng phải cho cùng con số; lệch nhau là lỗi im lặng.
+        bc = _Boi()
+        nv = bc.them_nhan_vien(PHONG_A)
+        await bc.set.execute(_manager(), KpiSubjectType.USER, nv, DONG, KY, Decimal("50"))
+        bc.perf.set_user_metric(nv, DONG, KY, Decimal("30"))
+
+        mot = await bc.progress.execute(_admin(), KpiSubjectType.USER, nv, DONG, KY)
+        lo = (await bc.progress_lo.execute(_admin(), KY))[0]
+
+        assert lo.actual_value == mot.actual_value
+        assert lo.achievement_percent == mot.achievement_percent
+
+    async def test_staff_chi_thay_tien_do_cua_minh(self) -> None:
+        # Phạm vi phải khớp ListKpiTargets — endpoint lô không nhận subject_id
+        # nên không có đường dò dữ liệu người khác.
+        bc = _Boi()
+        nv = bc.them_nhan_vien(PHONG_A)
+        nguoi_khac = bc.them_nhan_vien(PHONG_A)
+        await bc.set.execute(_manager(), KpiSubjectType.USER, nv, DONG, KY, Decimal("50"))
+        await bc.set.execute(_manager(), KpiSubjectType.USER, nguoi_khac, DONG, KY, Decimal("50"))
+
+        views = await bc.progress_lo.execute(_staff(nv), KY)
+
+        assert {v.subject_id for v in views} == {nv}
+
+    async def test_manager_khong_thay_phong_khac(self) -> None:
+        bc = _Boi()
+        nv_a = bc.them_nhan_vien(PHONG_A)
+        nv_b = bc.them_nhan_vien(PHONG_B)
+        await bc.set.execute(_manager(), KpiSubjectType.USER, nv_a, DONG, KY, Decimal("50"))
+        await bc.set.execute(_admin(), KpiSubjectType.USER, nv_b, DONG, KY, Decimal("50"))
+
+        views = await bc.progress_lo.execute(_manager(PHONG_A), KY)
+
+        assert {v.subject_id for v in views} == {nv_a}
+
+    async def test_ky_trong_tra_mang_rong(self) -> None:
+        bc = _Boi()
+        views = await bc.progress_lo.execute(_admin(), KY)
+        assert views == []
+        assert bc.perf.batch_calls == 0
