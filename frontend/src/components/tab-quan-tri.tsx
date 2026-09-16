@@ -54,10 +54,6 @@ export function TabQuanTri() {
             <Link
               key={tab.duongDan}
               href={tab.duongDan}
-              // GĐ2 chưa dựng `/quan-tri/phan-tich`; Next prefetch mọi <Link>
-              // trong tầm nhìn nên sẽ bắn 404 vào console. Bỏ dòng này khi màn
-              // Phân tích ra đời.
-              prefetch={tab.duongDan === "/quan-tri/phan-tich" ? false : undefined}
               aria-current={dangO ? "page" : undefined}
               className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition ${
                 dangO
