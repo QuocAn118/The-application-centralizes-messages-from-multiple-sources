@@ -22,7 +22,9 @@ import {
   mocNgan,
   ngayVN,
   nhomCuaHanhDong,
+  khungGioHopLe,
   tenKhach,
+  tuanChua,
 } from "./hien-thi";
 import type {
   AuditAction,
@@ -244,5 +246,70 @@ describe("gioNgan / ngayVN", () => {
     // sẽ ra 31/12/2025. Ghép chuỗi thì không bao giờ lệch.
     expect(ngayVN("2026-01-01")).toBe("01/01/2026");
     expect(ngayVN("2026-12-31T17:00:00Z")).toBe("31/12/2026");
+  });
+});
+
+describe("tuanChua", () => {
+  it("bắt đầu từ thứ Hai", () => {
+    // 16/09/2026 là thứ Tư.
+    const tuan = tuanChua(new Date(2026, 8, 16));
+    expect(tuan).toHaveLength(7);
+    expect(tuan[0]).toBe("2026-09-14");
+    expect(tuan[6]).toBe("2026-09-20");
+  });
+
+  it("CHỦ NHẬT thuộc về tuần TRƯỚC, không phải tuần sau", () => {
+    // Bẫy kinh điển: getDay() trả 0 cho Chủ nhật, cộng 1 sẽ nhảy sang tuần sau.
+    // 20/09/2026 là Chủ nhật — phải nằm cuối tuần 14–20.
+    const tuan = tuanChua(new Date(2026, 8, 20));
+    expect(tuan[0]).toBe("2026-09-14");
+    expect(tuan[6]).toBe("2026-09-20");
+  });
+
+  it("thứ Hai cho ra chính nó ở vị trí đầu", () => {
+    const tuan = tuanChua(new Date(2026, 8, 14));
+    expect(tuan[0]).toBe("2026-09-14");
+  });
+
+  it("bắc qua ranh giới tháng", () => {
+    // 01/10/2026 là thứ Năm -> tuần bắt đầu 28/09.
+    const tuan = tuanChua(new Date(2026, 9, 1));
+    expect(tuan[0]).toBe("2026-09-28");
+    expect(tuan[6]).toBe("2026-10-04");
+  });
+
+  it("bắc qua ranh giới năm", () => {
+    // 01/01/2027 là thứ Sáu -> tuần bắt đầu 28/12/2026.
+    const tuan = tuanChua(new Date(2027, 0, 1));
+    expect(tuan[0]).toBe("2026-12-28");
+    expect(tuan[6]).toBe("2027-01-03");
+  });
+
+  it("không lệch ngày do múi giờ", () => {
+    // Nếu dùng toISOString() thì ở UTC+7 ngày 14/09 lúc 00:00 địa phương sẽ
+    // thành "2026-09-13" — sai một ngày cho cả lịch.
+    const tuan = tuanChua(new Date(2026, 8, 14, 0, 0, 0));
+    expect(tuan[0]).toBe("2026-09-14");
+  });
+});
+
+describe("khungGioHopLe (RB-4)", () => {
+  // Backend đòi giờ kết thúc SAU giờ bắt đầu: `shift.py` ghi "ca không qua nửa
+  // đêm ở #4" và trả 422 INVALID_SHIFT_WINDOW. Bản spec đầu của tôi ghi ngược
+  // — chỉ phát hiện khi gọi API thật.
+  it("ca 08:00–17:00 hợp lệ", () => {
+    expect(khungGioHopLe("08:00", "17:00")).toBe(true);
+  });
+
+  it("ca 22:00–06:00 KHÔNG hợp lệ (qua đêm, backend từ chối)", () => {
+    expect(khungGioHopLe("22:00", "06:00")).toBe(false);
+  });
+
+  it("giờ đầu bằng giờ cuối cũng không hợp lệ", () => {
+    expect(khungGioHopLe("08:00", "08:00")).toBe(false);
+  });
+
+  it("so được cả chuỗi có giây", () => {
+    expect(khungGioHopLe("08:00:00", "17:00:00")).toBe(true);
   });
 });

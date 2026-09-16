@@ -32,10 +32,10 @@ export function TabNhanSu() {
             <Link
               key={tab.duongDan}
               href={tab.duongDan}
-              // GĐ2/GĐ3 chưa dựng `ca-lam-viec` và `kpi`; Next prefetch mọi
-              // <Link> trong tầm nhìn nên sẽ bắn 404 vào console. Bỏ
-              // `prefetch={false}` khi hai màn đó ra đời.
-              prefetch={tab.duongDan === "/nhan-su/don-tu" ? undefined : false}
+              // GĐ3 chưa dựng `/nhan-su/kpi`; Next prefetch mọi <Link> trong
+              // tầm nhìn nên sẽ bắn 404 vào console. Bỏ dòng này khi màn KPI
+              // ra đời.
+              prefetch={tab.duongDan === "/nhan-su/kpi" ? false : undefined}
               aria-current={dangO ? "page" : undefined}
               className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition ${
                 dangO

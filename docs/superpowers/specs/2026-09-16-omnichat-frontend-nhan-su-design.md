@@ -107,12 +107,23 @@ sửa, ngừng hoạt động.
 **Lịch phân ca** (`GET /shift-assignments?date_from&date_to`) — dạng lưới theo
 tuần: hàng là nhân viên, cột là ngày. Phân ca bằng cách bấm vào ô trống.
 
-### RB-4 — Ca qua đêm là hợp lệ
+### RB-4 — Ca KHÔNG qua đêm được (sửa lại sau khi kiểm chứng)
 
-`end_time < start_time` nghĩa là ca kết thúc hôm sau (22:00–06:00). Backend chấp
-nhận (`#3` đã xử lý khi kiểm "đang trong ca"). UI **không được** validate
-`end_time > start_time`, và nên hiện dấu hiệu "qua đêm" để người xếp ca không
-tưởng mình gõ nhầm.
+**Bản spec đầu của tôi ghi ngược.** Tôi suy đoán ca qua đêm hợp lệ vì #3 có xử
+lý trường hợp "đang trong ca" bắc qua nửa đêm, rồi viết cả một quy tắc dặn
+"UI không được validate `end_time > start_time`".
+
+Chạy thật thì backend trả **422 `INVALID_SHIFT_WINDOW`** — "giờ kết thúc phải
+sau giờ bắt đầu". Đọc `hrm/domain/entities/shift.py:12` thấy ghi rõ trong
+docstring: *"ca không qua nửa đêm ở #4"*. Đây là giới hạn cố ý của backend, không
+phải sơ suất.
+
+Nên UI **phải** chặn trước: khoá nút Lưu và nói rõ lý do khi `end_time
+<= start_time`. Để người dùng bấm Lưu rồi mới nhận 422 là bắt họ đoán.
+
+**Bài học:** "module khác xử lý được X" không có nghĩa "module này chấp nhận X".
+Lẽ ra phải thử một lời gọi thật trước khi viết quy tắc — đúng cùng loại sai lầm
+mà kiểm chứng thật bắt được ở #F2 (`reset-password` trả 204).
 
 ### RB-5 — Trùng ca bị chặn ở server
 
@@ -124,6 +135,18 @@ tính trùng — logic khoảng-thời-gian có ca qua đêm rất dễ sai. Hi�
 
 `AGENT_OUT_OF_DEPARTMENT`. Ô chọn nhân viên phải lọc sẵn theo phòng của mẫu ca
 đã chọn, không hiện cả công ty.
+
+### RB-6b — Không phân ca cho ngày trong QUÁ KHỨ
+
+Phát hiện khi chạy thật: `PAST_SHIFT_DATE` — "Không thể phân ca cho một ngày
+trong quá khứ." Không có trong bản spec đầu.
+
+Hệ quả lên lưới lịch: ô của ngày đã qua **không hiện nút "+"**. Buổi ca cũ vẫn
+hiển thị bình thường (xem lại lịch sử), chỉ không xếp thêm được. Hiện nút ở đó
+là mời người dùng vào một thất bại đã biết trước.
+
+Đây là quy tắc thứ ba của #F3 mà tôi chỉ biết khi gọi API thật, sau `RB-4` và
+`SHIFT_OVERLAP`.
 
 ## 5. Màn Đơn từ
 
@@ -215,3 +238,6 @@ gửi không ổn thì cả màn Đơn từ sẽ khó dùng. Đây là điểm c
 
 **RB-8 đã chốt** khi viết spec: backend chuẩn hoá chiều sẵn, FE không cần logic
 riêng cho từng chỉ số.
+
+**RB-4 đã phải viết lại** sau khi chạy thật: ca qua đêm bị backend từ chối, trái
+hẳn với điều tôi suy đoán khi viết spec.

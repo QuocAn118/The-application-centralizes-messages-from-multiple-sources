@@ -222,3 +222,43 @@ export function ngayVN(iso: string): string {
   const [nam, thang, ngay] = iso.slice(0, 10).split("-");
   return `${ngay}/${thang}/${nam}`;
 }
+
+/**
+ * Bảy ngày của tuần chứa `moc`, dạng "YYYY-MM-DD", **bắt đầu từ thứ Hai**.
+ *
+ * `getDay()` trả 0 cho Chủ nhật, nên phải quy đổi: Chủ nhật lùi 6 ngày chứ
+ * không phải tiến 1. Đây là chỗ lệch một ngày kinh điển của lịch tuần.
+ *
+ * Tính trên giờ ĐỊA PHƯƠNG rồi mới ghép chuỗi. Dùng `toISOString()` sẽ đổi sang
+ * UTC và ở múi giờ dương (như VN, UTC+7) ngày sẽ lùi lại một hôm.
+ */
+export function tuanChua(moc: Date): string[] {
+  const thu = moc.getDay();
+  const lui = thu === 0 ? 6 : thu - 1;
+  const thuHai = new Date(moc.getFullYear(), moc.getMonth(), moc.getDate() - lui);
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(thuHai.getFullYear(), thuHai.getMonth(), thuHai.getDate() + i);
+    const thang = String(d.getMonth() + 1).padStart(2, "0");
+    const ngay = String(d.getDate()).padStart(2, "0");
+    return `${d.getFullYear()}-${thang}-${ngay}`;
+  });
+}
+
+/** Tên thứ ngắn cho tiêu đề cột lịch. Index 0 = thứ Hai. */
+export const THU_NGAN = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"] as const;
+
+/**
+ * Khung giờ ca có hợp lệ không (RB-4).
+ *
+ * Backend đòi **giờ kết thúc phải SAU giờ bắt đầu** — `shift.py` ghi rõ "ca
+ * không qua nửa đêm ở #4", và trả 422 `INVALID_SHIFT_WINDOW` nếu vi phạm. Ban
+ * đầu tôi tưởng ngược lại (vì #3 có xử lý ca bắc qua nửa đêm) và chỉ biết khi
+ * gọi thật.
+ *
+ * So chuỗi "HH:MM" trực tiếp được vì định dạng có độ dài cố định và thứ tự từ
+ * điển trùng thứ tự thời gian.
+ */
+export function khungGioHopLe(batDau: string, ketThuc: string): boolean {
+  return ketThuc > batDau;
+}

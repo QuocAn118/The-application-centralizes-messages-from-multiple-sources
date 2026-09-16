@@ -336,6 +336,44 @@ const VI = {
   "trangThaiDon.TU_CHOI": "Từ chối",
   "trangThaiDon.DA_HUY": "Đã thu hồi",
 
+  // Nhân sự — ca làm việc
+  "ca.tieuDe": "Mẫu ca",
+  "ca.taoMoi": "Tạo mẫu ca",
+  "ca.sua": "Sửa",
+  "ca.suaTieuDe": "Sửa mẫu ca",
+  "ca.ngung": "Ngừng dùng",
+  "ca.ten": "Tên ca",
+  "ca.batDau": "Giờ bắt đầu",
+  "ca.ketThuc": "Giờ kết thúc",
+  "ca.phongBan": "Phòng ban",
+  // Backend KHONG cho ca qua nua dem ("ca khong qua nua dem o #4" —
+  // shift.py), tra 422 INVALID_SHIFT_WINDOW. Chan truoc va noi ro ly do.
+  "ca.gioKetThucPhaiSau":
+    "Giờ kết thúc phải sau giờ bắt đầu — hệ thống chưa hỗ trợ ca qua đêm.",
+  "ca.dangDung": "Đang dùng",
+  "ca.daNgung": "Đã ngừng",
+  "ca.loiTai": "Không tải được mẫu ca.",
+  "ca.chuaCoCa": "Chưa có mẫu ca nào. Tạo mẫu ca trước khi xếp lịch.",
+  "ca.xacNhanNgung":
+    "Ngừng dùng mẫu ca {ten}? Các buổi đã xếp vẫn giữ nguyên, nhưng không xếp thêm được nữa và KHÔNG BẬT LẠI ĐƯỢC.",
+
+  // Nhân sự — lịch phân ca
+  "lich.tieuDe": "Lịch phân ca",
+  "lich.tuanTruoc": "Tuần trước",
+  "lich.tuanSau": "Tuần sau",
+  "lich.tuanNay": "Tuần này",
+  "lich.cotNhanVien": "Nhân viên",
+  "lich.phanCa": "Xếp ca",
+  "lich.huyPhanCa": "Huỷ ca",
+  "lich.chonCa": "Mẫu ca",
+  "lich.chonNhanVien": "Nhân viên",
+  "lich.ngayLam": "Ngày làm",
+  "lich.loiTai": "Không tải được lịch phân ca.",
+  "lich.khongCoNhanVien": "Phòng này chưa có nhân viên đang hoạt động.",
+  "lich.xacNhanHuy": "Huỷ buổi ca {ca} ngày {ngay} của {ten}?",
+  "lich.trong": "Chưa xếp ca nào trong tuần này.",
+  "lich.themVaoO": "Xếp ca ngày {ngay}",
+
   // Quản trị — lỗi
   //
   // Backend ĐÃ trả thông điệp tiếng Việt đầy đủ cho mọi vi phạm quy tắc nghiệp
