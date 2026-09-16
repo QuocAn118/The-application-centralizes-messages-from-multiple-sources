@@ -97,6 +97,40 @@ trường kia.
 Cả hai có thể `null` — nghĩa là "chưa có số liệu", không phải 0. Hiện dấu gạch,
 không hiện `0%`: `0%` nói rằng đã đo và kết quả bằng không, sai hẳn nghĩa.
 
+**Bổ sung sau khi gọi API thật (GĐ3):** hai chỉ số cho hai kết quả **khác
+nhau** trong cùng một kỳ, nên đây không phải trường hợp hiếm mà là chuyện
+thường ngày trên cùng một màn hình:
+
+| Chỉ số | Nguồn | `actual_value` khi chưa có gì |
+|---|---|---|
+| `CONVERSATIONS_CLOSED` | `_dem_hoi_thoai_dong` trả `Decimal(count)` | `"0"` — **đã đo, bằng không** |
+| `AVG_RESPONSE_MINUTES` | `_phut_phan_hoi_tb` trả `None` khi chưa có mẫu | `null` — **chưa đo được** |
+
+Vì vậy FE tuyệt đối không được gộp hai thứ (kiểu `Number(x) || 0`): làm thế là
+biến "chưa có dữ liệu" thành "nhân viên không làm gì". `soKpi()` giữ hai nhánh
+tách bạch và có test khoá cả hai chiều.
+
+### RB-10 — Đặt mục tiêu KPI là **ghi đè**, không phải tạo trùng
+
+`SetKpiTarget` tra mục tiêu cũ theo (đối tượng, chỉ số, kỳ); có rồi thì gọi
+`change_target` thay vì báo lỗi trùng. Xác nhận bằng lời gọi thật: gọi
+`POST /kpi-targets` hai lần với cùng khoá trả về **cùng `id`**, giá trị mới,
+status 201 cả hai lần.
+
+Hệ quả cho UI: **một hộp thoại dùng cho cả "đặt" lẫn "sửa"**, không cần endpoint
+sửa riêng. Khi sửa thì khoá (đối tượng + chỉ số) hiện chỉ-đọc — cho đổi thì
+người dùng tưởng đang sửa dòng đang đứng, thực ra là ghi đè sang một mục tiêu
+khác.
+
+### RB-11 — Kỳ KPI phải gửi **đủ cặp** năm + tháng
+
+`GET /kpi-targets` chỉ dựng `KpiPeriod` khi có **cả hai** tham số. Gửi lẻ
+`period_year` thì bộ lọc bị bỏ qua **trong im lặng** — không lỗi, không cảnh
+báo, chỉ là trả về mọi kỳ. Đã xác nhận: gửi mỗi `period_year=2026` trả 2 dòng
+thuộc hai kỳ khác nhau.
+
+Nên màn KPI luôn giữ cả hai ô chọn có giá trị, không bao giờ để trống một cái.
+
 ## 4. Màn Ca làm việc
 
 Hai phần trên cùng một trang, vì chúng luôn được xem cùng nhau:
