@@ -31,6 +31,17 @@ export const khoaQuanTri = {
   },
   phongBan: {
     all: ["quan-tri", "phong-ban"] as const,
+    /**
+     * Số nhân viên của một phòng.
+     *
+     * Đặt dưới nhánh `nguoi-dung` chứ không phải `phong-ban`: con số này đổi
+     * khi DANH SÁCH NGƯỜI DÙNG đổi (thêm người, đổi phòng, vô hiệu hoá), nên
+     * mọi thao tác trên người dùng vô hiệu hoá `nguoiDung.all` là nó tự làm
+     * mới theo. Để dưới `phong-ban` thì phải nhớ vô hiệu hoá hai nhánh mỗi
+     * lần — và chắc chắn sẽ có lúc quên.
+     */
+    demNhanVien: (departmentId: string) =>
+      ["quan-tri", "nguoi-dung", "dem-theo-phong", departmentId] as const,
   },
   kenh: {
     all: ["quan-tri", "kenh"] as const,
@@ -150,6 +161,27 @@ export function layDanhSachPhongBan(
     { limit: 100, offset: 0 },
     signal,
   );
+}
+
+/**
+ * Đếm nhân viên đang hoạt động của một phòng.
+ *
+ * Backend không trả sẵn con số này trong `DepartmentResponse`, nên đếm bằng
+ * `GET /users` rồi đọc `total`. Xin `limit=1` chứ không phải `limit=100`: chỉ
+ * cần `total`, kéo cả danh sách về rồi vứt đi là lãng phí băng thông và bộ nhớ
+ * (backend chặn `limit` tối thiểu là 1, không nhận 0).
+ */
+export function demNhanVienCuaPhong(
+  departmentId: string,
+  signal?: AbortSignal,
+): Promise<number> {
+  return api
+    .get<PageResponse<UserResponse>>(
+      "/users",
+      { department_id: departmentId, is_active: "true", limit: 1, offset: 0 },
+      signal,
+    )
+    .then((trang) => trang.total);
 }
 
 export function taoPhongBan(duLieu: {
