@@ -6,7 +6,16 @@
  */
 
 import { t } from "./i18n";
-import type { AuditAction, ConversationStatus, Platform, Role } from "./types";
+import type {
+  AuditAction,
+  ConversationStatus,
+  KpiMetricType,
+  KpiSubjectType,
+  Platform,
+  RequestStatus,
+  RequestType,
+  Role,
+} from "./types";
 
 // Nhãn lấy từ từ điển i18n — một nguồn duy nhất, đổi ngôn ngữ là đổi cả đây.
 export const NHAN_TRANG_THAI: Record<ConversationStatus, string> = {
@@ -165,4 +174,179 @@ export function lopBadgeHanhDong(hanhDong: AuditAction): string {
   if (nhom === "user") return "bg-zalo-bg text-zalo-fg";
   if (nhom === "department") return "bg-admin-bg text-admin-fg";
   return "bg-da-dong-bg text-da-dong-fg";
+}
+
+// ---------------------------------------------------------------------------
+// Nhân sự (#F3)
+// ---------------------------------------------------------------------------
+
+/** Nhãn 3 loại đơn. RB-9: `Record` bắt TypeScript đòi đủ khoá. */
+export const NHAN_LOAI_DON: Record<RequestType, string> = {
+  NGHI_PHEP: t("loaiDon.NGHI_PHEP"),
+  TANG_LUONG: t("loaiDon.TANG_LUONG"),
+  KHAC: t("loaiDon.KHAC"),
+};
+
+/** Nhãn 4 trạng thái đơn. */
+export const NHAN_TRANG_THAI_DON: Record<RequestStatus, string> = {
+  CHO_DUYET: t("trangThaiDon.CHO_DUYET"),
+  DA_DUYET: t("trangThaiDon.DA_DUYET"),
+  TU_CHOI: t("trangThaiDon.TU_CHOI"),
+  DA_HUY: t("trangThaiDon.DA_HUY"),
+};
+
+/**
+ * Lớp badge trạng thái đơn.
+ *
+ * `DA_HUY` dùng màu xám như `TU_CHOI` nhưng KHÔNG cùng ý nghĩa: từ chối là
+ * quyết định của người duyệt, thu hồi là người gửi tự rút. Nhãn chữ phân biệt
+ * hai cái đó, màu chỉ nói "không còn chờ xử lý".
+ */
+export const LOP_BADGE_TRANG_THAI_DON: Record<RequestStatus, string> = {
+  CHO_DUYET: "bg-cho-phan-bg text-cho-phan-fg",
+  DA_DUYET: "bg-dang-mo-bg text-dang-mo-fg",
+  TU_CHOI: "bg-danger-bg text-danger-fg",
+  DA_HUY: "bg-da-dong-bg text-da-dong-fg",
+};
+
+/**
+ * Giờ "HH:MM" từ chuỗi "HH:MM:SS" của backend.
+ *
+ * Cắt chuỗi chứ không qua `Date`: giá trị này là giờ trong ngày, không gắn với
+ * ngày nào cả — đưa qua `Date` sẽ kéo theo múi giờ và làm lệch giờ hiển thị.
+ */
+export function gioNgan(gio: string): string {
+  return gio.slice(0, 5);
+}
+
+/** Ngày "DD/MM/YYYY" từ chuỗi ISO "YYYY-MM-DD". Ghép tay, không qua `Date`. */
+export function ngayVN(iso: string): string {
+  const [nam, thang, ngay] = iso.slice(0, 10).split("-");
+  return `${ngay}/${thang}/${nam}`;
+}
+
+/**
+ * Bảy ngày của tuần chứa `moc`, dạng "YYYY-MM-DD", **bắt đầu từ thứ Hai**.
+ *
+ * `getDay()` trả 0 cho Chủ nhật, nên phải quy đổi: Chủ nhật lùi 6 ngày chứ
+ * không phải tiến 1. Đây là chỗ lệch một ngày kinh điển của lịch tuần.
+ *
+ * Tính trên giờ ĐỊA PHƯƠNG rồi mới ghép chuỗi. Dùng `toISOString()` sẽ đổi sang
+ * UTC và ở múi giờ dương (như VN, UTC+7) ngày sẽ lùi lại một hôm.
+ */
+export function tuanChua(moc: Date): string[] {
+  const thu = moc.getDay();
+  const lui = thu === 0 ? 6 : thu - 1;
+  const thuHai = new Date(moc.getFullYear(), moc.getMonth(), moc.getDate() - lui);
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(thuHai.getFullYear(), thuHai.getMonth(), thuHai.getDate() + i);
+    const thang = String(d.getMonth() + 1).padStart(2, "0");
+    const ngay = String(d.getDate()).padStart(2, "0");
+    return `${d.getFullYear()}-${thang}-${ngay}`;
+  });
+}
+
+/** Tên thứ ngắn cho tiêu đề cột lịch. Index 0 = thứ Hai. */
+export const THU_NGAN = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"] as const;
+
+/**
+ * Khung giờ ca có hợp lệ không (RB-4).
+ *
+ * Backend đòi **giờ kết thúc phải SAU giờ bắt đầu** — `shift.py` ghi rõ "ca
+ * không qua nửa đêm ở #4", và trả 422 `INVALID_SHIFT_WINDOW` nếu vi phạm. Ban
+ * đầu tôi tưởng ngược lại (vì #3 có xử lý ca bắc qua nửa đêm) và chỉ biết khi
+ * gọi thật.
+ *
+ * So chuỗi "HH:MM" trực tiếp được vì định dạng có độ dài cố định và thứ tự từ
+ * điển trùng thứ tự thời gian.
+ */
+export function khungGioHopLe(batDau: string, ketThuc: string): boolean {
+  return ketThuc > batDau;
+}
+
+
+// ---------------------------------------------------------------------------
+// KPI (#F3 GĐ3)
+// ---------------------------------------------------------------------------
+
+/** Nhãn 2 loại chỉ số. RB-9: `Record` bắt TypeScript đòi đủ khoá. */
+export const NHAN_CHI_SO_KPI: Record<KpiMetricType, string> = {
+  CONVERSATIONS_CLOSED: t("kpi.CONVERSATIONS_CLOSED"),
+  AVG_RESPONSE_MINUTES: t("kpi.AVG_RESPONSE_MINUTES"),
+};
+
+/** Nhãn 2 loại đối tượng áp mục tiêu. */
+export const NHAN_DOI_TUONG_KPI: Record<KpiSubjectType, string> = {
+  USER: t("kpi.doiTuongUser"),
+  DEPARTMENT: t("kpi.doiTuongPhong"),
+};
+
+/**
+ * Đơn vị của từng chỉ số — hiện kèm giá trị thực đạt.
+ *
+ * Bắt buộc phải có: "30" một mình thì không biết là 30 hội thoại hay 30 phút,
+ * mà hai cái ngược chiều nhau về ý nghĩa tốt/xấu (RB-8).
+ */
+export const DON_VI_KPI: Record<KpiMetricType, string> = {
+  CONVERSATIONS_CLOSED: t("kpi.donViHoiThoai"),
+  AVG_RESPONSE_MINUTES: t("kpi.donViPhut"),
+};
+
+/** Dấu gạch dùng cho mọi ô "chưa có số liệu". */
+export const DAU_GACH = "—";
+
+/**
+ * Hiện một số đo của KPI (`target_value`, `actual_value`).
+ *
+ * **`null` và `0` là hai chuyện khác nhau** và đều xảy ra thật — đã đối chiếu
+ * bằng lời gọi thật, hai chỉ số cho hai kết quả khác nhau trong cùng một kỳ:
+ *
+ * - `CONVERSATIONS_CLOSED` trả `"0"` — `_dem_hoi_thoai_dong` luôn trả về một số
+ *   đếm, nên 0 nghĩa là **đã đo, và bằng không**.
+ * - `AVG_RESPONSE_MINUTES` trả `null` — `_phut_phan_hoi_tb` trả `None` khi chưa
+ *   có mẫu nào, nghĩa là **chưa đo được**.
+ *
+ * Gộp hai thứ này lại (ví dụ `Number(x) || 0`) là xoá mất sự khác biệt đó:
+ * người quản lý sẽ đọc "chưa có dữ liệu" thành "nhân viên không làm gì".
+ *
+ * Backend trả `Decimal` dạng chuỗi ("55.00"), giữ nguyên chuỗi — chỉ cắt đuôi
+ * ".00" cho dễ đọc, không đưa qua `Number` để khỏi sai số.
+ */
+export function soKpi(gia: string | null): string {
+  if (gia === null) return DAU_GACH;
+  return gia.includes(".") ? gia.replace(/\.?0+$/, "") : gia;
+}
+
+/**
+ * Hiện phần trăm hoàn thành.
+ *
+ * `null` khi chưa có thực đạt **hoặc** khi mẫu số bằng 0 — cả hai đều là "không
+ * tính được", hiện dấu gạch chứ không hiện "0%".
+ */
+export function phanTramKpi(phanTram: string | null): string {
+  if (phanTram === null) return DAU_GACH;
+  return `${soKpi(phanTram)}%`;
+}
+
+/**
+ * Lớp màu theo mức hoàn thành.
+ *
+ * Tô thẳng theo `achievement_percent` mà KHÔNG xét chỉ số nào ngược chiều:
+ * backend đã chuẩn hoá chiều (RB-8) — với `AVG_RESPONSE_MINUTES` nó tính
+ * `target / actual`, nên **≥ 100% luôn là tốt** cho cả hai chỉ số. Thêm logic
+ * đảo chiều ở đây là thừa và sẽ tô ngược.
+ */
+export function lopMucKpi(phanTram: string | null): string {
+  if (phanTram === null) return "text-muted";
+  const so = Number(phanTram);
+  if (!Number.isFinite(so)) return "text-muted";
+  if (so >= 100) return "text-dang-mo-fg";
+  if (so >= 80) return "text-foreground";
+  return "text-danger-fg";
+}
+
+/** Kỳ KPI dạng "Tháng 9/2026". */
+export function kyKpi(nam: number, thang: number): string {
+  return t("kpi.ky", { thang: String(thang), nam: String(nam) });
 }

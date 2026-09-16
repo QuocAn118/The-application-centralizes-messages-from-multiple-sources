@@ -3,9 +3,11 @@
 /**
  * Thanh điều hướng dọc bên trái (mockup Stitch).
  *
- * "Nhân sự" / "Báo cáo" còn để dạng chưa dùng được: chúng thuộc các sub-project
- * FE sau (#F3, #F5). "Cấu hình" đã mở ở #F2 — nhưng chỉ cho Admin/Manager;
- * Staff vẫn thấy mục khoá như cũ vì họ không có màn nào bên trong.
+ * "Báo cáo" còn để dạng chưa dùng được — thuộc #F5.
+ *
+ * Hai mục đã mở khác nhau ở chỗ ai vào được:
+ * - "Nhân sự" (#F3): **mọi vai**, Staff cũng xem ca và gửi đơn được.
+ * - "Cấu hình" (#F2): chỉ Admin/Manager; Staff vẫn thấy mục khoá.
  */
 
 import Link from "next/link";
@@ -19,6 +21,7 @@ export function NavRail() {
   const { user, logout } = useAuth();
   const dangOInbox = pathname.startsWith("/inbox");
   const dangOQuanTri = pathname.startsWith("/quan-tri");
+  const dangONhanSu = pathname.startsWith("/nhan-su");
   const moKhoaCauHinh = user ? vaoDuocKhuQuanTri(user.role) : false;
 
   const chuCaiDau = user?.full_name?.trim()?.[0]?.toUpperCase() ?? "?";
@@ -42,20 +45,27 @@ export function NavRail() {
         {t("nav.hopThu")}
       </Link>
 
-      {[
-        { nhan: t("nav.nhanSu"), icon: <IconNhanSu /> },
-        { nhan: t("nav.baoCao"), icon: <IconBaoCao /> },
-      ].map((muc) => (
-        <span
-          key={muc.nhan}
-          title={t("nav.sauNay")}
-          aria-disabled="true"
-          className="flex w-14 cursor-not-allowed flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-medium text-muted-soft/50"
-        >
-          {muc.icon}
-          {muc.nhan}
-        </span>
-      ))}
+      <Link
+        href="/nhan-su/don-tu"
+        aria-current={dangONhanSu ? "true" : undefined}
+        className={`flex w-14 flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-medium transition ${
+          dangONhanSu
+            ? "bg-primary-soft text-primary"
+            : "text-muted-soft hover:bg-surface"
+        }`}
+      >
+        <IconNhanSu />
+        {t("nav.nhanSu")}
+      </Link>
+
+      <span
+        title={t("nav.sauNay")}
+        aria-disabled="true"
+        className="flex w-14 cursor-not-allowed flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-medium text-muted-soft/50"
+      >
+        <IconBaoCao />
+        {t("nav.baoCao")}
+      </span>
 
       {moKhoaCauHinh ? (
         <Link
