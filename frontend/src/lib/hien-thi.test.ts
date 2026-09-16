@@ -10,16 +10,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   LOP_BADGE_KENH,
   LOP_BADGE_VAI,
+  LOP_BADGE_TRANG_THAI_DON,
   NHAN_HANH_DONG,
   NHAN_KENH,
+  NHAN_LOAI_DON,
+  NHAN_TRANG_THAI_DON,
   NHAN_VAI,
   chuCaiDau,
   lopBadgeHanhDong,
+  gioNgan,
   mocNgan,
+  ngayVN,
   nhomCuaHanhDong,
   tenKhach,
 } from "./hien-thi";
-import type { AuditAction, Platform, Role } from "./types";
+import type {
+  AuditAction,
+  Platform,
+  RequestStatus,
+  RequestType,
+  Role,
+} from "./types";
 
 describe("mocNgan", () => {
   beforeEach(() => {
@@ -170,5 +181,68 @@ describe("lopBadgeHanhDong — hai dòng cần thấy ngay", () => {
     expect(lopBadgeHanhDong("auth.login_failed")).not.toBe(
       lopBadgeHanhDong("auth.login_succeeded"),
     );
+  });
+});
+
+/**
+ * RB-9 cho #F3 — hai enum đơn từ.
+ *
+ * Danh sách liệt kê tay, chép từ `hrm/domain/value_objects/request_kind.py`.
+ * Không đọc ngược từ chính bảng đang kiểm: làm thế thì bảng thiếu khoá nào test
+ * cũng không biết.
+ */
+const MOI_LOAI_DON: RequestType[] = ["NGHI_PHEP", "TANG_LUONG", "KHAC"];
+const MOI_TRANG_THAI_DON: RequestStatus[] = [
+  "CHO_DUYET",
+  "DA_DUYET",
+  "TU_CHOI",
+  "DA_HUY",
+];
+
+describe("NHAN_LOAI_DON (RB-9)", () => {
+  it("có đúng 3 giá trị, khớp enum backend", () => {
+    expect(Object.keys(NHAN_LOAI_DON).sort()).toEqual([...MOI_LOAI_DON].sort());
+  });
+
+  it.each(MOI_LOAI_DON)("%s có nhãn tiếng Việt", (loai) => {
+    expect(NHAN_LOAI_DON[loai]?.trim().length).toBeGreaterThan(0);
+    expect(NHAN_LOAI_DON[loai]).not.toBe(loai);
+  });
+});
+
+describe("NHAN_TRANG_THAI_DON (RB-9)", () => {
+  it("có đúng 4 giá trị, khớp enum backend", () => {
+    expect(Object.keys(NHAN_TRANG_THAI_DON).sort()).toEqual(
+      [...MOI_TRANG_THAI_DON].sort(),
+    );
+  });
+
+  it.each(MOI_TRANG_THAI_DON)("%s có nhãn và lớp badge", (tt) => {
+    expect(NHAN_TRANG_THAI_DON[tt]?.trim().length).toBeGreaterThan(0);
+    expect(LOP_BADGE_TRANG_THAI_DON[tt]?.trim().length).toBeGreaterThan(0);
+  });
+
+  it("TU_CHOI và DA_HUY có NHÃN khác nhau dù đều là kết thúc", () => {
+    // Từ chối là quyết định của người duyệt; thu hồi là người gửi tự rút. Gộp
+    // nhãn sẽ giấu mất khác biệt đó.
+    expect(NHAN_TRANG_THAI_DON.TU_CHOI).not.toBe(NHAN_TRANG_THAI_DON.DA_HUY);
+  });
+});
+
+describe("gioNgan / ngayVN", () => {
+  it("cắt giây khỏi giờ backend trả về", () => {
+    expect(gioNgan("22:00:00")).toBe("22:00");
+    expect(gioNgan("06:30:00")).toBe("06:30");
+  });
+
+  it("đổi ngày ISO sang DD/MM/YYYY", () => {
+    expect(ngayVN("2026-09-20")).toBe("20/09/2026");
+  });
+
+  it("không đi qua Date nên không lệch múi giờ", () => {
+    // Nếu dùng `new Date("2026-01-01")` rồi lấy ngày địa phương, ở múi giờ âm
+    // sẽ ra 31/12/2025. Ghép chuỗi thì không bao giờ lệch.
+    expect(ngayVN("2026-01-01")).toBe("01/01/2026");
+    expect(ngayVN("2026-12-31T17:00:00Z")).toBe("31/12/2026");
   });
 });

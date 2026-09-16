@@ -229,3 +229,119 @@ export interface ThamSoNguoiDung {
   limit: number;
   offset: number;
 }
+
+// ---------------------------------------------------------------------------
+// Nhân sự (#F3) — khớp `hrm/presentation/schemas/hrm_schemas.py`
+// ---------------------------------------------------------------------------
+
+/**
+ * Mẫu ca làm việc.
+ *
+ * `start_time`/`end_time` là giờ dạng "HH:MM:SS" (không có ngày). **`end_time`
+ * nhỏ hơn `start_time` là HỢP LỆ** — ca qua đêm, ví dụ 22:00–06:00 (RB-4).
+ */
+export interface Shift {
+  id: string;
+  department_id: string;
+  name: string;
+  start_time: string;
+  end_time: string;
+  is_active: boolean;
+}
+
+/**
+ * Một buổi phân ca: ai làm ca nào, ngày nào.
+ *
+ * `start_time`/`end_time` được **chụp lại** từ mẫu ca lúc phân, nên sửa mẫu ca
+ * sau đó không đổi các buổi đã phân.
+ */
+export interface ShiftAssignment {
+  id: string;
+  shift_id: string;
+  user_id: string;
+  department_id: string;
+  /** "YYYY-MM-DD". */
+  work_date: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+}
+
+/** Ba loại đơn cố định — backend không có form builder động. */
+export type RequestType = "NGHI_PHEP" | "TANG_LUONG" | "KHAC";
+
+/**
+ * Vòng đời đơn từ.
+ * - `CHO_DUYET`: vừa gửi, còn thu hồi được.
+ * - `DA_DUYET` / `TU_CHOI`: quyết định cuối, bất biến.
+ * - `DA_HUY`: người gửi tự thu hồi.
+ */
+export type RequestStatus = "CHO_DUYET" | "DA_DUYET" | "TU_CHOI" | "DA_HUY";
+
+/**
+ * Một đơn từ.
+ *
+ * Cố ý **không có vai của người gửi** — chỉ `requester_id`. Mà quyền duyệt lại
+ * phụ thuộc vai đó (RB-2), nên FE phải tra ngược qua danh sách người dùng.
+ *
+ * `leave_start`/`leave_end` chỉ có với `NGHI_PHEP`.
+ */
+export interface LeaveRequest {
+  id: string;
+  requester_id: string;
+  department_id: string;
+  request_type: RequestType;
+  reason: string;
+  status: RequestStatus;
+  created_at: string;
+  leave_start: string | null;
+  leave_end: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_reason: string | null;
+}
+
+/**
+ * Chỉ số KPI đo được.
+ * - `CONVERSATIONS_CLOSED`: số hội thoại đã đóng (càng cao càng tốt).
+ * - `AVG_RESPONSE_MINUTES`: phút phản hồi trung bình (càng THẤP càng tốt).
+ */
+export type KpiMetricType = "CONVERSATIONS_CLOSED" | "AVG_RESPONSE_MINUTES";
+
+/** Mục tiêu KPI áp cho một nhân viên hay cả phòng ban. */
+export type KpiSubjectType = "USER" | "DEPARTMENT";
+
+/** `target_value` là chuỗi vì backend trả `Decimal` — không parse thành số để tính. */
+export interface KpiTarget {
+  id: string;
+  subject_type: KpiSubjectType;
+  subject_id: string;
+  department_id: string;
+  metric_type: KpiMetricType;
+  period_year: number;
+  period_month: number;
+  target_value: string;
+}
+
+/**
+ * Tiến độ KPI.
+ *
+ * `actual_value` và `achievement_percent` **chỉ đọc** — lấy từ nguồn hiệu suất
+ * (Inbox), không nhập tay (RB-3).
+ *
+ * `null` nghĩa là **chưa có số liệu**, KHÔNG phải 0. `achievement_percent` cũng
+ * `null` khi mẫu số bằng 0. Hiện dấu gạch, không hiện "0%".
+ *
+ * Backend đã chuẩn hoá chiều: **≥ 100% luôn là tốt** cho cả hai chỉ số, kể cả
+ * `AVG_RESPONSE_MINUTES` (tính `target / actual`) — xem RB-8.
+ */
+export interface KpiProgress {
+  subject_type: KpiSubjectType;
+  subject_id: string;
+  metric_type: KpiMetricType;
+  period_year: number;
+  period_month: number;
+  target_value: string;
+  actual_value: string | null;
+  achievement_percent: string | null;
+}
