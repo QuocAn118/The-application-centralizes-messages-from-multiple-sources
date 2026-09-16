@@ -374,6 +374,42 @@ const VI = {
   "lich.trong": "Chưa xếp ca nào trong tuần này.",
   "lich.themVaoO": "Xếp ca ngày {ngay}",
 
+  // KPI (#F3 GĐ3)
+  "kpi.tieuDe": "Mục tiêu KPI",
+  "kpi.datMucTieu": "Đặt mục tiêu",
+  "kpi.suaMucTieu": "Sửa mục tiêu",
+  "kpi.ky": "Tháng {thang}/{nam}",
+  "kpi.chonKy": "Kỳ",
+  "kpi.chonThang": "Tháng",
+  "kpi.chonNam": "Năm",
+  "kpi.cotDoiTuong": "Đối tượng",
+  "kpi.cotChiSo": "Chỉ số",
+  "kpi.cotMucTieu": "Mục tiêu",
+  "kpi.cotThucDat": "Thực đạt",
+  "kpi.cotHoanThanh": "Hoàn thành",
+  "kpi.chiSo": "Chỉ số",
+  "kpi.loaiDoiTuong": "Áp cho",
+  "kpi.doiTuongUser": "Nhân viên",
+  "kpi.doiTuongPhong": "Cả phòng",
+  "kpi.chonNhanVien": "Nhân viên",
+  "kpi.chonPhong": "Phòng ban",
+  "kpi.giaTriMucTieu": "Giá trị mục tiêu",
+  "kpi.CONVERSATIONS_CLOSED": "Hội thoại đã đóng",
+  "kpi.AVG_RESPONSE_MINUTES": "Phút phản hồi trung bình",
+  "kpi.donViHoiThoai": "hội thoại",
+  "kpi.donViPhut": "phút",
+  "kpi.chuaCoMucTieu": "Chưa có mục tiêu KPI nào trong kỳ này.",
+  "kpi.loiTai": "Không tải được mục tiêu KPI.",
+  "kpi.dangTinh": "Đang tính…",
+  // Nói rõ vì sao ô trống, nếu không người dùng sẽ đọc dấu gạch thành số 0.
+  "kpi.chuaCoSoLieu": "Chưa có số liệu trong kỳ này",
+  "kpi.ghiChuThucDat":
+    "Giá trị thực đạt và phần trăm hoàn thành lấy tự động từ dữ liệu hội thoại, không nhập tay.",
+  "kpi.deDatLai": "Đặt lại giá trị cho cùng đối tượng và kỳ sẽ ghi đè mục tiêu cũ.",
+  "kpi.khongDatDuoc": "Chỉ quản lý và quản trị viên đặt được mục tiêu KPI.",
+  "kpi.giaTriPhaiDuong": "Giá trị mục tiêu không được âm.",
+  "kpi.khongCoNhanVien": "Phòng này chưa có nhân viên đang hoạt động.",
+
   // Quản trị — lỗi
   //
   // Backend ĐÃ trả thông điệp tiếng Việt đầy đủ cho mọi vi phạm quy tắc nghiệp

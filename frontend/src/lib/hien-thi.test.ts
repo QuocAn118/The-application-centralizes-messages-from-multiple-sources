@@ -13,7 +13,14 @@ import {
   LOP_BADGE_TRANG_THAI_DON,
   NHAN_HANH_DONG,
   NHAN_KENH,
+  DAU_GACH,
+  DON_VI_KPI,
+  NHAN_CHI_SO_KPI,
+  NHAN_DOI_TUONG_KPI,
   NHAN_LOAI_DON,
+  lopMucKpi,
+  phanTramKpi,
+  soKpi,
   NHAN_TRANG_THAI_DON,
   NHAN_VAI,
   chuCaiDau,
@@ -28,6 +35,8 @@ import {
 } from "./hien-thi";
 import type {
   AuditAction,
+  KpiMetricType,
+  KpiSubjectType,
   Platform,
   RequestStatus,
   RequestType,
@@ -311,5 +320,125 @@ describe("khungGioHopLe (RB-4)", () => {
 
   it("so được cả chuỗi có giây", () => {
     expect(khungGioHopLe("08:00:00", "17:00:00")).toBe(true);
+  });
+});
+
+
+/**
+ * RB-9 cho KPI — hai enum còn lại của #F3.
+ *
+ * Liệt kê tay, KHÔNG đọc ngược từ chính bảng đang kiểm: đọc ngược thì bảng
+ * thiếu khoá nào test cũng thiếu khoá đó và luôn xanh.
+ */
+const MOI_CHI_SO: KpiMetricType[] = ["CONVERSATIONS_CLOSED", "AVG_RESPONSE_MINUTES"];
+const MOI_DOI_TUONG: KpiSubjectType[] = ["USER", "DEPARTMENT"];
+
+describe("NHAN_CHI_SO_KPI / DON_VI_KPI (RB-9)", () => {
+  it("phủ đủ mọi chỉ số, không thừa không thiếu", () => {
+    expect(Object.keys(NHAN_CHI_SO_KPI).sort()).toEqual([...MOI_CHI_SO].sort());
+    expect(Object.keys(DON_VI_KPI).sort()).toEqual([...MOI_CHI_SO].sort());
+  });
+
+  it.each(MOI_CHI_SO)("%s có nhãn tiếng Việt và đơn vị", (chiSo) => {
+    expect(NHAN_CHI_SO_KPI[chiSo]?.trim().length).toBeGreaterThan(0);
+    expect(NHAN_CHI_SO_KPI[chiSo]).not.toBe(chiSo);
+    expect(DON_VI_KPI[chiSo]?.trim().length).toBeGreaterThan(0);
+  });
+
+  it("hai chỉ số có đơn vị KHÁC nhau", () => {
+    // "30" một mình không phân biệt được 30 hội thoại với 30 phút, mà hai thứ
+    // ngược chiều nhau về tốt/xấu.
+    expect(DON_VI_KPI.CONVERSATIONS_CLOSED).not.toBe(DON_VI_KPI.AVG_RESPONSE_MINUTES);
+  });
+});
+
+describe("NHAN_DOI_TUONG_KPI (RB-9)", () => {
+  it("phủ đủ mọi loại đối tượng", () => {
+    expect(Object.keys(NHAN_DOI_TUONG_KPI).sort()).toEqual([...MOI_DOI_TUONG].sort());
+  });
+
+  it.each(MOI_DOI_TUONG)("%s có nhãn tiếng Việt", (loai) => {
+    expect(NHAN_DOI_TUONG_KPI[loai]?.trim().length).toBeGreaterThan(0);
+    expect(NHAN_DOI_TUONG_KPI[loai]).not.toBe(loai);
+  });
+});
+
+/**
+ * RB-3 — `null` (chưa đo được) và `0` (đã đo, bằng không) KHÔNG được gộp.
+ *
+ * Cả hai đều xảy ra thật, trong cùng một kỳ, tuỳ chỉ số — đã đối chiếu bằng lời
+ * gọi thật lên server đang chạy:
+ * - `CONVERSATIONS_CLOSED` trả `actual_value: "0"`, `achievement_percent: "0.0"`
+ * - `AVG_RESPONSE_MINUTES` trả cả hai bằng `null`
+ *
+ * Gộp chúng lại là biến "chưa có dữ liệu" thành "nhân viên không làm gì".
+ */
+describe("soKpi — phân biệt null với 0", () => {
+  it("null hiện dấu gạch", () => {
+    expect(soKpi(null)).toBe(DAU_GACH);
+  });
+
+  it('"0" hiện SỐ KHÔNG, không phải dấu gạch', () => {
+    expect(soKpi("0")).toBe("0");
+    expect(soKpi("0.0")).toBe("0");
+  });
+
+  it("cắt đuôi thập phân thừa của Decimal", () => {
+    expect(soKpi("55.00")).toBe("55");
+    expect(soKpi("15.00")).toBe("15");
+  });
+
+  it("giữ phần thập phân có nghĩa", () => {
+    expect(soKpi("10.50")).toBe("10.5");
+    expect(soKpi("20.05")).toBe("20.05");
+  });
+
+  it("KHÔNG cắt nhầm số 0 ở cuối phần nguyên", () => {
+    // Bẫy: "1000".replace(/\.?0+$/, "") ra "1" nếu quên chặn chuỗi không có
+    // dấu chấm.
+    expect(soKpi("1000")).toBe("1000");
+    expect(soKpi("100")).toBe("100");
+    expect(soKpi("100.00")).toBe("100");
+  });
+});
+
+describe("phanTramKpi", () => {
+  it("null hiện dấu gạch, KHÔNG hiện 0%", () => {
+    expect(phanTramKpi(null)).toBe(DAU_GACH);
+    expect(phanTramKpi(null)).not.toContain("0");
+  });
+
+  it('"0.0" hiện "0%" — đã đo và bằng không', () => {
+    expect(phanTramKpi("0.0")).toBe("0%");
+  });
+
+  it("phần trăm thường", () => {
+    expect(phanTramKpi("120.5")).toBe("120.5%");
+    expect(phanTramKpi("100.0")).toBe("100%");
+  });
+});
+
+/**
+ * RB-8 — backend ĐÃ chuẩn hoá chiều, nên ≥ 100% là tốt cho CẢ HAI chỉ số.
+ * `lopMucKpi` cố ý không nhận `metric_type`: thêm logic đảo chiều ở FE sẽ tô
+ * ngược màu cho `AVG_RESPONSE_MINUTES`.
+ */
+describe("lopMucKpi (RB-8)", () => {
+  it("null thì xám, không tô tốt cũng không tô xấu", () => {
+    expect(lopMucKpi(null)).toBe("text-muted");
+  });
+
+  it("đạt và vượt mục tiêu thì tô tốt", () => {
+    expect(lopMucKpi("100.0")).toBe("text-dang-mo-fg");
+    expect(lopMucKpi("250.0")).toBe("text-dang-mo-fg");
+  });
+
+  it("dưới 80% thì tô cảnh báo", () => {
+    expect(lopMucKpi("0.0")).toBe("text-danger-fg");
+    expect(lopMucKpi("79.9")).toBe("text-danger-fg");
+  });
+
+  it("chuỗi không phải số thì xám, không vỡ", () => {
+    expect(lopMucKpi("khong-phai-so")).toBe("text-muted");
   });
 });
