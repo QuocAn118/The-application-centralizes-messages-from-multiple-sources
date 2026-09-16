@@ -292,6 +292,124 @@ const VI = {
   // đã xoay — thường là bị đánh cắp. Người đọc nhật ký cần thấy ngay mức độ.
   "hanhDong.auth.token_reuse_detected": "Phát hiện token bị dùng lại (nghi ngờ đánh cắp)",
 
+  // Nhân sự (#F3) — chung
+  "nhanSu.tieuDe": "Nhân sự",
+  "nhanSu.tabCa": "Ca làm việc",
+  "nhanSu.tabDon": "Đơn từ",
+  "nhanSu.tabKpi": "KPI",
+
+  // Nhân sự — đơn từ
+  "don.tieuDe": "Đơn từ",
+  "don.guiDon": "Gửi đơn",
+  "don.cotNguoiGui": "Người gửi",
+  "don.cotLoaiDon": "Loại đơn",
+  "don.cotNoiDung": "Nội dung",
+  "don.cotTrangThai": "Trạng thái",
+  "don.cotNgayGui": "Ngày gửi",
+  "don.locTrangThai": "Trạng thái",
+  "don.loaiDon": "Loại đơn",
+  "don.lyDo": "Lý do",
+  "don.tuNgay": "Từ ngày",
+  "don.denNgay": "Đến ngày",
+  "don.duyet": "Duyệt",
+  "don.tuChoi": "Từ chối",
+  "don.thuHoi": "Thu hồi",
+  "don.lyDoTuChoi": "Lý do từ chối",
+  "don.batBuocLyDoTuChoi": "Từ chối bắt buộc phải nêu lý do.",
+  "don.xacNhanDuyet": "Duyệt đơn {loai} của {ten}? Quyết định này không sửa lại được.",
+  "don.xacNhanThuHoi": "Thu hồi đơn này? Đơn đã thu hồi không gửi lại được, phải tạo đơn mới.",
+  "don.chinhBan": "(bạn)",
+  "don.loiTai": "Không tải được danh sách đơn.",
+  "don.khoangNghi": "{tu} → {den}",
+  "don.adminKhongGuiDuoc":
+    "Quản trị viên không thuộc phòng ban nào nên không gửi được đơn từ.",
+  "don.daQuyetDinh": "{nguoi} · {luc}",
+
+  // Nhãn RequestType (3 giá trị) — RB-9: bảng tra phải phủ đủ.
+  "loaiDon.NGHI_PHEP": "Nghỉ phép",
+  "loaiDon.TANG_LUONG": "Tăng lương",
+  "loaiDon.KHAC": "Khác",
+
+  // Nhãn RequestStatus (4 giá trị).
+  "trangThaiDon.CHO_DUYET": "Chờ duyệt",
+  "trangThaiDon.DA_DUYET": "Đã duyệt",
+  "trangThaiDon.TU_CHOI": "Từ chối",
+  "trangThaiDon.DA_HUY": "Đã thu hồi",
+
+  // Nhân sự — ca làm việc
+  "ca.tieuDe": "Mẫu ca",
+  "ca.taoMoi": "Tạo mẫu ca",
+  "ca.sua": "Sửa",
+  "ca.suaTieuDe": "Sửa mẫu ca",
+  "ca.ngung": "Ngừng dùng",
+  "ca.ten": "Tên ca",
+  "ca.batDau": "Giờ bắt đầu",
+  "ca.ketThuc": "Giờ kết thúc",
+  "ca.phongBan": "Phòng ban",
+  // Backend KHONG cho ca qua nua dem ("ca khong qua nua dem o #4" —
+  // shift.py), tra 422 INVALID_SHIFT_WINDOW. Chan truoc va noi ro ly do.
+  "ca.gioKetThucPhaiSau":
+    "Giờ kết thúc phải sau giờ bắt đầu — hệ thống chưa hỗ trợ ca qua đêm.",
+  "ca.dangDung": "Đang dùng",
+  "ca.daNgung": "Đã ngừng",
+  "ca.loiTai": "Không tải được mẫu ca.",
+  "ca.chuaCoCa": "Chưa có mẫu ca nào. Tạo mẫu ca trước khi xếp lịch.",
+  "ca.xacNhanNgung":
+    "Ngừng dùng mẫu ca {ten}? Các buổi đã xếp vẫn giữ nguyên, nhưng không xếp thêm được nữa và KHÔNG BẬT LẠI ĐƯỢC.",
+
+  // Nhân sự — lịch phân ca
+  "lich.tieuDe": "Lịch phân ca",
+  "lich.tuanTruoc": "Tuần trước",
+  "lich.tuanSau": "Tuần sau",
+  "lich.tuanNay": "Tuần này",
+  "lich.cotNhanVien": "Nhân viên",
+  "lich.phanCa": "Xếp ca",
+  "lich.huyPhanCa": "Huỷ ca",
+  "lich.chonCa": "Mẫu ca",
+  "lich.chonNhanVien": "Nhân viên",
+  "lich.ngayLam": "Ngày làm",
+  "lich.loiTai": "Không tải được lịch phân ca.",
+  "lich.khongCoNhanVien": "Phòng này chưa có nhân viên đang hoạt động.",
+  "lich.xacNhanHuy": "Huỷ buổi ca {ca} ngày {ngay} của {ten}?",
+  "lich.trong": "Chưa xếp ca nào trong tuần này.",
+  "lich.themVaoO": "Xếp ca ngày {ngay}",
+
+  // KPI (#F3 GĐ3)
+  "kpi.tieuDe": "Mục tiêu KPI",
+  "kpi.datMucTieu": "Đặt mục tiêu",
+  "kpi.suaMucTieu": "Sửa mục tiêu",
+  "kpi.ky": "Tháng {thang}/{nam}",
+  "kpi.chonKy": "Kỳ",
+  "kpi.chonThang": "Tháng",
+  "kpi.chonNam": "Năm",
+  "kpi.cotDoiTuong": "Đối tượng",
+  "kpi.cotChiSo": "Chỉ số",
+  "kpi.cotMucTieu": "Mục tiêu",
+  "kpi.cotThucDat": "Thực đạt",
+  "kpi.cotHoanThanh": "Hoàn thành",
+  "kpi.chiSo": "Chỉ số",
+  "kpi.loaiDoiTuong": "Áp cho",
+  "kpi.doiTuongUser": "Nhân viên",
+  "kpi.doiTuongPhong": "Cả phòng",
+  "kpi.chonNhanVien": "Nhân viên",
+  "kpi.chonPhong": "Phòng ban",
+  "kpi.giaTriMucTieu": "Giá trị mục tiêu",
+  "kpi.CONVERSATIONS_CLOSED": "Hội thoại đã đóng",
+  "kpi.AVG_RESPONSE_MINUTES": "Phút phản hồi trung bình",
+  "kpi.donViHoiThoai": "hội thoại",
+  "kpi.donViPhut": "phút",
+  "kpi.chuaCoMucTieu": "Chưa có mục tiêu KPI nào trong kỳ này.",
+  "kpi.loiTai": "Không tải được mục tiêu KPI.",
+  "kpi.dangTinh": "Đang tính…",
+  // Nói rõ vì sao ô trống, nếu không người dùng sẽ đọc dấu gạch thành số 0.
+  "kpi.chuaCoSoLieu": "Chưa có số liệu trong kỳ này",
+  "kpi.ghiChuThucDat":
+    "Giá trị thực đạt và phần trăm hoàn thành lấy tự động từ dữ liệu hội thoại, không nhập tay.",
+  "kpi.deDatLai": "Đặt lại giá trị cho cùng đối tượng và kỳ sẽ ghi đè mục tiêu cũ.",
+  "kpi.khongDatDuoc": "Chỉ quản lý và quản trị viên đặt được mục tiêu KPI.",
+  "kpi.giaTriPhaiDuong": "Giá trị mục tiêu không được âm.",
+  "kpi.khongCoNhanVien": "Phòng này chưa có nhân viên đang hoạt động.",
+
   // Quản trị — lỗi
   //
   // Backend ĐÃ trả thông điệp tiếng Việt đầy đủ cho mọi vi phạm quy tắc nghiệp
