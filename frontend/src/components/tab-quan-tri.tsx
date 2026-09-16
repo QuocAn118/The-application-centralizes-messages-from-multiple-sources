@@ -42,7 +42,7 @@ const TAB: Tab[] = [
     riengAdmin: true,
     daDung: true,
   },
-  { duongDan: "/quan-tri/kenh", nhan: "quanTri.tabKenh", riengAdmin: true, daDung: false },
+  { duongDan: "/quan-tri/kenh", nhan: "quanTri.tabKenh", riengAdmin: true, daDung: true },
   {
     duongDan: "/quan-tri/nhat-ky",
     nhan: "quanTri.tabNhatKy",

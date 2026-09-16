@@ -248,6 +248,44 @@ export function suaKenh(
   return api.patch<Channel>(`/channels/${channelId}`, duLieu);
 }
 
+/** Giá trị người dùng gõ vào hộp thoại sửa kênh. */
+export interface ONhapSuaKenh {
+  ten: string;
+  /** Rỗng = giữ token hiện tại. */
+  token: string;
+  /** Rỗng = không gắn phòng nào. */
+  phongId: string;
+}
+
+/**
+ * Dựng thân yêu cầu `PATCH /channels/{id}` từ giá trị các ô nhập.
+ *
+ * Tách khỏi component để **test được đúng mã đang chạy**: hai quy tắc dưới đây
+ * sai thì server vẫn trả 200 và người dùng tưởng đã làm xong, nên không thể
+ * dựa vào việc "thấy lỗi thì biết".
+ *
+ * - **RB-7**: gỡ phòng phải là `clear_department: true`.
+ *   `UpdateChannelRequest` hiểu `department_id: null` là "không đổi", nên gỡ
+ *   sẽ im lặng không có tác dụng.
+ * - **RB-6**: ô token trống = giữ token hiện tại, nên khoá `credential` phải
+ *   VẮNG MẶT hẳn. Gửi `""` bị Pydantic từ chối (`min_length=1`).
+ */
+export function thanSuaKenh(oNhap: ONhapSuaKenh): {
+  name: string;
+  credential?: string;
+  department_id?: string;
+  clear_department?: boolean;
+} {
+  const phongMoi = oNhap.phongId || null;
+  return {
+    name: oNhap.ten.trim(),
+    ...(oNhap.token ? { credential: oNhap.token } : {}),
+    ...(phongMoi === null
+      ? { clear_department: true }
+      : { department_id: phongMoi }),
+  };
+}
+
 export function ngatKenh(channelId: string): Promise<Channel> {
   return api.post<Channel>(`/channels/${channelId}/deactivate`);
 }
