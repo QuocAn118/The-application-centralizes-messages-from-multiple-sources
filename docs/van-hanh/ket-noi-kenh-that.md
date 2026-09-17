@@ -1,9 +1,56 @@
 # Kết nối kênh thật & chạy thử đầu-cuối
 
-Tài liệu này là các bước **chỉ bạn làm được** (cần tài khoản Zalo OA / Meta / Anthropic).
-Phần cấu hình cục bộ đã xong sẵn — xem "Đã xong" ở cuối.
+Tài liệu này là các bước **chỉ bạn làm được** (cần tài khoản Zalo OA / Meta /
+Google AI Studio). Phần cấu hình cục bộ đã xong sẵn — xem "Đã xong" ở cuối.
 
 Mục tiêu: khách nhắn Zalo → tin vào inbox → nhân viên trả lời → khách nhận được.
+
+> **AI phân loại dùng GEMINI (Google), KHÔNG phải Anthropic/Claude.** `.env` đang
+> đặt `LLM_PROVIDER=gemini` với `GEMINI_API_KEY` đã có; `ANTHROPIC_API_KEY` để
+> trống. Log worker in thẳng: *"Phân tích #2 dùng Gemini (model
+> gemini-3.6-flash)"*. Mọi chỗ nhắc "Anthropic" ở bản cũ đều sai — đã sửa.
+
+---
+
+## Chạy TOÀN BỘ để test nhanh (4 tiến trình + tài khoản sẵn)
+
+Bốn cửa sổ terminal, chạy song song. Backend cổng **8003** (khớp
+`frontend/.env.local`), frontend cổng **3000** (bắt buộc — CORS chỉ mở cổng này).
+
+```bash
+# 1. Đường hầm công khai -> backend 8003 (cho webhook Zalo/Meta/Telegram)
+"C:\Program Files (x86)\cloudflared\cloudflared.exe" tunnel --url http://localhost:8003
+
+# 2. Web server
+cd backend && uv run python -m scripts.run_server --port 8003
+
+# 3. Worker job nền (KHÔNG có worker = AI không bao giờ chạy)
+cd backend && uv run python -m scripts.run_worker
+
+# 4. Frontend
+cd frontend && npm run dev      # hoặc: npx next start -p 3000 (bản đã build)
+```
+
+Mở **http://localhost:3000**, đăng nhập bằng một trong ba tài khoản dưới. Đường
+hầm ở bước 1 in ra URL `https://<ngẫu-nhiên>.trycloudflare.com` — **đổi mỗi lần
+chạy lại**, chỉ cần cho webhook (Bước 3 phần kênh), không cần cho việc đăng nhập
+và bấm thử giao diện.
+
+### Tài khoản thử theo vai (mật khẩu: `OmniTest2026!`)
+
+| Vai | Email | Thấy được gì |
+|---|---|---|
+| **Admin** | `kiemchung.f2@congty.vn` | Toàn quyền: mọi phòng, khu Cấu hình, mọi báo cáo |
+| **Manager** | `f3.mgra.76aa2a@congty.vn` | Phòng "F3 A" của mình: duyệt đơn, KPI, từ khoá, báo cáo phòng mình |
+| **Nhân viên** | `f3.staffa.76aa2a@congty.vn` | Ca của mình, gửi đơn, xem từ khoá; **không** vào được Báo cáo/Cấu hình |
+
+> Ba mật khẩu này vừa đặt lại bằng `scripts/reset_password.py` (đúng hasher của
+> ứng dụng), `must_change=false` nên đăng nhập thẳng, không bị bắt đổi. Muốn đổi:
+> `uv run python -m scripts.reset_password --email <email>`.
+>
+> Ba vai đều nằm cùng phòng dữ liệu "F3 A" nên số liệu Manager/Nhân viên khớp
+> nhau; Admin thấy tất cả. Còn nhiều tài khoản khác trong DB nhưng phần lớn
+> `must_change=true` (mật khẩu tạm) — ba tài khoản trên là bộ dùng để test.
 
 ---
 
@@ -68,10 +115,13 @@ SELECT task_name, status, count(*) FROM procrastinate_jobs GROUP BY 1,2;
 
 | Biến | Ý nghĩa |
 |---|---|
-| `LLM_PROVIDER` | `gemini` (mặc định) \| `claude` \| `none` |
-| `GEMINI_API_KEY` | Khoá từ [aistudio.google.com/api-keys](https://aistudio.google.com/api-keys) |
-| `GEMINI_MODEL` | Mặc định `gemini-2.0-flash` — rẻ, nhanh, đủ cho phân loại |
+| `LLM_PROVIDER` | `gemini` (**mặc định, đang dùng**) \| `claude` \| `none` |
+| `GEMINI_API_KEY` | Khoá từ [aistudio.google.com/api-keys](https://aistudio.google.com/api-keys) — **đã có trong `.env`** |
+| `GEMINI_MODEL` | Mặc định `gemini-3.6-flash` — rẻ, nhanh, đủ cho phân loại |
 | `QUEUE_ENABLED` | `true` (mặc định) = chạy nền. `false` = đồng bộ trong webhook |
+
+Muốn đổi sang Claude thì đặt `LLM_PROVIDER=claude` **và** điền `ANTHROPIC_API_KEY`
+(hiện để trống). Mặc định của dự án là Gemini.
 
 Thiếu khoá tương ứng thì phân tích **tắt an toàn**: hội thoại ở lại "Chờ phân"
 cho Manager phân tay, không có gì kẹt.
@@ -107,7 +157,7 @@ ATTACHMENT_PUBLIC_BASE_URL=https://<ngau-nhien>.trycloudflare.com
 |---|---|
 | `ZALO_APP_ID`, `ZALO_OA_SECRET_KEY` | Zalo OA → Quản lý ứng dụng → app của bạn |
 | `META_APP_SECRET` | developers.facebook.com → App → Settings → Basic → App Secret |
-| `ANTHROPIC_API_KEY` | console.anthropic.com → API Keys |
+| `GEMINI_API_KEY` | [aistudio.google.com/api-keys](https://aistudio.google.com/api-keys) — **đã có sẵn**, đây là khoá AI phân loại (không phải Anthropic) |
 
 `WEBHOOK_VERIFY_TOKEN` **đã sinh sẵn** trong `.env` — không cần tạo mới, chỉ cần
 dán đúng chuỗi đó sang ô "Verify Token" ở bước 3.
@@ -172,8 +222,8 @@ curl -X POST http://127.0.0.1:8003/api/v1/channels \
 
 1. Từ điện thoại, nhắn tin cho OA/Page bằng một tài khoản **không phải admin**.
 2. Kiểm tra tin vào DB / hiện ở inbox:
-   - Có `ANTHROPIC_API_KEY`: hội thoại được LLM phân về phòng.
-   - Không có: hội thoại nằm ở `CHO_PHAN`, phải phân phòng tay.
+   - Có `GEMINI_API_KEY` (đang có) + worker chạy: hội thoại được Gemini phân về phòng.
+   - Không có khoá / không chạy worker: hội thoại nằm ở `CHO_PHAN`, phải phân phòng tay.
 3. Mở frontend (`cd frontend && npm run dev` → http://localhost:3000), đăng nhập,
    mở hội thoại, trả lời.
 4. Xác nhận khách **nhận được** tin trên điện thoại.
@@ -271,8 +321,8 @@ curl -X POST http://127.0.0.1:8003/api/v1/channels  \
 ### T5 — Chạy thử đầu-cuối
 
 1. Mở Telegram, tìm bot theo username, bấm **Start**, nhắn một câu.
-2. Tin phải hiện trong inbox. Có `ANTHROPIC_API_KEY` thì hội thoại được phân phòng; không
-   có thì nằm ở `CHO_PHAN`.
+2. Tin phải hiện trong inbox. Có `GEMINI_API_KEY` (đang có) + worker chạy thì hội thoại
+   được Gemini phân phòng; không thì nằm ở `CHO_PHAN`.
 3. Trả lời từ frontend, xác nhận nhận được trong Telegram.
 4. Gửi thử một ảnh (chỉ hoạt động nếu đã đặt `ATTACHMENT_PUBLIC_BASE_URL`).
 
@@ -300,4 +350,4 @@ curl -X POST http://127.0.0.1:8003/api/v1/channels  \
 - `.env.example` — đã bổ sung đủ **mọi** biến cấu hình.
 - Đã kiểm chứng trên server thật: health 200; verify webhook đúng token → trả
   challenge, sai token → 403; webhook ký đúng → 200, ký sai/không ký → 403.
-- Test: 873 passed, 1 skipped.
+- Test: 891 backend passed (1 skipped) + 247 frontend passed (tính đến #F5).
