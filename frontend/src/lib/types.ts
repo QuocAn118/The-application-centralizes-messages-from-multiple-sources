@@ -406,3 +406,64 @@ export interface ConversationAnalysis {
   suggested_department_id: string | null;
   confidence: string | null;
 }
+
+
+// ---------------------------------------------------------------------------
+// Báo cáo (#F5 — analytics, đọc-chỉ)
+// ---------------------------------------------------------------------------
+
+/**
+ * Bốn báo cáo tổng hợp của module #5. **Tất cả trả mảng trần** (không
+ * `PageResponse`) — đã đối chiếu bằng lời gọi thật, không suy từ tên endpoint.
+ *
+ * Điểm chung dễ vấp (đo thật): các báo cáo trả **UUID trần, không có tên**, và
+ * `department_id` có thể `null` (hội thoại `CHO_PHAN` chưa phân phòng). Trung
+ * bình là `null` khi chưa có mẫu — **`null` khác `0`**, không được suy null→0.
+ */
+
+/** Khối lượng tin theo (phòng, kênh). `department_id=null`: chưa phân phòng. */
+export interface ConversationReportItem {
+  department_id: string | null;
+  channel_platform: Platform;
+  inbound_count: number;
+  outbound_count: number;
+  opened_count: number;
+  closed_count: number;
+}
+
+/**
+ * Hiệu suất một nhân viên. `avg_*_seconds=null` nghĩa là **chưa có mẫu** (chưa
+ * phản hồi/đóng hội thoại nào) — đo thật: xuất hiện cùng `handled_count>0`. Hiện
+ * dấu gạch, tuyệt đối không ra "0" (0 giây = phản hồi tức thì, khác hẳn).
+ */
+export interface AgentReportItem {
+  user_id: string;
+  handled_count: number;
+  assigned_count: number;
+  avg_first_response_seconds: number | null;
+  avg_resolution_seconds: number | null;
+}
+
+/**
+ * Ca làm + KPI một nhân viên. `kpi_percent` và `period` đi **CẶP** (đo cả ba
+ * hình dạng thật): `null`/`null` = chưa đặt target → dash; `0.0`/`"2026-09"` =
+ * đã đo, 0% → hiện "0%"; `>0`/`"2026-09"` = phần trăm thật. `period` là kỳ KPI
+ * (`YYYY-MM` = tháng của `to`), không phải cả khoảng báo cáo.
+ */
+export interface WorkforceReportItem {
+  user_id: string;
+  department_id: string | null;
+  shift_count: number;
+  worked_seconds: number;
+  kpi_percent: number | null;
+  period: string | null;
+}
+
+/** Đơn từ theo (phòng, loại, trạng thái). `avg_decision_seconds=null`: chưa có đơn đã quyết. */
+export interface RequestReportItem {
+  department_id: string | null;
+  request_type: RequestType;
+  status: RequestStatus;
+  count: number;
+  avg_decision_seconds: number | null;
+}

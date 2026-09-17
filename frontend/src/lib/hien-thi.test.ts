@@ -35,6 +35,12 @@ import {
   khungGioHopLe,
   tenKhach,
   tuanChua,
+  khoangThoiGian,
+  phanTramKpiSo,
+  maRutGon,
+  tenNguoi,
+  tenPhong,
+  soDem,
 } from "./hien-thi";
 import type {
   AnalysisOutcome,
@@ -497,5 +503,73 @@ describe("doTinCay", () => {
 
   it("chuỗi không phải số thì dấu gạch, không vỡ", () => {
     expect(doTinCay("khong-phai-so")).toBe(DAU_GACH);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Báo cáo (#F5)
+// ---------------------------------------------------------------------------
+
+describe("khoangThoiGian", () => {
+  it("null hiện dấu gạch — chưa có mẫu, KHÔNG phải 0 giây", () => {
+    // Bẫy đo thật: avg_first_response_seconds=null đi cùng handled_count>0.
+    expect(khoangThoiGian(null)).toBe(DAU_GACH);
+    expect(khoangThoiGian(null)).not.toContain("0");
+  });
+
+  it("0 giây là 'phản hồi tức thì', khác hẳn null", () => {
+    expect(khoangThoiGian(0)).toBe("0 giây");
+  });
+
+  it("dưới 60 giây giữ giây; từ 60 lên đổi phút/giờ", () => {
+    expect(khoangThoiGian(45)).toBe("45 giây");
+    expect(khoangThoiGian(178)).toBe("3 phút"); // avg_first_response thật
+    expect(khoangThoiGian(3600)).toBe("1 giờ");
+    expect(khoangThoiGian(187858.5)).toBe("52 giờ 11 phút"); // avg_resolution thật
+  });
+});
+
+describe("phanTramKpiSo", () => {
+  it("null hiện dấu gạch — chưa đặt target, KHÔNG là trượt 0%", () => {
+    expect(phanTramKpiSo(null)).toBe(DAU_GACH);
+  });
+
+  it("0 hiện '0%' — đã đo, hoàn thành 0% (khác null)", () => {
+    // Đo thật: staffA có kpi_percent=0.0, period="2026-09".
+    expect(phanTramKpiSo(0)).toBe("0%");
+  });
+
+  it("phần trăm dương làm tròn", () => {
+    expect(phanTramKpiSo(84.6)).toBe("85%");
+    expect(phanTramKpiSo(100)).toBe("100%");
+  });
+});
+
+describe("tenNguoi / tenPhong / maRutGon", () => {
+  const ten = new Map([["019fd148-249d-7a53-8ed4-24b7723d94fd", "Nguyễn Hoài An"]]);
+
+  it("id có trong map thì trả tên", () => {
+    expect(tenNguoi(ten, "019fd148-249d-7a53-8ed4-24b7723d94fd")).toBe("Nguyễn Hoài An");
+  });
+
+  it("id KHÔNG có trong map thì mã rút gọn, không undefined", () => {
+    // Manager không tra được người ngoài phòng / Admin dept=null.
+    expect(tenNguoi(ten, "019fd148-21d7-71e1-9142-e63b9b86e67e")).toBe("#019fd148");
+    expect(tenNguoi(ten, "019fd148-21d7-71e1-9142-e63b9b86e67e")).not.toContain("undefined");
+  });
+
+  it("tenPhong: null là 'Chưa phân phòng' (CHO_PHAN), không ô trắng", () => {
+    expect(tenPhong(ten, null)).toBe("Chưa phân phòng");
+  });
+
+  it("maRutGon lấy 8 ký tự đầu", () => {
+    expect(maRutGon("019fd148-1ffd-7b42-9185-de81d06af387")).toBe("#019fd148");
+  });
+});
+
+describe("soDem", () => {
+  it("phân nhóm hàng nghìn kiểu vi-VN", () => {
+    expect(soDem(1234)).toBe("1.234");
+    expect(soDem(0)).toBe("0");
   });
 });

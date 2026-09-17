@@ -462,6 +462,46 @@ const VI = {
   "phanTich.chiDoc": "Màn này chỉ để xem. Kết quả do AI tự chạy khi có hội thoại mới.",
   "phanTich.khongRoPhong": "Không xác định được phòng",
 
+  // Báo cáo (#F5)
+  "baoCao.tieuDe": "Báo cáo",
+  "baoCao.tabHoiThoai": "Hội thoại",
+  "baoCao.tabNhanVien": "Nhân viên",
+  "baoCao.tabCaKpi": "Ca & KPI",
+  "baoCao.tabDonTu": "Đơn từ",
+  "baoCao.tuNgay": "Từ ngày",
+  "baoCao.denNgay": "Đến ngày",
+  "baoCao.phong": "Phòng ban",
+  "baoCao.moiPhong": "Tất cả phòng",
+  "baoCao.khoangSai": "\"Từ ngày\" phải trước hoặc bằng \"Đến ngày\".",
+  "baoCao.dangTai": "Đang tải báo cáo…",
+  "baoCao.trong": "Không có dữ liệu trong khoảng này.",
+  "baoCao.loiTai": "Không tải được báo cáo.",
+  "baoCao.chuaPhanPhong": "Chưa phân phòng",
+  "baoCao.tongCong": "Tổng cộng",
+  // Cột — Hội thoại
+  "baoCao.cotPhong": "Phòng ban",
+  "baoCao.cotKenh": "Kênh",
+  "baoCao.cotDenVao": "Tin vào",
+  "baoCao.cotGuiRa": "Tin ra",
+  "baoCao.cotMoMoi": "Mở mới",
+  "baoCao.cotDaDong": "Đã đóng",
+  // Cột — Nhân viên
+  "baoCao.cotNhanVien": "Nhân viên",
+  "baoCao.cotXuLy": "Đã xử lý",
+  "baoCao.cotDuocGan": "Được gán",
+  "baoCao.cotPhanHoiDau": "Phản hồi đầu TB",
+  "baoCao.cotXuLyXong": "Xử lý xong TB",
+  // Cột — Ca & KPI
+  "baoCao.cotSoCa": "Số ca",
+  "baoCao.cotGioCong": "Giờ công",
+  "baoCao.cotKpi": "% KPI",
+  "baoCao.cotKy": "Kỳ KPI",
+  // Cột — Đơn từ
+  "baoCao.cotLoaiDon": "Loại đơn",
+  "baoCao.cotTrangThai": "Trạng thái",
+  "baoCao.cotSoLuong": "Số lượng",
+  "baoCao.cotDuyetTB": "Thời gian duyệt TB",
+
   "loiQuanTri.khongDuQuyen": "Bạn không có quyền thực hiện thao tác này.",
   "loiQuanTri.chung": "Không thực hiện được. Hãy thử lại.",
 } as const;
