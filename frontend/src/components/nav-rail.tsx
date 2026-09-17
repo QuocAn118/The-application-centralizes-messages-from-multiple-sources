@@ -16,6 +16,7 @@ import { t } from "@/lib/i18n";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { vaoDuocKhuQuanTri } from "@/lib/quyen-quan-tri";
+import { vaoDuocKhuBaoCao } from "@/lib/quyen-bao-cao";
 
 export function NavRail() {
   const pathname = usePathname();
@@ -24,7 +25,9 @@ export function NavRail() {
   const dangOQuanTri = pathname.startsWith("/quan-tri");
   const dangONhanSu = pathname.startsWith("/nhan-su");
   const dangOTuKhoa = pathname.startsWith("/tu-khoa");
+  const dangOBaoCao = pathname.startsWith("/bao-cao");
   const moKhoaCauHinh = user ? vaoDuocKhuQuanTri(user.role) : false;
+  const moBaoCao = user ? vaoDuocKhuBaoCao(user.role) : false;
 
   const chuCaiDau = user?.full_name?.trim()?.[0]?.toUpperCase() ?? "?";
 
@@ -73,14 +76,32 @@ export function NavRail() {
         {t("nav.tuKhoa")}
       </Link>
 
-      <span
-        title={t("nav.sauNay")}
-        aria-disabled="true"
-        className="flex w-14 cursor-not-allowed flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-medium text-muted-soft/50"
-      >
-        <IconBaoCao />
-        {t("nav.baoCao")}
-      </span>
+      {moBaoCao ? (
+        <Link
+          href="/bao-cao/hoi-thoai"
+          // `"true"` (khu vực) chứ không `"page"` — như mục Cấu hình.
+          aria-current={dangOBaoCao ? "true" : undefined}
+          className={`flex w-14 flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-medium transition ${
+            dangOBaoCao
+              ? "bg-primary-soft text-primary"
+              : "text-muted-soft hover:bg-surface"
+          }`}
+        >
+          <IconBaoCao />
+          {t("nav.baoCao")}
+        </Link>
+      ) : (
+        // Staff không xem báo cáo tổng hợp (403). Hiện mục khoá, không ẩn hẳn —
+        // để họ biết có khu này mà không bấm vào thứ chắc chắn hỏng.
+        <span
+          title={t("nav.khongDuQuyen")}
+          aria-disabled="true"
+          className="flex w-14 cursor-not-allowed flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-medium text-muted-soft/50"
+        >
+          <IconBaoCao />
+          {t("nav.baoCao")}
+        </span>
+      )}
 
       {moKhoaCauHinh ? (
         <Link
