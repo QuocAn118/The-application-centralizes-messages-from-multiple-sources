@@ -390,3 +390,77 @@ export function doTinCay(giaTri: string | null): string {
   if (!Number.isFinite(so)) return DAU_GACH;
   return `${Math.round(so * 100)}%`;
 }
+
+
+// ---------------------------------------------------------------------------
+// Báo cáo (#F5)
+// ---------------------------------------------------------------------------
+
+/** Số nguyên có dấu phân nhóm hàng nghìn (1234 → "1.234"). */
+const DINH_DANG_SO = new Intl.NumberFormat("vi-VN");
+
+export function soDem(n: number): string {
+  return DINH_DANG_SO.format(n);
+}
+
+/**
+ * Thời lượng từ **giây** sang chữ đọc: "45 giây", "12 phút", "2 giờ 5 phút".
+ *
+ * `null` = **chưa có mẫu** (chưa phản hồi/đóng/quyết đơn nào) → dấu gạch. Đây là
+ * cùng bẫy null-vs-0 của KPI: báo cáo agents đo được `avg_first_response_seconds`
+ * là `null` NGAY CẢ khi `handled_count > 0`. "0 giây" nghĩa là tức thì, khác hẳn
+ * "chưa đo được" — không được suy null → 0.
+ *
+ * Làm tròn tới phút khi ≥ 60 giây (báo cáo không cần độ chính xác tới giây cho
+ * khoảng nhiều ngày); dưới 60 giây giữ nguyên giây cho khỏi ra "0 phút".
+ */
+export function khoangThoiGian(giay: number | null): string {
+  if (giay === null) return DAU_GACH;
+  const s = Math.round(giay);
+  if (s < 60) return `${s} giây`;
+  const tongPhut = Math.round(s / 60);
+  const gio = Math.floor(tongPhut / 60);
+  const phut = tongPhut % 60;
+  if (gio === 0) return `${phut} phút`;
+  if (phut === 0) return `${gio} giờ`;
+  return `${gio} giờ ${phut} phút`;
+}
+
+/**
+ * Phần trăm KPI của báo cáo (số, không phải chuỗi như #F3).
+ *
+ * Ba hình dạng đo thật đi kèm nhau: `null` = chưa đặt target → dấu gạch;
+ * `0` = đã đo, hoàn thành 0% → **"0%"** (KHÁC dấu gạch); `>0` → phần trăm. Suy
+ * `null → 0` là biến "chưa có mục tiêu" thành "trượt hoàn toàn".
+ */
+export function phanTramKpiSo(phanTram: number | null): string {
+  if (phanTram === null) return DAU_GACH;
+  return `${Math.round(phanTram)}%`;
+}
+
+/**
+ * Mã rút gọn từ UUID (8 ký tự đầu, "#a1b2c3d4") — dùng khi KHÔNG tra được tên.
+ *
+ * Vì sao cần: báo cáo trả UUID trần. Với Manager, `/users` chỉ trả người trong
+ * phòng mình và `/users/{id}` người ngoài phòng trả **403**; báo cáo agents lại
+ * chứa cả user `department_id=null` (Admin đã xử lý hội thoại) mà không map nào
+ * của Manager có. Thay vì ô trắng / "undefined" / một lời gọi chắc chắn 403, hiện
+ * mã này để người đọc vẫn phân biệt được các dòng.
+ */
+export function maRutGon(id: string): string {
+  return `#${id.slice(0, 8)}`;
+}
+
+/** Tên người từ map đã tải; thiếu id → mã rút gọn (xem `maRutGon`). */
+export function tenNguoi(ten: Map<string, string>, id: string): string {
+  return ten.get(id) ?? maRutGon(id);
+}
+
+/**
+ * Tên phòng từ map; `null` = **chưa phân phòng** (hội thoại `CHO_PHAN` — xuất
+ * hiện thật trong báo cáo hội thoại); id lạ → mã rút gọn.
+ */
+export function tenPhong(ten: Map<string, string>, id: string | null): string {
+  if (id === null) return t("baoCao.chuaPhanPhong");
+  return ten.get(id) ?? maRutGon(id);
+}
