@@ -23,8 +23,11 @@ function Bang({ khoang, phong }: ThamSoBaoCao) {
     queryFn: ({ signal }) => baoCaoHoiThoai(khoang, phong, signal),
   });
 
-  const tong = (rows: ConversationReportItem[], key: keyof ConversationReportItem) =>
-    rows.reduce((s, r) => s + (r[key] as number), 0);
+  // Chỉ nhận các khoá đếm (số) — không dính department_id/channel_platform,
+  // nên không cần ép kiểu `as number`.
+  type KhoaDem = "inbound_count" | "outbound_count" | "opened_count" | "closed_count";
+  const tong = (rows: ConversationReportItem[], key: KhoaDem) =>
+    rows.reduce((s, r) => s + r[key], 0);
 
   return (
     <BangBaoCao

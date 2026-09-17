@@ -35,10 +35,18 @@ chọn phòng, chỉ thấy phòng mình. Staff bị `ChanTheoVai` chặn + khô
 | 2.4 | Tổng cộng chân bảng, trạng thái rỗng/lỗi, sắp xếp mặc định | `[]` → "Không có dữ liệu" |
 | 2.5 | Review tổng + cập nhật tài liệu + memory | mọi cổng xanh |
 
-### Kiểm chứng GĐ2
-Đối chiếu số bảng với lời gọi API thật. %KPI: staffA (mgrA) hiện "0%" + kỳ
-"2026-09"; nhân viên không có target hiện dash. Bảng agents của Manager: dòng
-Admin (dept=null) hiện mã rút gọn, không "undefined".
+### Kiểm chứng GĐ2 — ĐÃ XONG
+Đối chiếu số bảng với lời gọi API thật (GĐ1 18/18, GĐ2 24/24, #F4 GĐ1 hồi quy
+30/30). %KPI hai hình dạng thấy được trên trình duyệt: staffA hiện "0%" + kỳ
+"2026-09" (đo được, bằng 0), "Nguyễn Hoài An" hiện "—/—" (chưa target). Nhân
+viên: `avg_first_response=null` → "—" cạnh `handled_count>0`.
+
+**Hố kiểm chứng còn lại (mã rút gọn):** không tài khoản mẫu nào dựng được cảnh
+Manager xem báo cáo agents chứa user KHÔNG tra được tên — báo cáo agents của mgrA
+là `[]` (đo thật), và người dept=null duy nhất (Admin) chỉ xuất hiện trong dữ
+liệu phòng Kinh doanh mà không Manager nào của phòng đó có sẵn mật khẩu. Nhánh
+`tenNguoi(map, id-thiếu) → "#xxxxxxxx"` được **khoá bằng unit test**
+(`hien-thi.test.ts`), không dựng cảnh giả để "kiểm cho có".
 
 ---
 
