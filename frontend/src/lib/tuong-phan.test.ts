@@ -10,6 +10,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { tuongPhan } from "./tuong-phan";
 
 const css = readFileSync(join(__dirname, "../app/globals.css"), "utf8");
 
@@ -19,18 +20,6 @@ function token(ten: string, sau = 0): string {
   const m = css.match(new RegExp(`--${ten}:\\s*(#[0-9a-fA-F]{6}\\b|var\\(--([\\w-]+)\\))`));
   if (!m) throw new Error(`Không thấy token --${ten} trong globals.css`);
   return m[2] ? token(m[2], sau + 1) : m[1];
-}
-
-/** Độ sáng tương đối theo WCAG 2.x. */
-function doSang(hex: string): number {
-  const kenh = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
-  const [r, g, b] = kenh.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-function tuongPhan(a: string, b: string): number {
-  const [sang, toi] = [doSang(a), doSang(b)].sort((x, y) => y - x);
-  return (sang + 0.05) / (toi + 0.05);
 }
 
 /** Chữ trên nền: ≥ 4,5:1. */
@@ -88,5 +77,10 @@ describe("tương phản token (WCAG AA)", () => {
 
   it("hàm tương phản đúng với mốc chuẩn (đen/trắng = 21:1)", () => {
     expect(tuongPhan("#000000", "#ffffff")).toBeCloseTo(21, 5);
+  });
+
+  it("nhận cả hex rút gọn #rgb (trình duyệt trả `#111` cho `#111111`)", () => {
+    expect(tuongPhan("#111", "#fff")).toBeCloseTo(tuongPhan("#111111", "#ffffff"), 5);
+    expect(Number.isNaN(tuongPhan("#111", "#fbf6e6"))).toBe(false);
   });
 });

@@ -13,11 +13,28 @@
  */
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { Nut } from "./ui/nut";
 import { NutIcon } from "./ui/nut-icon";
+
+/**
+ * Phần tử cần nhận lại focus khi hộp đóng.
+ *
+ * Mở hộp từ một mục của menu "⋯" (mẫu chuẩn cho thao tác trên dòng) thì lúc đó
+ * focus đang ở MỤC MENU — thứ sắp biến mất cùng menu. Khi đó trả về nút "⋯" đã mở
+ * menu (Radix nối nút đó với menu qua `aria-controls`).
+ */
+function noiMoHop(): HTMLElement | null {
+  const dangFocus = document.activeElement as HTMLElement | null;
+  const menu = dangFocus?.closest<HTMLElement>('[role="menu"]');
+  if (menu?.id) {
+    const nutMoMenu = document.querySelector<HTMLElement>(`[aria-controls="${CSS.escape(menu.id)}"]`);
+    if (nutMoMenu) return nutMoMenu;
+  }
+  return dangFocus;
+}
 
 export function HopThoai({
   tieuDe,
@@ -44,6 +61,25 @@ export function HopThoai({
   chanDuoi: React.ReactNode;
 }) {
   const hopRef = useRef<HTMLDivElement>(null);
+
+  // Trả focus về nút đã mở hộp. Radix chỉ tự làm việc này khi nó giữ vòng đời
+  // mở/đóng qua `Dialog.Trigger`; ở đây NƠI GỌI tự mount/unmount hộp, nên phải
+  // tự làm — đo thật bằng Playwright: đóng bằng Esc thì focus rơi về <body>.
+  // Ghi lại phần tử đang focus NGAY LÚC RENDER ĐẦU (trước khi effect của Radix
+  // kéo focus vào hộp; effect con chạy trước effect cha nên ghi trong effect là
+  // đã muộn).
+  const [focusTruoc] = useState(() => (typeof document === "undefined" ? null : noiMoHop()));
+  useEffect(
+    () => () => {
+      // Đợi Radix gỡ xong bẫy focus. Chỉ trả focus nếu nó đang lạc ở <body> —
+      // không giật focus khỏi chỗ người dùng đã tự chuyển tới.
+      setTimeout(() => {
+        const dangO = document.activeElement;
+        if ((!dangO || dangO === document.body) && focusTruoc?.isConnected) focusTruoc.focus();
+      }, 0);
+    },
+    [focusTruoc],
+  );
   // Chặn mọi đường đóng "ngầm" khi hộp không được phép đóng tuỳ tiện.
   const chanDong = onDong ? undefined : (e: Event) => e.preventDefault();
 
