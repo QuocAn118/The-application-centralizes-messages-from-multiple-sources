@@ -14,6 +14,7 @@
 
 import { useEffect, useId, useRef } from "react";
 import { t } from "@/lib/i18n";
+import { Nut } from "./ui/nut";
 
 export function HopThoai({
   tieuDe,
@@ -105,42 +106,31 @@ export function HopThoai({
 }
 
 /**
- * Kiểu nút dùng chung.
+ * Kiểu nút dùng chung — nay bọc `Nut` của design system (redesign Phần 1).
  *
- * Bỏ `className` khỏi props: hai nút dưới đây tự đặt lớp, nên nhận `className`
- * rồi ghi đè lại là im lặng nuốt mất thứ nơi gọi truyền vào. Muốn kiểu khác thì
- * dùng `<button>` thường.
+ * Giữ nguyên API cũ (`nguyHiem`, không nhận `className`) để 15 hộp thoại đang
+ * gọi không phải sửa gì mà vẫn đổi sang giao diện mới.
  */
-type PropsNut = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "className">;
+type PropsNutCu = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "className">;
 
-/** Nút phụ (Huỷ) — gom lại để ba màn sau không đặt lại chuỗi lớp. */
-export function NutPhu({ children, ...props }: PropsNut) {
+/** Nút phụ (Huỷ). */
+export function NutPhu({ children, ...props }: PropsNutCu) {
   return (
-    <button
-      type="button"
-      {...props}
-      className="rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-muted transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
-    >
+    <Nut bienThe="phu" {...props}>
       {children}
-    </button>
+    </Nut>
   );
 }
 
-/** Nút chính. `nguyHiem` đổi sang màu cảnh báo cho thao tác khó hoàn tác. */
+/** Nút chính. `nguyHiem` đổi sang kiểu cảnh báo cho thao tác khó hoàn tác. */
 export function NutChinh({
   nguyHiem = false,
   children,
   ...props
-}: PropsNut & { nguyHiem?: boolean }) {
+}: PropsNutCu & { nguyHiem?: boolean }) {
   return (
-    <button
-      type="button"
-      {...props}
-      className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 ${
-        nguyHiem ? "bg-danger-fg" : "bg-primary"
-      }`}
-    >
+    <Nut bienThe={nguyHiem ? "nguyHiem" : "chinh"} {...props}>
       {children}
-    </button>
+    </Nut>
   );
 }
