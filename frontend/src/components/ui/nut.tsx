@@ -51,7 +51,7 @@ export type PropsNut = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 export const Nut = forwardRef<HTMLButtonElement, PropsNut>(function Nut(
-  { bienThe = "phu", co = "md", icon: Icon, dangChay = false, className = "", children, disabled, type = "button", ...props },
+  { bienThe = "phu", co = "md", icon: Icon, dangChay = false, className = "", children, disabled, type = "button", onClick, ...props },
   ref,
 ) {
   const IconHien = dangChay ? LoaderCircle : Icon;
@@ -59,9 +59,20 @@ export const Nut = forwardRef<HTMLButtonElement, PropsNut>(function Nut(
     <button
       ref={ref}
       type={type}
-      disabled={disabled || dangChay}
+      // Đang chạy KHÔNG dùng `disabled`: nút đang làm việc không được trông như
+      // nút không dùng được (viền đứt, nền xám). Giữ nguyên kiểu, chặn bấm lặp
+      // bằng `aria-disabled` + chặn cả chuột lẫn bàn phím trong onClick.
+      disabled={disabled}
+      aria-disabled={dangChay || undefined}
       aria-busy={dangChay || undefined}
-      className={`${NEN} ${BIEN_THE[bienThe]} ${CO[co]} ${className}`}
+      onClick={(e) => {
+        if (dangChay) {
+          e.preventDefault();
+          return;
+        }
+        onClick?.(e);
+      }}
+      className={`${NEN} ${BIEN_THE[bienThe]} ${CO[co]} ${dangChay ? "cursor-wait" : ""} ${className}`}
       {...props}
     >
       {IconHien && (
