@@ -131,7 +131,7 @@ const VI = {
   "doiMatKhau.loiChung": "Không đổi được mật khẩu.",
 
   // Quản trị (#F2) — chung
-  "quanTri.tieuDe": "Quản trị",
+  "quanTri.tieuDe": "Cấu hình",
   "quanTri.tabNguoiDung": "Người dùng",
   "quanTri.tabPhongBan": "Phòng ban",
   "quanTri.tabKenh": "Kênh",
