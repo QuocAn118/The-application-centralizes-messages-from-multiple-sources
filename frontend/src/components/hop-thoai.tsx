@@ -1,20 +1,23 @@
 "use client";
 
 /**
- * Khung hộp thoại dùng chung cho khu quản trị (#F2 task 1.3).
+ * Khung hộp thoại dùng chung (#F2 task 1.3) — nay chạy trên Radix Dialog
+ * (redesign Phần 1). API giữ nguyên nên 15 hộp thoại đang gọi không phải sửa.
  *
- * Gom lại phần mọi hộp thoại đều phải làm đúng và rất dễ làm sót: Esc để
- * thoát, bấm nền để đóng (nhưng bấm trong hộp thì không), `role="dialog"` +
- * `aria-modal`, và đưa tiêu điểm vào hộp khi mở.
+ * Radix lo phần trước đây tự viết tay và dễ sót: bẫy focus trong hộp (Tab không
+ * chạy ra trang phía sau), trả focus về nút đã mở hộp khi đóng, Esc, `aria-modal`,
+ * khoá cuộn trang nền.
  *
- * Cố ý KHÔNG viết lại `dialog-phan-phong.tsx` của #F1 theo khung này: nó đang
- * chạy tốt và đây là sub-project frontend khác, sửa màn inbox là mở rộng phạm
- * vi ngoài plan. Nếu sau này gộp thì gộp trong một đợt trả nợ riêng.
+ * Hộp chỉ được render khi đang mở (nơi gọi tự mount/unmount), nên `open` luôn
+ * `true`; đóng = gọi `onDong` để nơi gọi gỡ hộp ra.
  */
 
-import { useEffect, useId, useRef } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { useRef } from "react";
+import { X } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { Nut } from "./ui/nut";
+import { NutIcon } from "./ui/nut-icon";
 
 export function HopThoai({
   tieuDe,
@@ -41,67 +44,64 @@ export function HopThoai({
   chanDuoi: React.ReactNode;
 }) {
   const hopRef = useRef<HTMLDivElement>(null);
-  const idTieuDe = useId();
-
-  useEffect(() => {
-    hopRef.current?.focus();
-    if (!onDong) return;
-    function xuLy(e: KeyboardEvent) {
-      if (e.key === "Escape") onDong?.();
-    }
-    document.addEventListener("keydown", xuLy);
-    return () => document.removeEventListener("keydown", xuLy);
-  }, [onDong]);
+  // Chặn mọi đường đóng "ngầm" khi hộp không được phép đóng tuỳ tiện.
+  const chanDong = onDong ? undefined : (e: Event) => e.preventDefault();
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onDong?.();
+    <Dialog.Root
+      open
+      onOpenChange={(mo) => {
+        if (!mo) onDong?.();
       }}
     >
-      <div
-        ref={hopRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={idTieuDe}
-        className="max-h-[90vh] w-full max-w-[440px] overflow-y-auto rounded-lg bg-white p-6 shadow-xl outline-none"
-      >
-        <div className="flex items-start justify-between gap-4">
-          <h2 id={idTieuDe} className="text-base font-bold text-foreground">
-            {tieuDe}
-          </h2>
-          {onDong && (
-            <button
-              type="button"
-              onClick={onDong}
-              aria-label={t("chung.dong")}
-              className="text-muted-soft transition hover:text-muted"
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/45" />
+        <Dialog.Content
+          ref={hopRef}
+          // Không có mô tả: báo Radix là cố ý (khỏi cảnh báo). CÓ mô tả thì KHÔNG
+          // truyền prop này — truyền `undefined` sẽ đè mất liên kết Radix tự nối.
+          {...(moTa ? {} : { "aria-describedby": undefined })}
+          onEscapeKeyDown={chanDong}
+          onPointerDownOutside={chanDong}
+          onInteractOutside={chanDong}
+          // Đưa focus vào CHÍNH hộp (như bản cũ), không nhảy vào nút × vốn đứng
+          // đầu hộp — mở form ra mà focus nằm ở nút đóng thì lạ tay.
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            hopRef.current?.focus();
+          }}
+          className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] max-w-[480px] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-nb border-2 border-ink bg-card p-6 shadow-nb outline-none"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <Dialog.Title className="text-lg font-extrabold leading-tight text-ink">
+              {tieuDe}
+            </Dialog.Title>
+            {onDong && (
+              <Dialog.Close asChild>
+                <NutIcon icon={X} nhan={t("chung.dong")} co="sm" className="-mr-1 -mt-1" />
+              </Dialog.Close>
+            )}
+          </div>
+
+          {moTa ? (
+            <Dialog.Description className="mt-1 text-sm text-ink-2">{moTa}</Dialog.Description>
+          ) : null}
+
+          {children}
+
+          {loi && (
+            <p
+              role="alert"
+              className="mt-4 rounded-nb border-2 border-bad bg-bad-bg px-3.5 py-2 text-sm font-semibold text-bad"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                <path d="M18 6 6 18M6 6l12 12" />
-              </svg>
-            </button>
+              {loi}
+            </p>
           )}
-        </div>
 
-        {moTa && <p className="mt-1 text-sm text-muted">{moTa}</p>}
-
-        {children}
-
-        {loi && (
-          <p
-            role="alert"
-            className="mt-4 rounded-lg border border-danger-border bg-danger-bg px-3.5 py-2 text-xs text-danger-fg"
-          >
-            {loi}
-          </p>
-        )}
-
-        <div className="mt-6 flex justify-end gap-2">{chanDuoi}</div>
-      </div>
-    </div>
+          <div className="mt-6 flex justify-end gap-2">{chanDuoi}</div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
