@@ -1,55 +1,129 @@
 @import "tailwindcss";
 
 /**
- * Token màu của design system "OmniChat Light Blue" (mockup Stitch 2026-08-05).
+ * Token màu design system Neo-Brutalism (redesign Phần 1, 2026-09-26).
+ * Spec: docs/superpowers/specs/2026-09-26-ui-redesign-p1-design-system.md
  *
- * Cố ý KHÔNG có `prefers-color-scheme: dark`: bản đầu chốt giao diện sáng, để
- * chế độ tối tự bật sẽ làm sai màu badge kênh/trạng thái vốn được chọn theo nền
- * sáng. Nếu sau này làm dark mode thì phải chọn lại cả bộ màu badge.
+ * Mọi cặp chữ/nền được khoá tương phản bằng `src/lib/tuong-phan.test.ts` — test
+ * đó đọc hex thẳng từ file này, nên đổi màu ở đây mà tụt dưới WCAG AA là đỏ.
+ *
+ * Cố ý KHÔNG có `prefers-color-scheme: dark`: app chốt giao diện sáng; bảng màu
+ * badge/nhãn được chọn theo nền kem. Làm dark mode là chọn lại cả bộ.
  */
 :root {
-  --background: #ffffff;
-  --foreground: #101828;
+  /* ---- Neo-Brutalism ---- */
+  --paper: #fbf6e6; /* nền app — kem, không trắng tinh */
+  --card: #fffdf6; /* nền thẻ, ô nhập — ngà */
+  --sunken: #f3ecd6; /* đầu bảng, vùng lõm, nút vô hiệu */
+  --ink: #111111; /* chữ chính, MỌI viền dày, bóng cứng */
+  --ink-2: #4e4a40; /* chữ phụ */
+  --line: #d8cfb5; /* kẻ mảnh 1px BÊN TRONG bảng/lịch/danh sách */
 
-  /* Nền và đường kẻ */
-  --surface: #f5f7fa;
-  --border: #e3e8ef;
-  --muted: #667085;
-  --muted-soft: #98a2b3;
+  --accent: #ffd43b; /* màu chính: nút chính, mục đang chọn, hôm nay */
+  --accent-2: #1f4fd8; /* màu phụ: link, viền focus */
+  --accent-2-soft: #e4eafb;
 
-  /* Màu chủ đạo */
-  --primary: #1d6ff2;
-  --primary-soft: #eff5ff;
+  --ok: #146c2e;
+  --ok-bg: #ddf3e2;
+  --wait: #7a4b00;
+  --wait-bg: #ffedb8;
+  --bad: #a8201a;
+  --bad-bg: #fce1dd;
 
-  /* Badge kênh */
-  --zalo-bg: #e7f0ff;
-  --zalo-fg: #0068ff;
-  --facebook-bg: #e8eefb;
-  --facebook-fg: #1877f2;
-  --instagram-bg: #fdecef;
-  --instagram-fg: #c1358a;
-  --telegram-bg: #e6f4fb;
-  --telegram-fg: #2481cc;
+  /* Màu kênh — CHỈ cho icon nhỏ (≥ 3:1 trên nền thẻ) */
+  --zalo: #0068ff;
+  --facebook: #1877f2;
+  --instagram: #c13584;
+  --telegram: #1c8ac4;
 
-  /* Badge vai trò quản trị (#F2) — tím, tách hẳn khỏi primary xanh */
-  --admin-bg: #ede9fe;
-  --admin-fg: #6941c6;
+  /* 8 màu dịu dùng chung: nhãn khách, màu ca, nền avatar. Chữ ink trên mọi màu ≥ 12:1 */
+  --swatch-1: #ffd9a8;
+  --swatch-2: #ffc2c7;
+  --swatch-3: #c9e7ff;
+  --swatch-4: #cdefc8;
+  --swatch-5: #e5d4ff;
+  --swatch-6: #fff0a6;
+  --swatch-7: #bfede6;
+  --swatch-8: #e9dcc9;
 
-  /* Badge trạng thái hội thoại */
-  --cho-phan-bg: #fff4e5;
-  --cho-phan-fg: #b54708;
-  --dang-mo-bg: #e7f6ec;
-  --dang-mo-fg: #067647;
-  --da-dong-bg: #f2f4f7;
-  --da-dong-fg: #475467;
+  /* ---- Token cũ, ÁNH XẠ sang giá trị mới ----
+   * Màn chưa làm lại (Phần 2–7) vẫn dùng các tên này. Ánh xạ để chúng không vỡ
+   * và được sửa tương phản ngay (muted-soft cũ chỉ 2,58:1).
+   * KHÔNG đổi `primary` sang vàng: nút cũ là `bg-primary text-white`, chữ trắng
+   * trên vàng chỉ ~1,3:1. Cobalt giữ được 6,5:1. */
+  --background: var(--card);
+  --foreground: var(--ink);
+  --surface: var(--paper);
+  --border: var(--line);
+  --muted: var(--ink-2);
+  --muted-soft: var(--ink-2);
+  --primary: var(--accent-2);
+  --primary-soft: var(--accent-2-soft);
 
-  /* Lỗi */
-  --danger-bg: #fef3f2;
-  --danger-border: #fda29b;
-  --danger-fg: #b42318;
+  --zalo-bg: var(--swatch-3);
+  --zalo-fg: #0052cc;
+  --facebook-bg: var(--swatch-3);
+  --facebook-fg: #0f5bcc;
+  --instagram-bg: var(--swatch-2);
+  --instagram-fg: #9c1c63;
+  --telegram-bg: var(--swatch-3);
+  --telegram-fg: #0b5d8a;
+
+  --admin-bg: var(--swatch-5);
+  --admin-fg: #4b2a9b;
+
+  --cho-phan-bg: var(--wait-bg);
+  --cho-phan-fg: var(--wait);
+  --dang-mo-bg: var(--ok-bg);
+  --dang-mo-fg: var(--ok);
+  --da-dong-bg: var(--sunken);
+  --da-dong-fg: var(--ink-2);
+
+  --danger-bg: var(--bad-bg);
+  --danger-border: var(--bad);
+  --danger-fg: var(--bad);
 }
 
 @theme inline {
+  /* Neo-Brutalism */
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-2-soft: var(--accent-2-soft);
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-wait: var(--wait);
+  --color-wait-bg: var(--wait-bg);
+  --color-bad: var(--bad);
+  --color-bad-bg: var(--bad-bg);
+  --color-zalo: var(--zalo);
+  --color-facebook: var(--facebook);
+  --color-instagram: var(--instagram);
+  --color-telegram: var(--telegram);
+  --color-swatch-1: var(--swatch-1);
+  --color-swatch-2: var(--swatch-2);
+  --color-swatch-3: var(--swatch-3);
+  --color-swatch-4: var(--swatch-4);
+  --color-swatch-5: var(--swatch-5);
+  --color-swatch-6: var(--swatch-6);
+  --color-swatch-7: var(--swatch-7);
+  --color-swatch-8: var(--swatch-8);
+
+  /* `bg-white` viết cứng ở 29 file màn cũ: trỏ về màu ngà để không còn thẻ trắng
+   * tinh trên nền kem, mà không phải sửa file màn nào. `text-white` cũng đổi theo
+   * (ngà trên cobalt vẫn 6,5:1). */
+  --color-white: var(--card);
+
+  --shadow-nb: 4px 4px 0 var(--ink);
+  --shadow-nb-sm: 2px 2px 0 var(--ink);
+  --radius-nb: 6px;
+
+  /* Token cũ (ánh xạ ở :root) */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
@@ -58,7 +132,6 @@
   --color-muted-soft: var(--muted-soft);
   --color-primary: var(--primary);
   --color-primary-soft: var(--primary-soft);
-
   --color-zalo-bg: var(--zalo-bg);
   --color-zalo-fg: var(--zalo-fg);
   --color-facebook-bg: var(--facebook-bg);
@@ -69,14 +142,12 @@
   --color-telegram-fg: var(--telegram-fg);
   --color-admin-bg: var(--admin-bg);
   --color-admin-fg: var(--admin-fg);
-
   --color-cho-phan-bg: var(--cho-phan-bg);
   --color-cho-phan-fg: var(--cho-phan-fg);
   --color-dang-mo-bg: var(--dang-mo-bg);
   --color-dang-mo-fg: var(--dang-mo-fg);
   --color-da-dong-bg: var(--da-dong-bg);
   --color-da-dong-fg: var(--da-dong-fg);
-
   --color-danger-bg: var(--danger-bg);
   --color-danger-border: var(--danger-border);
   --color-danger-fg: var(--danger-fg);
@@ -85,7 +156,22 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--paper);
+  color: var(--ink);
   font-family: var(--font-be-vietnam-pro), system-ui, sans-serif;
+}
+
+/* Focus bàn phím thấy được ở MỌI phần tử tương tác (trước đây: 0 chỗ có). */
+:focus-visible {
+  outline: 3px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
 }
