@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PgUUID  # noqa: N811
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -11,7 +11,7 @@ from src.shared.infrastructure.database import Base
 
 
 class ConversationEventModel(Base):
-    """Một sự kiện nhận/giao/đổi/gỡ người phụ trách. Người tham chiếu qua UUID."""
+    """Một sự kiện nhận/giao/đổi/gỡ người phụ trách hoặc phân phòng. Tham chiếu qua UUID."""
 
     __tablename__ = "conversation_events"
 
@@ -26,10 +26,13 @@ class ConversationEventModel(Base):
     from_user_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     to_user_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    department_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (
         CheckConstraint(
-            "kind IN ('TAKEN','AUTO_ASSIGNED','ASSIGNED','REASSIGNED','UNASSIGNED')",
+            "kind IN ('TAKEN','AUTO_ASSIGNED','ASSIGNED','REASSIGNED','UNASSIGNED',"
+            "'DEPARTMENT_ASSIGNED','AUTO_ROUTED')",
             name="ck_conversation_event_kind",
         ),
         Index("ix_conversation_event_conv_created", "conversation_id", "created_at"),

@@ -440,6 +440,7 @@ async def phan_phong(
         directory=directory,
         notifier=notifier,
         clock=clock,
+        event_repo=SqlAlchemyConversationEventRepository(session),
     ).execute(actor=actor, conversation_id=conversation_id, department_id=du_lieu.department_id)
     return await _tra_ve_hoi_thoai(conversation_id, actor, session, signer, directory)
 
