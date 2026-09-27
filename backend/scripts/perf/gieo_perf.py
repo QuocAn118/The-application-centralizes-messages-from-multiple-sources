@@ -67,7 +67,9 @@ def gieo() -> None:
                 (p, f"Phong perf {i}", bay_gio, bay_gio),
             )
         nguoi: list[tuple[UUID, UUID]] = []  # (user_id, phong)
-        tk = [("perf.admin@congty.vn", "Perf Admin", "ADMIN", None)]
+        tk: list[tuple[str, str, str, UUID | None]] = [
+            ("perf.admin@congty.vn", "Perf Admin", "ADMIN", None)
+        ]
         for i in range(30):
             p = phong[i % 3]
             vai = "MANAGER" if i < 3 else "STAFF"
@@ -79,22 +81,22 @@ def gieo() -> None:
                     p,
                 )
             )
-        for email, ten, vai, p in tk:
+        for email, ten, vai, phong_tk in tk:
             uid = uuid4()
             cur.execute(
                 "INSERT INTO users (id,email,password_hash,full_name,role,department_id,"
                 "is_active,must_change_password,created_at,updated_at)"
                 " VALUES (%s,%s,%s,%s,%s,%s,true,false,%s,%s)",
-                (uid, email, hash_mk, ten, vai, p, bay_gio, bay_gio),
+                (uid, email, hash_mk, ten, vai, phong_tk, bay_gio, bay_gio),
             )
-            if p is not None:
-                nguoi.append((uid, p))
-        for i, k in enumerate(kenh):
+            if phong_tk is not None:
+                nguoi.append((uid, phong_tk))
+        for i, ma_kenh in enumerate(kenh):
             cur.execute(
                 "INSERT INTO channels (id,platform,external_channel_id,name,credential,"
                 "department_id,is_active,created_at,updated_at)"
                 " VALUES (%s,'TELEGRAM',%s,%s,'x',%s,true,%s,%s)",
-                (k, f"perf-{i}", f"Kênh perf {i}", phong[i], bay_gio, bay_gio),
+                (ma_kenh, f"perf-{i}", f"Kênh perf {i}", phong[i], bay_gio, bay_gio),
             )
 
         khach, hoi_thoai, tin = [], [], []
@@ -135,21 +137,21 @@ def gieo() -> None:
             "COPY customers (id,channel_id,platform,external_id,display_name,"
             "created_at,updated_at) FROM STDIN"
         ) as cp:
-            for row in khach:
-                cp.write_row(row)
+            for dong_kh in khach:
+                cp.write_row(dong_kh)
         with cur.copy(
             "COPY conversations (id,channel_id,customer_id,status,department_id,"
             "assigned_user_id,last_message_at,created_at,updated_at,closed_at)"
             " FROM STDIN"
         ) as cp:
-            for row in hoi_thoai:
-                cp.write_row(row)
+            for dong_ht in hoi_thoai:
+                cp.write_row(dong_ht)
         with cur.copy(
             "COPY messages (id,conversation_id,direction,text,external_message_id,"
             "sender_user_id,created_at) FROM STDIN"
         ) as cp:
-            for row in tin:
-                cp.write_row(row)
+            for dong_tin in tin:
+                cp.write_row(dong_tin)
         c.commit()
         cur.execute("ANALYZE")
     print(f"Đã gieo {len(hoi_thoai)} hội thoại, {len(tin)} tin, {len(nguoi) + 1} tài khoản.")
