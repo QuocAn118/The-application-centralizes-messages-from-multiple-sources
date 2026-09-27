@@ -24,13 +24,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@/lib/i18n";
-import {
-  LOP_BADGE_KET_QUA_PHAN_TICH,
-  NHAN_KET_QUA_PHAN_TICH,
-  doTinCay,
-  mocNgan,
-  mocDayDu,
-} from "@/lib/hien-thi";
+import Link from "next/link";
+import { MessageSquare, Sparkles, TriangleAlert } from "lucide-react";
+import { NHAN_KET_QUA_PHAN_TICH, canXemLai, doTinCay, mocDayDu } from "@/lib/hien-thi";
+import { mocTuongDoi } from "@/lib/hop-thu";
 import { khoaQuanTri, layDanhSachPhongBan } from "@/lib/quan-tri-api";
 import {
   KICH_THUOC_TRANG_PHAN_TICH,
@@ -39,6 +36,22 @@ import {
 } from "@/lib/tu-khoa-api";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { ThanhPhanTrang } from "@/components/thanh-phan-trang";
+import { Bang, Td, Th, Tr } from "@/components/ui/bang";
+import { DauTrang } from "@/components/ui/dau-trang";
+import { The } from "@/components/ui/the";
+import { HuyHieu, type TongHuyHieu } from "@/components/ui/huy-hieu";
+import { TrangThaiLoi, TrangThaiRong, TrangThaiTai } from "@/components/ui/trang-thai";
+import type { AnalysisOutcome } from "@/lib/types";
+
+/**
+ * `AUTO_ASSIGNED` tốt (xanh); `AMBIGUOUS` cần người xem (vàng); `NOT_ANALYZED`
+ * xám — KHÔNG đỏ: không phân tích được thường là chưa đủ tin nhắn, không phải lỗi.
+ */
+const TONG_KET_QUA: Record<AnalysisOutcome, TongHuyHieu> = {
+  AUTO_ASSIGNED: "ok",
+  AMBIGUOUS: "wait",
+  NOT_ANALYZED: "trung",
+};
 
 export function ManPhanTich() {
   const [offset, setOffset] = useState(0);
@@ -58,127 +71,140 @@ export function ManPhanTich() {
   const phongBan = truyVanPhongBan.data?.items ?? [];
   const danhSach = truyVan.data?.items ?? [];
 
+  const bayGio = new Date();
+  const soCanXemLai = danhSach.filter((pt) => canXemLai(pt.outcome)).length;
+
   return (
-    <div className="space-y-4 px-6 py-6">
-      <section className="overflow-hidden rounded-lg border border-border-subtle bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-5 py-3">
-          <h2 className="text-base font-semibold text-foreground">{t("phanTich.tieuDe")}</h2>
-          <span className="text-xs text-muted">{t("phanTich.chiDoc")}</span>
-        </div>
+    <div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-8 py-6">
+      <DauTrang tieuDe={t("phanTich.tieuDe")} moTa={t("phanTich.chiDoc")} />
 
-        {truyVan.isPending && (
-          <p className="px-5 py-8 text-center text-sm text-muted">{t("chung.dangTai")}</p>
-        )}
-        {truyVan.isError && (
-          <p className="px-5 py-8 text-center text-sm text-danger-fg">
-            {thongDiepLoi(truyVan.error)}
-          </p>
-        )}
-        {truyVan.data && danhSach.length === 0 && (
-          <p className="px-5 py-8 text-center text-sm text-muted">{t("phanTich.chuaCo")}</p>
-        )}
+      {truyVan.isPending && (
+        <The>
+          <TrangThaiTai />
+        </The>
+      )}
+      {truyVan.isError && (
+        <The>
+          <TrangThaiLoi thongDiep={thongDiepLoi(truyVan.error)} onThuLai={() => void truyVan.refetch()} />
+        </The>
+      )}
+      {truyVan.data && danhSach.length === 0 && (
+        <The>
+          <TrangThaiRong icon={Sparkles} tieuDe={t("phanTich.chuaCo")} />
+        </The>
+      )}
 
-        {danhSach.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="border-b border-border-subtle bg-surface/60 text-xs font-bold uppercase tracking-wider text-muted">
-                  <th scope="col" className="px-4 py-3">
-                    {t("phanTich.cotKetQua")}
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    {t("phanTich.cotPhongDeXuat")}
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-right">
-                    {t("phanTich.cotTinCay")}
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    {t("phanTich.cotNhuCau")}
-                  </th>
-                  <th scope="col" className="px-4 py-3 whitespace-nowrap">
-                    {t("phanTich.cotThoiDiem")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {danhSach.map((pt) => {
-                  const phong =
-                    pt.suggested_department_id === null
-                      ? null
-                      : (phongBan.find((p) => p.id === pt.suggested_department_id)?.name ??
-                        t("nhatKy.khongRo"));
-                  return (
-                    <tr key={pt.id} className="border-b border-border-subtle last:border-0">
-                      <td className="px-4 py-3">
-                        <span
-                          className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${
-                            LOP_BADGE_KET_QUA_PHAN_TICH[pt.outcome]
-                          }`}
-                        >
-                          {NHAN_KET_QUA_PHAN_TICH[pt.outcome]}
-                        </span>
-                      </td>
+      {/* A2 (phần làm được không cần backend): dòng cần người xem được tô và
+          đếm trên trang. Lọc thật cần `GET /analyses?outcome=` — danh sách phân
+          trang nên lọc tại client chỉ lọc được trang đang xem, sẽ nói dối. */}
+      {soCanXemLai > 0 && (
+        <p className="flex items-center gap-2 text-sm text-ink">
+          <HuyHieu tong="wait">
+            <TriangleAlert aria-hidden className="size-3.5" strokeWidth={2.5} />
+            {t("phanTich.canXemLai")}
+          </HuyHieu>
+          {t("phanTich.demCanXemLai", { so: soCanXemLai })}
+        </p>
+      )}
 
-                      {/* `null` = LLM không chọn được phòng. Hiện câu giải
-                          thích thay vì ô trắng — ô trắng trông như lỗi tải. */}
-                      <td className="px-4 py-3 text-sm">
-                        {phong === null ? (
-                          <span className="text-muted">{t("phanTich.khongRoPhong")}</span>
-                        ) : (
-                          <span className="text-foreground">{phong}</span>
-                        )}
-                      </td>
+      {danhSach.length > 0 && (
+        <Bang aria-label={t("phanTich.tieuDe")}>
+          <thead>
+            <tr>
+              <Th>{t("phanTich.cotKetQua")}</Th>
+              <Th>{t("phanTich.cotPhongDeXuat")}</Th>
+              <Th className="text-right">{t("phanTich.cotTinCay")}</Th>
+              <Th>{t("phanTich.cotNhuCau")}</Th>
+              <Th className="whitespace-nowrap">{t("phanTich.cotThoiDiem")}</Th>
+              <Th>{t("phanTich.cotHoiThoai")}</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {danhSach.map((pt) => {
+              const phong =
+                pt.suggested_department_id === null
+                  ? null
+                  : (phongBan.find((p) => p.id === pt.suggested_department_id)?.name ??
+                    t("nhatKy.khongRo"));
+              const xemLai = canXemLai(pt.outcome);
+              return (
+                <Tr key={pt.id} className={xemLai ? "bg-wait-bg/50" : ""}>
+                  <Td>
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <HuyHieu tong={TONG_KET_QUA[pt.outcome]}>{NHAN_KET_QUA_PHAN_TICH[pt.outcome]}</HuyHieu>
+                      {xemLai && <span className="sr-only">{t("phanTich.canXemLai")}</span>}
+                    </span>
+                  </Td>
 
-                      <td className="px-4 py-3 text-right text-sm text-foreground">
-                        {doTinCay(pt.confidence)}
-                      </td>
+                  {/* `null` = LLM không chọn được phòng. Hiện câu giải thích
+                      thay vì ô trắng — ô trắng trông như lỗi tải. */}
+                  <Td>
+                    {phong === null ? (
+                      <span className="text-ink-2">{t("phanTich.khongRoPhong")}</span>
+                    ) : (
+                      <span className="font-semibold">{phong}</span>
+                    )}
+                  </Td>
 
-                      {/* `NOT_ANALYZED` không trích được gì -> mảng RỖNG. */}
-                      <td className="px-4 py-3">
-                        {pt.extracted_terms.length === 0 ? (
-                          <span className="text-xs text-muted">
-                            {t("phanTich.khongCoNhuCau")}
+                  <Td className="text-right tabular-nums">{doTinCay(pt.confidence)}</Td>
+
+                  {/* `NOT_ANALYZED` không trích được gì -> mảng RỖNG. */}
+                  <Td>
+                    {pt.extracted_terms.length === 0 ? (
+                      <span className="text-xs text-ink-2">{t("phanTich.khongCoNhuCau")}</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {/* Khoá theo vị trí: `normalized` KHÔNG bảo đảm duy nhất
+                            trong một bản ghi (LLM có thể trả hai cụm khác chữ
+                            nhưng cùng dạng chuẩn hoá), mà danh sách này chỉ đọc
+                            nên vị trí là ổn định. */}
+                        {pt.extracted_terms.map((term, i) => (
+                          <span
+                            key={`${pt.id}-${i}`}
+                            className="rounded-[4px] border border-line bg-sunken px-2 py-0.5 text-xs text-ink"
+                            title={term.normalized}
+                          >
+                            {term.text}
                           </span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {/* Khoá theo vị trí: `normalized` KHÔNG bảo đảm duy
-                                nhất trong một bản ghi (LLM có thể trả hai cụm
-                                khác chữ nhưng cùng dạng chuẩn hoá), mà danh
-                                sách này chỉ đọc nên vị trí là ổn định. */}
-                            {pt.extracted_terms.map((term, i) => (
-                              <span
-                                key={`${pt.id}-${i}`}
-                                className="rounded-md bg-surface px-2 py-0.5 text-xs text-foreground"
-                                title={term.normalized}
-                              >
-                                {term.text}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </td>
+                        ))}
+                      </div>
+                    )}
+                  </Td>
 
-                      <td className="px-4 py-3 whitespace-nowrap text-xs text-muted">
-                        <span title={mocDayDu(pt.created_at)}>{mocNgan(pt.created_at)}</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                  <Td className="whitespace-nowrap text-xs text-ink-2">
+                    <time dateTime={pt.created_at} title={mocDayDu(pt.created_at)}>
+                      {mocTuongDoi(pt.created_at, bayGio)}
+                    </time>
+                  </Td>
 
-        {truyVan.data && truyVan.data.total > 0 && (
-          <ThanhPhanTrang
-            offset={offset}
-            limit={KICH_THUOC_TRANG_PHAN_TICH}
-            total={truyVan.data.total}
-            doiOffset={setOffset}
-            dangTai={truyVan.isFetching}
-          />
-        )}
-      </section>
+                  {/* A1: mở đúng hội thoại được phân tích. Quyền xem do Hộp thư
+                      kiểm; ngoài phạm vi thì Hộp thư tự hiện lỗi. */}
+                  <Td>
+                    <Link
+                      href={`/inbox/${pt.conversation_id}`}
+                      aria-label={`${t("phanTich.moHoiThoai")} (${mocDayDu(pt.created_at)})`}
+                      className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-ink underline decoration-2 underline-offset-2 hover:bg-accent"
+                    >
+                      <MessageSquare aria-hidden className="size-4" strokeWidth={2.25} />
+                      {t("phanTich.moHoiThoai")}
+                    </Link>
+                  </Td>
+                </Tr>
+              );
+            })}
+          </tbody>
+        </Bang>
+      )}
+
+      {truyVan.data && truyVan.data.total > 0 && (
+        <ThanhPhanTrang
+          offset={offset}
+          limit={KICH_THUOC_TRANG_PHAN_TICH}
+          total={truyVan.data.total}
+          doiOffset={setOffset}
+          dangTai={truyVan.isFetching}
+        />
+      )}
     </div>
   );
 }
