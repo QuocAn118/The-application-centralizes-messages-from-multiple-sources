@@ -14,6 +14,11 @@
  * `POST/PATCH/DELETE` mới 403 `KEYWORD_MANAGER_REQUIRED`). Trước đây màn này
  * nằm trong `/quan-tri` nên Staff bị chặn ở cửa — nợ N6, nay đã tách khu riêng.
  *
+ * Redesign Phần 4 (T1–T3): mỗi phòng một thẻ, từ khoá là chip; bấm chip để
+ * sửa, × để xoá (có xác nhận), ô thêm nhanh cuối dãy. Nút "Thêm từ khoá" trên
+ * đầu trang vẫn giữ: đó là đường duy nhất thêm vào phòng CHƯA có từ khoá nào
+ * (phòng rỗng không có thẻ, nên không có ô thêm nhanh).
+ *
  * `GET /keywords` trả **mảng trần**, không phân trang: danh mục từ khoá mỗi
  * phòng vốn ngắn (vài chục), nên lọc tại client cho gọn.
  */
@@ -25,10 +30,16 @@ import { useAuth } from "@/lib/auth-context";
 import { khoaQuanTri, layDanhSachPhongBan } from "@/lib/quan-tri-api";
 import { khoaTuKhoa, layDanhSachTuKhoa, xoaTuKhoa } from "@/lib/tu-khoa-api";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
+import { Plus, Tags } from "lucide-react";
 import { OTimKiem } from "@/components/o-tim-kiem";
+import { DauTrang } from "@/components/ui/dau-trang";
+import { The } from "@/components/ui/the";
+import { Nut } from "@/components/ui/nut";
+import { TrangThaiLoi, TrangThaiRong, TrangThaiTai } from "@/components/ui/trang-thai";
 import { HopXacNhan } from "@/components/hop-xac-nhan";
 import { quanLyDuocTuKhoa } from "@/lib/quyen-tu-khoa";
 import { HopThoaiTuKhoa } from "./hop-thoai-tu-khoa";
+import { ChipTuKhoa, OThemNhanh } from "./chip-tu-khoa";
 import type { Keyword } from "@/lib/types";
 
 type DangMo =
@@ -115,10 +126,12 @@ export function ManTuKhoa() {
 
   // Phòng có từ khoá, theo thứ tự của danh sách phòng ban; phòng lạ (đã ngừng
   // chẳng hạn) vẫn phải hiện, nếu không từ khoá của nó biến mất không dấu vết.
+  // Phòng mình thêm được thì hiện cả khi RỖNG (trừ lúc đang tìm): thẻ rỗng là
+  // chỗ duy nhất có ô thêm nhanh cho phòng đó.
   const idCoTuKhoa = [...theoPhong.keys()];
   const phongHien = [
     ...phongBan
-      .filter((p) => theoPhong.has(p.id))
+      .filter((p) => theoPhong.has(p.id) || (!tim && phongThemDuoc.some((x) => x.id === p.id)))
       .map((p) => ({ id: p.id, ten: p.name })),
     ...idCoTuKhoa
       .filter((id) => !phongBan.some((p) => p.id === id))
@@ -126,105 +139,82 @@ export function ManTuKhoa() {
   ];
 
   return (
-    <div className="space-y-4 px-6 py-6">
-      <section className="overflow-hidden rounded-lg border border-border-subtle bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-5 py-3">
-          <h2 className="text-base font-semibold text-foreground">
-            {t("tuKhoa.tieuDe")}
-          </h2>
-          <div className="flex items-center gap-2">
+    <div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-8 py-6">
+      <DauTrang
+        tieuDe={t("tuKhoa.tieuDe")}
+        moTa={t("tuKhoa.moTaTrang")}
+        hanhDong={
+          <>
             <OTimKiem nhanGoiY={t("tuKhoa.timGoiY")} doiTuKhoa={setTim} />
             {phongThemDuoc.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setDangMo({ loai: "them" })}
-                className="whitespace-nowrap rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95"
-              >
-                + {t("tuKhoa.them")}
-              </button>
+              <Nut bienThe="chinh" icon={Plus} onClick={() => setDangMo({ loai: "them" })}>
+                {t("tuKhoa.them")}
+              </Nut>
             )}
-          </div>
-        </div>
+          </>
+        }
+      />
 
-        {truyVan.isPending && (
-          <p className="px-5 py-8 text-center text-sm text-muted">
-            {t("chung.dangTai")}
-          </p>
-        )}
-        {truyVan.isError && (
-          <p className="px-5 py-8 text-center text-sm text-danger-fg">
-            {thongDiepLoi(truyVan.error)}
-          </p>
-        )}
-        {truyVan.data && phongHien.length === 0 && (
-          <p className="px-5 py-8 text-center text-sm text-muted">
-            {suaDuocNoiChung ? t("tuKhoa.chuaCo") : t("tuKhoa.chuaCoChiXem")}
-          </p>
-        )}
+      {truyVan.isPending && (
+        <The>
+          <TrangThaiTai dong={3} />
+        </The>
+      )}
+      {truyVan.isError && (
+        <The>
+          <TrangThaiLoi thongDiep={thongDiepLoi(truyVan.error)} onThuLai={() => void truyVan.refetch()} />
+        </The>
+      )}
+      {truyVan.data && theoPhong.size === 0 && (tim || phongHien.length === 0) && (
+        <The>
+          <TrangThaiRong
+            icon={Tags}
+            tieuDe={tim ? t("tuKhoa.khongKhopTim") : t("tuKhoa.chuaCoTieuDe")}
+            moTa={tim ? undefined : suaDuocNoiChung ? t("tuKhoa.chuaCo") : t("tuKhoa.chuaCoChiXem")}
+            hanhDong={
+              !tim &&
+              phongThemDuoc.length > 0 && (
+                <Nut icon={Plus} onClick={() => setDangMo({ loai: "them" })}>
+                  {t("tuKhoa.them")}
+                </Nut>
+              )
+            }
+          />
+        </The>
+      )}
 
-        {phongHien.map((phong) => {
-          const ds = theoPhong.get(phong.id) ?? [];
-          return (
-            <div
-              key={phong.id}
-              className="border-b border-border-subtle last:border-0"
-            >
-              <div className="flex items-baseline gap-2 bg-surface/50 px-5 py-2">
-                <h3 className="text-sm font-semibold text-foreground">
-                  {phong.ten}
-                </h3>
-                <span className="text-xs text-muted">
-                  {t("tuKhoa.demTrongPhong", { so: String(ds.length) })}
-                </span>
-              </div>
-
-              <ul className="divide-y divide-border-subtle">
-                {ds.map((k) => (
-                  <li
-                    key={k.id}
-                    className="flex items-center justify-between gap-4 px-5 py-2.5"
-                  >
-                    <div className="min-w-0">
-                      <span className="block truncate text-sm text-foreground">
-                        {k.text}
-                      </span>
-                      {/* Hiện dạng chuẩn hoá: người dùng cần thấy vì sao
-                          "Bảo Hành" bị báo trùng khi họ gõ "bao hanh". */}
-                      <span className="block truncate text-xs text-muted-soft">
-                        {t("tuKhoa.dangKhop", { chuan: k.normalized })}
-                      </span>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {suaDuoc(k) && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDangMo({ loai: "sua", tuKhoa: k })
-                            }
-                            className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-surface"
-                          >
-                            {t("tuKhoa.sua")}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDangMo({ loai: "xoa", tuKhoa: k })
-                            }
-                            className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-danger-fg transition hover:bg-danger-bg"
-                          >
-                            {t("tuKhoa.xoa")}
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+      {phongHien.map((phong) => {
+        const ds = theoPhong.get(phong.id) ?? [];
+        const themNhanhDuoc = phongThemDuoc.some((p) => p.id === phong.id);
+        return (
+          <The key={phong.id}>
+            <div className="flex items-baseline gap-3 border-b-2 border-ink px-5 py-3">
+              <h2 className="text-lg font-bold text-ink">{phong.ten}</h2>
+              <span className="text-xs font-semibold text-ink-2">
+                {t("tuKhoa.demTrongPhong", { so: String(ds.length) })}
+              </span>
             </div>
-          );
-        })}
-      </section>
+            <ul
+              aria-label={t("tuKhoa.dsCuaPhong", { phong: phong.ten })}
+              className="flex flex-wrap items-start gap-2 px-5 py-4"
+            >
+              {ds.map((k) => (
+                <ChipTuKhoa
+                  key={k.id}
+                  tuKhoa={k}
+                  onSua={suaDuoc(k) ? () => setDangMo({ loai: "sua", tuKhoa: k }) : null}
+                  onXoa={suaDuoc(k) ? () => setDangMo({ loai: "xoa", tuKhoa: k }) : null}
+                />
+              ))}
+              {ds.length === 0 && (
+                <li className="self-center text-sm text-ink-2">{t("tuKhoa.chuaCoTrongPhong")}</li>
+              )}
+              {/* Đang tìm thì ẩn ô thêm: thêm giữa lúc lọc dễ tưởng từ mới "biến mất". */}
+              {themNhanhDuoc && !tim && <OThemNhanh phongId={phong.id} tenPhong={phong.ten} />}
+            </ul>
+          </The>
+        );
+      })}
 
       {dangMo?.loai === "them" && (
         <HopThoaiTuKhoa

@@ -384,17 +384,12 @@ export const NHAN_KET_QUA_PHAN_TICH: Record<AnalysisOutcome, string> = {
 };
 
 /**
- * Lớp badge theo kết cục.
- *
- * `AUTO_ASSIGNED` là kết quả tốt (xanh); `AMBIGUOUS` là "cần người xem lại"
- * (vàng); `NOT_ANALYZED` là hỏng/chưa chạy (xám — KHÔNG đỏ: không phân tích
- * được thường là chưa đủ tin nhắn, không phải lỗi).
+ * "Cần xem lại" (A2): AI không tự phân được — `AMBIGUOUS` (không đủ chắc) và
+ * `NOT_ANALYZED` (không chạy được). Hai loại này cần người quyết phòng.
  */
-export const LOP_BADGE_KET_QUA_PHAN_TICH: Record<AnalysisOutcome, string> = {
-  AUTO_ASSIGNED: "bg-dang-mo-bg text-dang-mo-fg",
-  AMBIGUOUS: "bg-cho-phan-bg text-cho-phan-fg",
-  NOT_ANALYZED: "bg-da-dong-bg text-da-dong-fg",
-};
+export function canXemLai(outcome: AnalysisOutcome): boolean {
+  return outcome !== "AUTO_ASSIGNED";
+}
 
 /**
  * Độ tin cậy `Decimal` 0..1 (chuỗi "0.950") thành phần trăm để đọc.

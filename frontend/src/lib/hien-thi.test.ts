@@ -15,7 +15,7 @@ import {
   NHAN_KENH,
   DAU_GACH,
   DON_VI_KPI,
-  LOP_BADGE_KET_QUA_PHAN_TICH,
+  canXemLai,
   NHAN_KET_QUA_PHAN_TICH,
   doTinCay,
   NHAN_CHI_SO_KPI,
@@ -463,16 +463,14 @@ describe("lopMucKpi (RB-8)", () => {
  */
 const MOI_KET_QUA: AnalysisOutcome[] = ["AUTO_ASSIGNED", "AMBIGUOUS", "NOT_ANALYZED"];
 
-describe("NHAN_KET_QUA_PHAN_TICH / LOP_BADGE_KET_QUA_PHAN_TICH (RB-9)", () => {
+describe("NHAN_KET_QUA_PHAN_TICH (RB-9)", () => {
   it("phủ đủ ba kết cục, không thừa không thiếu", () => {
     expect(Object.keys(NHAN_KET_QUA_PHAN_TICH).sort()).toEqual([...MOI_KET_QUA].sort());
-    expect(Object.keys(LOP_BADGE_KET_QUA_PHAN_TICH).sort()).toEqual([...MOI_KET_QUA].sort());
   });
 
-  it.each(MOI_KET_QUA)("%s có nhãn tiếng Việt và lớp badge", (kq) => {
+  it.each(MOI_KET_QUA)("%s có nhãn tiếng Việt", (kq) => {
     expect(NHAN_KET_QUA_PHAN_TICH[kq]?.trim().length).toBeGreaterThan(0);
     expect(NHAN_KET_QUA_PHAN_TICH[kq]).not.toBe(kq);
-    expect(LOP_BADGE_KET_QUA_PHAN_TICH[kq]?.trim().length).toBeGreaterThan(0);
   });
 
   it("ba kết cục có ba nhãn KHÁC nhau", () => {
@@ -598,5 +596,11 @@ describe("doiKy (K3)", () => {
     expect(doiKy(2026, 12, 1)).toEqual({ nam: 2027, thang: 1 });
     expect(doiKy(2026, 1, -1)).toEqual({ nam: 2025, thang: 12 });
     expect(doiKy(2026, 9, 1)).toEqual({ nam: 2026, thang: 10 });
+  });
+});
+
+describe("canXemLai (A2)", () => {
+  it("chỉ kết quả AI KHÔNG tự phân được mới cần xem lại", () => {
+    expect(MOI_KET_QUA.filter(canXemLai).sort()).toEqual(["AMBIGUOUS", "NOT_ANALYZED"]);
   });
 });

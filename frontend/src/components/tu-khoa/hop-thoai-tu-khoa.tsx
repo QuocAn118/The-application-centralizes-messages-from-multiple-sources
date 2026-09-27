@@ -22,10 +22,9 @@ import { t } from "@/lib/i18n";
 import { khoaTuKhoa, suaTuKhoa, taoTuKhoa } from "@/lib/tu-khoa-api";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { HopThoai, NutChinh, NutPhu } from "@/components/hop-thoai";
+import { Truong } from "@/components/ui/truong";
+import { OChon, ONhap } from "@/components/ui/o-nhap";
 import type { Department, Keyword } from "@/lib/types";
-
-const LOP_O_NHAP =
-  "mt-1 w-full rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary";
 
 /** Trùng `max_length=200` của `CreateKeywordRequest`. */
 const DAI_TOI_DA = 200;
@@ -80,50 +79,53 @@ export function HopThoaiTuKhoa({
         </>
       }
     >
-      <div className="mt-4 space-y-3">
+      <div className="mt-4 flex flex-col gap-4">
         {/* Phòng KHÔNG sửa được: `UpdateKeywordRequest` chỉ có `text`. Hiện
             chỉ-đọc thay vì ô chọn, như mẫu ca ở #F3. */}
         {dangSua ? (
-          <div>
-            <span className="text-xs font-medium text-muted">{t("tuKhoa.phongBan")}</span>
-            <p className="mt-1 text-sm text-foreground">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm font-semibold text-ink">{t("tuKhoa.phongBan")}</span>
+            <p className="text-sm text-ink">
               {phongBan.find((p) => p.id === tuKhoa.department_id)?.name ??
                 t("nguoiDung.khongPhong")}
             </p>
           </div>
         ) : (
-          <label className="block">
-            <span className="text-xs font-medium text-muted">{t("tuKhoa.phongBan")}</span>
-            <select
-              value={phongId}
-              onChange={(e) => setPhongId(e.target.value)}
-              className={LOP_O_NHAP}
-            >
-              {phongBan.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Truong nhan={t("tuKhoa.phongBan")}>
+            {(o) => (
+              <OChon {...o} value={phongId} onChange={(e) => setPhongId(e.target.value)}>
+                {phongBan.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </OChon>
+            )}
+          </Truong>
         )}
 
-        <label className="block">
-          <span className="text-xs font-medium text-muted">{t("tuKhoa.noiDung")}</span>
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            maxLength={DAI_TOI_DA}
-            autoFocus
-            className={LOP_O_NHAP}
-          />
-        </label>
-
-        {/* Giải thích chuẩn hoá NGAY trong hộp: người dùng gõ "bao hanh" rồi
-            nhận "đã tồn tại" mà không hiểu vì sao sẽ tưởng hệ thống hỏng. */}
-        <p className="rounded-lg border border-border-subtle bg-surface/50 px-3 py-2 text-xs text-muted">
-          {t("tuKhoa.giaiThichChuanHoa")}
-        </p>
+        {/* Giải thích chuẩn hoá NGAY dưới ô: người dùng gõ "bao hanh" rồi nhận
+            "đã tồn tại" mà không hiểu vì sao sẽ tưởng hệ thống hỏng. Khi sửa,
+            kèm dạng khớp hiện tại (T2: nơi thứ hai được hiện dạng khớp). */}
+        <Truong
+          nhan={t("tuKhoa.noiDung")}
+          batBuoc
+          goiY={
+            dangSua
+              ? `${t("tuKhoa.dangKhop", { chuan: tuKhoa.normalized })}. ${t("tuKhoa.giaiThichChuanHoa")}`
+              : t("tuKhoa.giaiThichChuanHoa")
+          }
+        >
+          {(o) => (
+            <ONhap
+              {...o}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              maxLength={DAI_TOI_DA}
+              autoFocus
+            />
+          )}
+        </Truong>
       </div>
     </HopThoai>
   );
