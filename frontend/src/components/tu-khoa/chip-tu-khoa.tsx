@@ -4,36 +4,46 @@
  * Chip từ khoá + ô thêm nhanh cuối dãy (redesign Phần 4 T1–T3).
  *
  * **T2: "dạng khớp" chỉ ở tooltip** (và trong hộp sửa), không hiện thường trực.
- * Ô thêm nhanh báo trùng bằng **thông điệp server** kèm câu giải thích chuẩn
- * hoá — vẫn giữ RB-3: FE KHÔNG tự bỏ dấu để đoán trùng. Server không trả dạng
- * chuẩn hoá trong lỗi 409, nên chưa chỉ được đúng chip nào bị trùng.
+ * Ô thêm nhanh báo trùng bằng **thông điệp server** + tên từ khoá đang có + câu
+ * giải thích chuẩn hoá, và tô đỏ ĐÚNG chip đó — server gửi kèm từ khoá đang có
+ * trong `error.details` của 409. Vẫn giữ RB-3: FE KHÔNG tự bỏ dấu để đoán.
  */
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t } from "@/lib/i18n";
-import { ApiError } from "@/lib/api-client";
-import { khoaTuKhoa, taoTuKhoa } from "@/lib/tu-khoa-api";
+import { khoaTuKhoa, taoTuKhoa, tuKhoaTrung } from "@/lib/tu-khoa-api";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { ONhap } from "@/components/ui/o-nhap";
 import type { Keyword } from "@/lib/types";
 
 export function ChipTuKhoa({
   tuKhoa,
+  trung = false,
   onSua,
   onXoa,
 }: {
   tuKhoa: Keyword;
+  /** Chip này là từ khoá mà lần thêm vừa rồi bị trùng với. */
+  trung?: boolean;
   /** `null` = chỉ xem (Staff, hoặc Manager nhìn phòng khác). */
   onSua: (() => void) | null;
   onXoa: (() => void) | null;
 }) {
   const dangKhop = t("tuKhoa.dangKhop", { chuan: tuKhoa.normalized });
+  const ref = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    if (trung) ref.current?.scrollIntoView({ block: "nearest" });
+  }, [trung]);
   return (
     <li
+      ref={ref}
       title={dangKhop}
-      className="inline-flex items-stretch overflow-hidden rounded-nb border-2 border-ink bg-card text-sm font-semibold text-ink"
+      data-trung={trung || undefined}
+      className={`inline-flex items-stretch overflow-hidden rounded-nb border-2 text-sm font-semibold text-ink ${
+        trung ? "border-bad bg-bad-bg outline outline-2 outline-offset-2 outline-bad" : "border-ink bg-card"
+      }`}
     >
       {onSua ? (
         <button
@@ -63,7 +73,16 @@ export function ChipTuKhoa({
 }
 
 /** Gõ + Enter để thêm vào đúng phòng này. Giữ focus sau khi thêm để gõ tiếp. */
-export function OThemNhanh({ phongId, tenPhong }: { phongId: string; tenPhong: string }) {
+export function OThemNhanh({
+  phongId,
+  tenPhong,
+  onTrung,
+}: {
+  phongId: string;
+  tenPhong: string;
+  /** Báo id từ khoá đang có khi bị trùng (`null` = hết trùng) để tô chip. */
+  onTrung: (keywordId: string | null) => void;
+}) {
   const queryClient = useQueryClient();
   const idLoi = useId();
   const [text, setText] = useState("");
@@ -74,8 +93,9 @@ export function OThemNhanh({ phongId, tenPhong }: { phongId: string; tenPhong: s
       setText("");
       void queryClient.invalidateQueries({ queryKey: khoaTuKhoa.tuKhoa.all });
     },
+    onError: (loi) => onTrung(tuKhoaTrung(loi)?.id ?? null),
   });
-  const trung = them.error instanceof ApiError && them.error.code === "KEYWORD_DUPLICATE";
+  const trung = tuKhoaTrung(them.error);
 
   return (
     <li className="flex max-w-80 flex-col gap-1">
@@ -90,7 +110,10 @@ export function OThemNhanh({ phongId, tenPhong }: { phongId: string; tenPhong: s
           value={text}
           onChange={(e) => {
             setText(e.target.value);
-            if (them.isError) them.reset();
+            if (them.isError) {
+              them.reset();
+              onTrung(null);
+            }
           }}
           // readOnly thay vì disabled: disabled làm rơi focus, người dùng phải bấm lại mới gõ tiếp.
           readOnly={them.isPending}
@@ -105,7 +128,12 @@ export function OThemNhanh({ phongId, tenPhong }: { phongId: string; tenPhong: s
       {them.isError && (
         <p id={idLoi} role="alert" className="text-xs font-semibold text-bad">
           {thongDiepLoi(them.error)}
-          {trung && <span className="block font-normal text-ink-2">{t("tuKhoa.giaiThichChuanHoa")}</span>}
+          {trung && (
+            <>
+              <span className="block">{t("tuKhoa.trungVoi", { ten: trung.text })}</span>
+              <span className="block font-normal text-ink-2">{t("tuKhoa.giaiThichChuanHoa")}</span>
+            </>
+          )}
         </p>
       )}
     </li>

@@ -177,7 +177,8 @@ export function __resetApiClientState(): void {
 export interface RequestOptions {
   method?: string;
   body?: unknown;
-  query?: Record<string, string | number | undefined>;
+  /** Mảng = tham số lặp (`?outcome=A&outcome=B`), đúng kiểu `list[...]` của FastAPI. */
+  query?: Record<string, string | number | readonly (string | number)[] | undefined>;
   signal?: AbortSignal;
   /** Bỏ qua việc gắn Bearer (dùng cho chính lời gọi đăng nhập). */
   skipAuth?: boolean;
@@ -190,7 +191,9 @@ function buildUrl(path: string, query?: RequestOptions["query"]): string {
   );
   if (query) {
     for (const [key, value] of Object.entries(query)) {
-      if (value !== undefined) url.searchParams.set(key, String(value));
+      if (value === undefined) continue;
+      if (Array.isArray(value)) for (const v of value) url.searchParams.append(key, String(v));
+      else url.searchParams.set(key, String(value));
     }
   }
   return url.toString();

@@ -42,3 +42,13 @@ thái), X12 (mốc tương đối). **Không đổi backend.**
 - `ui-f4-gd1/gd2/no` cập nhật selector vì đổi UI có chủ đích (không còn một
   `<section>` chung; Sửa/Xoá theo tên truy cập; dạng khớp kiểm ở tooltip). Kiểm
   "dạng khớp có hiện" đổi thành "dạng khớp ở tooltip + KHÔNG hiện thường trực".
+
+## Cập nhật sau duyệt (2026-09-27) — hai lệch GĐ1 đã đóng
+
+- **BE-10** (`GET /analyses?outcome=` lặp được): nút lọc **Tất cả / Cần xem lại (n)**
+  lọc ở server trên toàn bộ dữ liệu; `n` = `total` của truy vấn `limit=1`.
+  Kèm đổi phạm vi: Manager thấy đề xuất về phòng mình **cộng** mọi hội thoại HIỆN
+  đang chờ phân (nhất quán quy tắc "phân tích lại"); Staff giữ như cũ.
+- **409 `KEYWORD_DUPLICATE`** trả `error.details.existing_keyword {id, text,
+  normalized}`: ô thêm nhanh tô đỏ đúng chip đang có + "Trùng với “…”"; hộp thoại
+  nêu tên. FE vẫn không tự bỏ dấu (RB-3).
