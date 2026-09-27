@@ -21,6 +21,8 @@ class _KetNoi:
     websocket: WebSocket
     role: ActorRole
     department_id: UUID | None
+    # BE-2: để gửi tín hiệu riêng cho đúng người (được giao / bị gỡ).
+    user_id: UUID | None = None
 
     def duoc_nhan(self, conversation_department_id: UUID | None) -> bool:
         """Client này có được nhận tín hiệu của một hội thoại không."""
@@ -41,7 +43,12 @@ class WebSocketNotifier:
 
     async def connect(self, websocket: WebSocket, actor: InboxActor) -> _KetNoi:
         await websocket.accept()
-        ket_noi = _KetNoi(websocket=websocket, role=actor.role, department_id=actor.department_id)
+        ket_noi = _KetNoi(
+            websocket=websocket,
+            role=actor.role,
+            department_id=actor.department_id,
+            user_id=actor.user_id,
+        )
         async with self._lock:
             self._connections.append(ket_noi)
         return ket_noi
@@ -54,14 +61,27 @@ class WebSocketNotifier:
     async def notify_conversation_changed(
         self, conversation_id: UUID, department_id: UUID | None, change: str
     ) -> None:
-        tin_hieu = {
+        tin_hieu: dict[str, str | None] = {
             "conversation_id": str(conversation_id),
             "change": change,
             "department_id": str(department_id) if department_id else None,
         }
         async with self._lock:
             nguoi_nhan = [c for c in self._connections if c.duoc_nhan(department_id)]
+        await self._gui(nguoi_nhan, tin_hieu)
 
+    async def notify_user(self, user_id: UUID, conversation_id: UUID, change: str) -> None:
+        """Tín hiệu riêng cho mọi kết nối (mọi tab) của đúng MỘT người."""
+        tin_hieu: dict[str, str | None] = {
+            "conversation_id": str(conversation_id),
+            "change": change,
+        }
+        async with self._lock:
+            nguoi_nhan = [c for c in self._connections if c.user_id == user_id]
+        await self._gui(nguoi_nhan, tin_hieu)
+
+    async def _gui(self, nguoi_nhan: list[_KetNoi], tin_hieu: dict[str, str | None]) -> None:
+        """Gửi tới từng kết nối; kết nối rớt thì gỡ khỏi danh sách."""
         # Gửi ngoài lock để không giữ lock khi chờ mạng; client rớt thì bỏ.
         chet: list[_KetNoi] = []
         for c in nguoi_nhan:

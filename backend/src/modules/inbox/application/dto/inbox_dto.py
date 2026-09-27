@@ -44,6 +44,8 @@ class InboxItem:
     unread_count: int = 0
     # BE-9: khách chờ từ lúc nào — tin vào đầu tiên sau tin ra cuối (DA_DONG: None).
     waiting_since: datetime | None = None
+    # BE-2: tên người phụ trách, do backend tra (Staff không gọi được /users).
+    assigned_user_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -70,6 +72,18 @@ class MessageView:
 
 
 @dataclass(frozen=True)
+class EventView:
+    """Một dòng hệ thống trong khung chat (BE-2). Tên ``None`` = hệ thống/không rõ."""
+
+    id: UUID
+    kind: str
+    created_at: datetime
+    actor_name: str | None
+    from_name: str | None
+    to_name: str | None
+
+
+@dataclass(frozen=True)
 class ConversationView:
     """Chi tiết một hội thoại: phần đầu + danh sách tin."""
 
@@ -85,3 +99,7 @@ class ConversationView:
     messages: tuple[MessageView, ...] = field(default_factory=tuple)
     # BE-9 (xem InboxItem).
     waiting_since: datetime | None = None
+    # BE-2 / panel khách (2a).
+    assigned_user_name: str | None = None
+    customer_external_id: str = ""
+    events: tuple[EventView, ...] = field(default_factory=tuple)

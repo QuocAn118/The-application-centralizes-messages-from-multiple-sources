@@ -122,3 +122,32 @@ class TestAssignAgent:
         uc, _, _ = await _dung(ht, [_agent(department_id=None)])
         with pytest.raises(NotOpenError):
             await uc.execute(ADMIN, ht.id, NHAN_VIEN)
+
+
+class TestTimelineTuGiao:
+    """BE-2: #3 tự giao ghi sự kiện AUTO_ASSIGNED + báo riêng người được giao."""
+
+    async def test_ghi_su_kien_va_bao_nguoi_duoc_giao(self) -> None:
+        from src.modules.inbox.domain.entities.conversation_event import ConversationEventKind
+        from src.modules.inbox.domain.ports import CHANGE_ASSIGNED_TO_YOU
+        from tests.unit.inbox.fakes import FakeConversationEventRepository
+
+        ht = _dang_mo()
+        repo = FakeConversationRepository()
+        await repo.add(ht)
+        su_kien = FakeConversationEventRepository()
+        notifier = FakeRealtimeNotifier()
+        uc = AssignConversationToAgent(
+            repo,
+            FakeWorkforceDirectory([_agent()]),
+            notifier,
+            FakeClock(BAY_GIO),
+            event_repo=su_kien,
+        )
+
+        await uc.execute(ADMIN, ht.id, NHAN_VIEN)
+
+        (e,) = su_kien.events
+        assert e.kind is ConversationEventKind.AUTO_ASSIGNED
+        assert (e.actor_user_id, e.to_user_id) == (None, NHAN_VIEN)
+        assert notifier.rieng == [(NHAN_VIEN, ht.id, CHANGE_ASSIGNED_TO_YOU)]

@@ -15,6 +15,7 @@ from uuid import UUID
 from src.modules.inbox.application.actor import ActorRole, InboxActor
 from src.modules.inbox.application.dto.inbox_dto import InboxItem, Page
 from src.modules.inbox.domain.entities.conversation import Conversation, ConversationStatus
+from src.modules.inbox.domain.ports import IWorkforceDirectory
 from src.modules.inbox.domain.repositories.channel_repository import IChannelRepository
 from src.modules.inbox.domain.repositories.conversation_repository import (
     IConversationRepository,
@@ -71,10 +72,13 @@ class ListInbox:
         customer_repo: ICustomerRepository,
         channel_repo: IChannelRepository,
         message_repo: IMessageRepository | None = None,
+        directory: IWorkforceDirectory | None = None,
     ) -> None:
         self._conversation_repo = conversation_repo
         self._customer_repo = customer_repo
         self._channel_repo = channel_repo
+        # BE-2: tra tên người phụ trách theo lô. Tuỳ chọn cho nơi gọi cũ.
+        self._directory = directory
         # Tuỳ chọn: không có thì danh sách vẫn chạy, chỉ thiếu dòng preview.
         self._message_repo = message_repo
 
@@ -135,8 +139,19 @@ class ListInbox:
             chua_doc = await self._message_repo.unread_counts(actor.user_id, con_mo)
             cho_tu = await self._message_repo.waiting_since(con_mo)
 
+        ten: dict[UUID, str] = {}
+        nguoi = [c.assigned_user_id for c in conversations if c.assigned_user_id is not None]
+        if self._directory is not None and nguoi:
+            ten = await self._directory.get_names(nguoi)
+
         items = [
-            await self._to_item(c, preview.get(c.id), chua_doc.get(c.id, 0), cho_tu.get(c.id))
+            await self._to_item(
+                c,
+                preview.get(c.id),
+                chua_doc.get(c.id, 0),
+                cho_tu.get(c.id),
+                ten.get(c.assigned_user_id) if c.assigned_user_id else None,
+            )
             for c in conversations
         ]
         return Page(items=items, total=tong, limit=gioi_han, offset=vi_tri)
@@ -147,6 +162,7 @@ class ListInbox:
         preview: str | None = None,
         unread_count: int = 0,
         waiting_since: datetime | None = None,
+        assigned_user_name: str | None = None,
     ) -> InboxItem:
         channel = await self._channel_repo.get_by_id(conversation.channel_id)
         customer = await self._customer_repo.get_by_id(conversation.customer_id)
@@ -165,4 +181,5 @@ class ListInbox:
             last_message_preview=_rut_gon(preview),
             unread_count=unread_count,
             waiting_since=waiting_since,
+            assigned_user_name=assigned_user_name,
         )

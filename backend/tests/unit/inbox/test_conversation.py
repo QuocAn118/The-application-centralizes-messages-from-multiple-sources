@@ -4,8 +4,10 @@ import pytest
 
 from src.modules.inbox.domain.entities.conversation import (
     AlreadyAssignedError,
+    AlreadyAssignedToUserError,
     Conversation,
     ConversationStatus,
+    NotAssignedError,
     NotAwaitingAssignmentError,
     NotOpenError,
 )
@@ -158,3 +160,65 @@ class TestTinDenVaMoLai:
         ht.register_incoming(now=SAU_5_PHUT)
 
         assert ht.assigned_user_id == nv
+
+
+class TestChuyenNguoiPhuTrach:
+    """BE-2 (redesign 2a): Manager/Admin đổi hoặc gỡ người phụ trách.
+
+    ``assign_to_agent`` (Nhận việc, #3 tự giao) GIỮ quy tắc "không cướp việc";
+    chỉ đường riêng này mới được thay người đang phụ trách.
+    """
+
+    def test_giao_khi_chua_co_ai_tra_ve_none(self) -> None:
+        ht = _tao_dang_mo()
+        b = new_id()
+
+        cu = ht.chuyen_nguoi_phu_trach(b, now=SAU_5_PHUT)
+
+        assert cu is None
+        assert ht.assigned_user_id == b
+        assert ht.updated_at == SAU_5_PHUT
+
+    def test_doi_nguoi_tra_ve_nguoi_cu(self) -> None:
+        ht = _tao_dang_mo()
+        a, b = new_id(), new_id()
+        ht.assign_to_agent(a, now=BAY_GIO)
+
+        cu = ht.chuyen_nguoi_phu_trach(b, now=SAU_5_PHUT)
+
+        assert cu == a
+        assert ht.assigned_user_id == b
+
+    def test_go_nguoi_phu_trach(self) -> None:
+        ht = _tao_dang_mo()
+        a = new_id()
+        ht.assign_to_agent(a, now=BAY_GIO)
+
+        cu = ht.chuyen_nguoi_phu_trach(None, now=SAU_5_PHUT)
+
+        assert cu == a
+        assert ht.assigned_user_id is None
+
+    def test_doi_sang_chinh_nguoi_dang_phu_trach_bi_tu_choi(self) -> None:
+        ht = _tao_dang_mo()
+        a = new_id()
+        ht.assign_to_agent(a, now=BAY_GIO)
+
+        with pytest.raises(AlreadyAssignedToUserError):
+            ht.chuyen_nguoi_phu_trach(a, now=SAU_5_PHUT)
+
+    def test_go_khi_chua_co_ai_bi_tu_choi(self) -> None:
+        with pytest.raises(NotAssignedError):
+            _tao_dang_mo().chuyen_nguoi_phu_trach(None, now=SAU_5_PHUT)
+
+    def test_chi_khi_dang_mo(self) -> None:
+        with pytest.raises(NotOpenError):
+            _tao_cho_phan().chuyen_nguoi_phu_trach(new_id(), now=SAU_5_PHUT)
+
+    def test_nhan_viec_van_khong_cuop_duoc(self) -> None:
+        """Quy tắc cũ không đổi: Nhận việc khi đã có người vẫn bị từ chối."""
+        ht = _tao_dang_mo()
+        ht.chuyen_nguoi_phu_trach(new_id(), now=BAY_GIO)
+
+        with pytest.raises(AlreadyAssignedError):
+            ht.assign_to_agent(new_id(), now=SAU_5_PHUT)

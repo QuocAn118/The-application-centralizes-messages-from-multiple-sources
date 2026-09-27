@@ -5,7 +5,14 @@ from uuid import UUID
 from src.modules.inbox.application.actor import InboxActor
 from src.modules.inbox.application.authorization import bao_dam_thao_tac
 from src.modules.inbox.domain.entities.conversation import Conversation
+from src.modules.inbox.domain.entities.conversation_event import (
+    ConversationEvent,
+    ConversationEventKind,
+)
 from src.modules.inbox.domain.ports import CHANGE_STATUS, IRealtimeNotifier
+from src.modules.inbox.domain.repositories.conversation_event_repository import (
+    IConversationEventRepository,
+)
 from src.modules.inbox.domain.repositories.conversation_repository import (
     IConversationRepository,
 )
@@ -25,10 +32,13 @@ class TakeConversation:
         conversation_repo: IConversationRepository,
         notifier: IRealtimeNotifier,
         clock: IClock,
+        event_repo: IConversationEventRepository | None = None,
     ) -> None:
         self._conversation_repo = conversation_repo
         self._notifier = notifier
         self._clock = clock
+        # BE-2: ghi "B đã nhận việc" vào timeline. Tuỳ chọn cho nơi gọi cũ.
+        self._event_repo = event_repo
 
     async def execute(self, actor: InboxActor, conversation_id: UUID) -> Conversation:
         conversation = await self._conversation_repo.get_by_id(conversation_id)
@@ -39,6 +49,16 @@ class TakeConversation:
         now = self._clock.now()
         conversation.assign_to_agent(actor.user_id, now)
         await self._conversation_repo.update(conversation)
+        if self._event_repo is not None:
+            await self._event_repo.add(
+                ConversationEvent.ghi(
+                    conversation.id,
+                    ConversationEventKind.TAKEN,
+                    now,
+                    actor_user_id=actor.user_id,
+                    to_user_id=actor.user_id,
+                )
+            )
 
         await self._notifier.notify_conversation_changed(
             conversation.id, conversation.department_id, CHANGE_STATUS
