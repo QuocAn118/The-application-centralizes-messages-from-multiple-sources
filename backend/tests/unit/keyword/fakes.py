@@ -119,6 +119,7 @@ class FakeConversationDirectory:
             conversation_id=snap.conversation_id,
             is_awaiting=snap.is_awaiting,
             first_texts=snap.first_texts[:max_messages],
+            department_id=snap.department_id,
         )
 
 

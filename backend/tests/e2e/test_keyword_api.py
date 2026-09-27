@@ -377,6 +377,73 @@ class TestRetriggerAnalysis:
         assert row.status == "DANG_MO"
         assert str(row.department_id) == ids["phong"]
 
+    async def _hoi_thoai_moi(self, app_kw, client_kw, engine, oa, classifier):  # type: ignore[no-untyped-def]
+        admin = await _login(client_kw, "admin@x.vn")
+        await _connect_channel_no_dept(client_kw, admin, oa)
+        app_kw.state.keyword_classifier_factory = lambda: classifier
+        raw = _webhook_zalo(oa, "khach_" + oa, "m_" + oa, "toi can tu van")
+        await client_kw.post(
+            "/api/v1/webhooks/ZALO", content=raw, headers={"X-ZEvent-Signature": _ky_zalo(raw)}
+        )
+        async with engine.begin() as conn:
+            return (
+                (
+                    await conn.execute(
+                        text("SELECT id FROM conversations ORDER BY created_at DESC LIMIT 1")
+                    )
+                )
+                .one()
+                .id
+            )
+
+    async def test_mo_ho_nghieng_ve_phong_khac_van_kich_hoat_duoc(
+        self, app_kw, client_kw: AsyncClient, engine: AsyncEngine
+    ) -> None:
+        # LLM nghiêng về phòng 2 nhưng tin cậy thấp → AMBIGUOUS, hội thoại vẫn chờ
+        # phân. Manager phòng 1 phải cứu được (bản guard cũ trả 403 ở đây).
+        ids = await _seed(engine)
+        conv_id = await self._hoi_thoai_moi(
+            app_kw,
+            client_kw,
+            engine,
+            "oa_kw_4",
+            _FakeClassifier(UUID(ids["phong2"]), Decimal("0.2")),
+        )
+        async with engine.begin() as conn:
+            outcome = (
+                await conn.execute(
+                    text("SELECT outcome FROM conversation_analyses WHERE conversation_id = :id"),
+                    {"id": str(conv_id)},
+                )
+            ).scalar_one()
+        assert outcome == "AMBIGUOUS"
+
+        tok_m = await _login(client_kw, "manager@x.vn")
+        r = await client_kw.post(
+            f"/api/v1/conversations/{conv_id}/analyses", headers=_bearer(tok_m)
+        )
+        assert r.status_code == 200, r.text
+
+    async def test_hoi_thoai_da_thuoc_phong_chi_manager_phong_do(
+        self, app_kw, client_kw: AsyncClient, engine: AsyncEngine
+    ) -> None:
+        ids = await _seed(engine)
+        conv_id = await self._hoi_thoai_moi(
+            app_kw,
+            client_kw,
+            engine,
+            "oa_kw_5",
+            _FakeClassifier(UUID(ids["phong"]), Decimal("0.95")),
+        )
+        duong = f"/api/v1/conversations/{conv_id}/analyses"
+
+        r = await client_kw.post(duong, headers=_bearer(await _login(client_kw, "manager2@x.vn")))
+        assert r.status_code == 403, r.text
+        assert r.json()["error"]["code"] == "ANALYSIS_FORBIDDEN"
+        for email in ("manager@x.vn", "admin@x.vn"):
+            r = await client_kw.post(duong, headers=_bearer(await _login(client_kw, email)))
+            assert r.status_code == 200, (email, r.text)
+
     async def test_staff_khong_kich_hoat_duoc(
         self, client_kw: AsyncClient, engine: AsyncEngine
     ) -> None:
