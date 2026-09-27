@@ -444,6 +444,12 @@ const VI = {
   "tuKhoa.giaiThichChuanHoa":
     "Hệ thống bỏ dấu và không phân biệt hoa thường, nên \"Bảo Hành\" và \"bao hanh\" là một.",
   "tuKhoa.demTrongPhong": "{so} từ khoá",
+  "tuKhoa.moTaTrang": "AI dùng từ khoá của từng phòng để phân hội thoại mới về đúng phòng.",
+  "tuKhoa.chuaCoTieuDe": "Chưa có từ khoá",
+  "tuKhoa.khongKhopTim": "Không có từ khoá nào khớp",
+  "tuKhoa.dsCuaPhong": "Từ khoá của {phong}",
+  "tuKhoa.themNhanhGoiY": "+ Thêm từ khoá, Enter",
+  "tuKhoa.themNhanhNhan": "Thêm từ khoá cho {phong}",
   "tuKhoa.timGoiY": "Tìm từ khoá…",
 
   "phanTich.tieuDe": "Phân tích hội thoại bằng AI",
@@ -461,6 +467,9 @@ const VI = {
   "phanTich.khongCoNhuCau": "Không trích được nhu cầu nào",
   "phanTich.chiDoc": "Màn này chỉ để xem. Kết quả do AI tự chạy khi có hội thoại mới.",
   "phanTich.khongRoPhong": "Không xác định được phòng",
+  "phanTich.canXemLai": "Cần xem lại",
+  "phanTich.demCanXemLai": "{so} kết quả trên trang này AI chưa tự phân được phòng — cần người quyết.",
+  "phanTich.moHoiThoai": "Mở hội thoại",
 
   // Báo cáo (#F5)
   "baoCao.tieuDe": "Báo cáo",
