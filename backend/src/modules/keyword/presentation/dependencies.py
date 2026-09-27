@@ -75,7 +75,7 @@ async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
             raise
 
 
-DbSession = Annotated[AsyncSession, Depends(get_session)]
+DbSession = Annotated[AsyncSession, Depends(get_session, scope="function")]
 
 
 def get_directory_for(request: Request, session: AsyncSession) -> IWorkforceDirectory:
