@@ -200,6 +200,42 @@ class TestKeywordCrud:
         r = await client_kw.delete(f"/api/v1/keywords/{kw_id}", headers=_bearer(tok))
         assert r.status_code == 204
 
+    async def test_trung_tra_409_kem_tu_khoa_dang_co(
+        self, client_kw: AsyncClient, engine: AsyncEngine
+    ) -> None:
+        ids = await _seed(engine)
+        tok = await _login(client_kw, "manager@x.vn")
+        r = await client_kw.post(
+            "/api/v1/keywords",
+            headers=_bearer(tok),
+            json={"department_id": ids["phong"], "text": "Bảo Hành"},
+        )
+        da_co = r.json()
+
+        for sai in ("bao hanh", "  BẢO   hành "):
+            r = await client_kw.post(
+                "/api/v1/keywords",
+                headers=_bearer(tok),
+                json={"department_id": ids["phong"], "text": sai},
+            )
+            assert r.status_code == 409, r.text
+            loi = r.json()["error"]
+            assert loi["code"] == "KEYWORD_DUPLICATE"
+            assert loi["details"] == {
+                "existing_keyword": {
+                    "id": da_co["id"],
+                    "text": "Bảo Hành",
+                    "normalized": "bao hanh",
+                }
+            }
+
+        # Lỗi nghiệp vụ khác vẫn giữ details = null như cũ.
+        r = await client_kw.delete(
+            "/api/v1/keywords/00000000-0000-0000-0000-000000000000", headers=_bearer(tok)
+        )
+        assert r.status_code == 404
+        assert r.json()["error"]["details"] is None
+
     async def test_staff_khong_crud_duoc(self, client_kw: AsyncClient, engine: AsyncEngine) -> None:
         ids = await _seed(engine)
         tok = await _login(client_kw, "staff@x.vn")
