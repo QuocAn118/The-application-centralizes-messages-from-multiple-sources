@@ -22,6 +22,8 @@ import {
   NHAN_DOI_TUONG_KPI,
   NHAN_LOAI_DON,
   lopMucKpi,
+  thanhKpi,
+  doiKy,
   phanTramKpi,
   soKpi,
   NHAN_TRANG_THAI_DON,
@@ -571,5 +573,30 @@ describe("soDem", () => {
   it("phân nhóm hàng nghìn kiểu vi-VN", () => {
     expect(soDem(1234)).toBe("1.234");
     expect(soDem(0)).toBe("0");
+  });
+});
+
+describe("thanhKpi (K1)", () => {
+  it("null / không phải số -> không vẽ thanh (null ≠ 0%)", () => {
+    expect(thanhKpi(null)).toBeNull();
+    expect(thanhKpi("x")).toBeNull();
+  });
+  it("0% vẫn là thanh (đã đo, bằng không)", () => {
+    expect(thanhKpi("0.0")).toEqual({ rong: 0, lop: "bg-bad" });
+  });
+  it("vượt 100% thì thanh đầy", () => {
+    expect(thanhKpi("130.0")).toEqual({ rong: 100, lop: "bg-ok" });
+  });
+  it("cùng mốc màu với lopMucKpi", () => {
+    expect(thanhKpi("85")?.lop).toBe("bg-ink-2");
+    expect(thanhKpi("79.9")?.lop).toBe("bg-bad");
+  });
+});
+
+describe("doiKy (K3)", () => {
+  it("qua năm cả hai chiều", () => {
+    expect(doiKy(2026, 12, 1)).toEqual({ nam: 2027, thang: 1 });
+    expect(doiKy(2026, 1, -1)).toEqual({ nam: 2025, thang: 12 });
+    expect(doiKy(2026, 9, 1)).toEqual({ nam: 2026, thang: 10 });
   });
 });
