@@ -38,7 +38,7 @@ export function DongHoiThoai({
           <time
             dateTime={item.last_message_at}
             title={mocDayDu(item.last_message_at)}
-            className="shrink-0 text-[11px] text-muted-soft"
+            className="shrink-0 text-xs text-muted-soft"
           >
             {mocNgan(item.last_message_at)}
           </time>

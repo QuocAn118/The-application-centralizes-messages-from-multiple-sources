@@ -114,7 +114,7 @@ const VI = {
   "kenh.TELEGRAM": "Telegram",
   "vai.STAFF": "Nhân viên",
   "vai.MANAGER": "Quản lý",
-  "vai.ADMIN": "Quản trị",
+  "vai.ADMIN": "Quản trị viên",
 
   // Đổi mật khẩu
   "doiMatKhau.tieuDe": "Đổi mật khẩu",
@@ -131,7 +131,7 @@ const VI = {
   "doiMatKhau.loiChung": "Không đổi được mật khẩu.",
 
   // Quản trị (#F2) — chung
-  "quanTri.tieuDe": "Quản trị",
+  "quanTri.tieuDe": "Cấu hình",
   "quanTri.tabNguoiDung": "Người dùng",
   "quanTri.tabPhongBan": "Phòng ban",
   "quanTri.tabKenh": "Kênh",

@@ -29,7 +29,7 @@ export function BangPhongBan({
   return (
     <table className="w-full border-collapse text-left">
       <thead>
-        <tr className="border-b border-border-subtle bg-surface/60 text-[11px] font-bold uppercase tracking-wider text-muted">
+        <tr className="border-b border-border-subtle bg-surface/60 text-xs font-bold uppercase tracking-wider text-muted">
           <th scope="col" className="px-5 py-3.5">{t("phongBan.cotTen")}</th>
           <th scope="col" className="w-32 px-4 py-3.5">{t("phongBan.cotSoNhanVien")}</th>
           <th scope="col" className="w-44 px-4 py-3.5">{t("phongBan.cotTrangThai")}</th>
