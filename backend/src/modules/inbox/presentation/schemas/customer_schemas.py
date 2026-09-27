@@ -50,3 +50,23 @@ class TagUpdateRequest(BaseModel):
 
 class CustomerTagsRequest(BaseModel):
     tag_ids: list[UUID] = Field(max_length=50)
+
+
+class TemplateResponse(BaseModel):
+    id: UUID
+    # ``null`` = mẫu dùng chung mọi phòng.
+    department_id: UUID | None
+    title: str
+    body: str
+    updated_at: datetime
+
+
+class TemplateCreateRequest(BaseModel):
+    department_id: UUID | None = None
+    title: str = Field(min_length=1, max_length=80)
+    body: str = Field(min_length=1, max_length=4000)
+
+
+class TemplateUpdateRequest(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=80)
+    body: str | None = Field(default=None, min_length=1, max_length=4000)
