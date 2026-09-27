@@ -347,6 +347,25 @@ export function lopMucKpi(phanTram: string | null): string {
   return "text-danger-fg";
 }
 
+/**
+ * Thanh tiến độ ô "Hoàn thành" (K1): độ rộng 0–100% + màu theo cùng mốc với
+ * `lopMucKpi`. `null` = không vẽ thanh — null ≠ 0% (dấu gạch, không phải thanh rỗng).
+ * Vượt 100% thì thanh đầy, số in vẫn đúng (vd. 130%).
+ */
+export function thanhKpi(phanTram: string | null): { rong: number; lop: string } | null {
+  if (phanTram === null) return null;
+  const so = Number(phanTram);
+  if (!Number.isFinite(so)) return null;
+  const lop = so >= 100 ? "bg-ok" : so >= 80 ? "bg-ink-2" : "bg-bad";
+  return { rong: Math.min(100, Math.max(0, so)), lop };
+}
+
+/** Kỳ liền trước / liền sau (K3). */
+export function doiKy(nam: number, thang: number, buoc: number): { nam: number; thang: number } {
+  const chiSo = nam * 12 + (thang - 1) + buoc;
+  return { nam: Math.floor(chiSo / 12), thang: (chiSo % 12) + 1 };
+}
+
 /** Kỳ KPI dạng "Tháng 9/2026". */
 export function kyKpi(nam: number, thang: number): string {
   return t("kpi.ky", { thang: String(thang), nam: String(nam) });

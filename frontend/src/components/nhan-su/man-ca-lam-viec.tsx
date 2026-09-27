@@ -1,17 +1,18 @@
 "use client";
 
 /**
- * Màn Ca làm việc (#F3 GĐ2) — hai phần trên một trang.
+ * Màn Ca làm việc (#F3 GĐ2, redesign Phần 3).
  *
- * Trên: **mẫu ca** (khuôn giờ). Dưới: **lịch phân ca** theo tuần (ai làm khuôn
- * nào, ngày nào). Hai thứ luôn được xem cùng nhau: xếp lịch mà không thấy các
- * khuôn giờ hiện có thì phải nhớ trong đầu.
+ * **Lịch tuần lên đầu, chiếm cả màn** (S1) — đó là thứ mở ra xem hằng ngày. Mẫu
+ * ca (khuôn giờ, sửa thỉnh thoảng) là chế độ xem thứ hai; chú giải màu dưới lịch
+ * vẫn cho thấy các khuôn giờ đang dùng mà không cần chuyển.
  *
  * Staff chỉ xem: backend trả đúng ca của họ (`ListShiftAssignments` lọc theo
  * `user_ids`), và FE ẩn mọi nút xếp/huỷ.
  */
 
 import { useMemo, useState } from "react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, Pencil, Plus, Power } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { t } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-context";
@@ -29,7 +30,15 @@ import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { HopXacNhan } from "@/components/hop-xac-nhan";
 import { HopThoaiCa } from "./hop-thoai-ca";
 import { HopThoaiPhanCa } from "./hop-thoai-phan-ca";
-import { LuoiLich } from "./luoi-lich";
+import { ChuGiaiCa, LuoiLich } from "./luoi-lich";
+import { lopMau, mauTuId } from "@/components/ui/ban-mau";
+import { DauTrang } from "@/components/ui/dau-trang";
+import { The } from "@/components/ui/the";
+import { Bang, Td, Th, Tr } from "@/components/ui/bang";
+import { HuyHieu } from "@/components/ui/huy-hieu";
+import { MenuHanhDong } from "@/components/ui/menu-hanh-dong";
+import { Nut } from "@/components/ui/nut";
+import { TrangThaiLoi, TrangThaiRong, TrangThaiTai } from "@/components/ui/trang-thai";
 import type { Shift, ShiftAssignment } from "@/lib/types";
 
 type DangMo =
@@ -45,6 +54,7 @@ export function ManCaLamViec() {
   const queryClient = useQueryClient();
   const [mocTuan, setMocTuan] = useState(() => new Date());
   const [dangMo, setDangMo] = useState<DangMo>(null);
+  const [cheDo, setCheDo] = useState<"lich" | "mau">("lich");
 
   const tuan = useMemo(() => tuanChua(mocTuan), [mocTuan]);
   const tuNgay = tuan[0];
@@ -146,154 +156,185 @@ export function ManCaLamViec() {
     );
   }
 
+  const tenPhong = (id: string) =>
+    phongBan.find((p) => p.id === id)?.name ?? t("nguoiDung.khongPhong");
+
   return (
-    <div className="space-y-6 px-6 py-6">
-      {/* ----- Mẫu ca ----- */}
-      <section className="overflow-hidden rounded-lg border border-border-subtle bg-white">
-        <div className="flex items-center justify-between gap-4 border-b border-border-subtle px-5 py-3">
-          <h2 className="text-base font-semibold text-foreground">{t("ca.tieuDe")}</h2>
-          {xepDuoc && (
-            <button
-              type="button"
-              onClick={() => setDangMo({ loai: "taoCa" })}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95"
-            >
-              + {t("ca.taoMoi")}
-            </button>
+    <div className="flex flex-col gap-5 px-8 py-6">
+      <DauTrang
+        tieuDe="Ca làm việc"
+        moTa={
+          cheDo === "mau"
+            ? "Khuôn giờ dùng để xếp lịch. Mẫu đã ngừng không xếp thêm được."
+            : xepDuoc
+              ? "Bấm vào một ô trống để xếp ca. Ngày đã qua không xếp thêm được."
+              : "Lịch ca của bạn theo tuần."
+        }
+        hanhDong={
+          <>
+            <div role="group" aria-label="Chế độ xem" className="flex">
+              <Nut
+                bienThe={cheDo === "lich" ? "chinh" : "phu"}
+                icon={CalendarDays}
+                aria-pressed={cheDo === "lich"}
+                onClick={() => setCheDo("lich")}
+                className="rounded-r-none"
+              >
+                Lịch tuần
+              </Nut>
+              <Nut
+                bienThe={cheDo === "mau" ? "chinh" : "phu"}
+                icon={Clock}
+                aria-pressed={cheDo === "mau"}
+                onClick={() => setCheDo("mau")}
+                className="rounded-l-none"
+              >
+                {t("ca.tieuDe")}
+              </Nut>
+            </div>
+            {xepDuoc && (
+              <Nut icon={Plus} onClick={() => setDangMo({ loai: "taoCa" })}>
+                {t("ca.taoMoi")}
+              </Nut>
+            )}
+          </>
+        }
+      />
+
+      {cheDo === "lich" ? (
+        <The>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-ink px-5 py-3">
+            <div className="flex items-center gap-2">
+              <Nut co="sm" icon={ChevronLeft} onClick={() => doiTuan(-7)}>
+                {t("lich.tuanTruoc")}
+              </Nut>
+              <Nut co="sm" onClick={() => setMocTuan(new Date())}>
+                {t("lich.tuanNay")}
+              </Nut>
+              <Nut co="sm" onClick={() => doiTuan(7)}>
+                {t("lich.tuanSau")}
+                <ChevronRight aria-hidden className="size-4" strokeWidth={2.25} />
+              </Nut>
+              <span className="ml-2 text-sm font-bold text-ink">
+                {ngayVN(tuNgay)} – {ngayVN(denNgay)}
+              </span>
+            </div>
+            {/* Chú giải chỉ các ca có mặt trên lưới tuần này — giải thích màu đang thấy. */}
+            <ChuGiaiCa
+              ca={danhSachCa.filter((c) =>
+                truyVanLich.data?.some((b) => b.status === "ACTIVE" && b.shift_id === c.id),
+              )}
+            />
+          </div>
+
+          {truyVanLich.isPending && <TrangThaiTai />}
+          {truyVanLich.isError && (
+            <TrangThaiLoi
+              thongDiep={thongDiepLoi(truyVanLich.error)}
+              onThuLai={() => void truyVanLich.refetch()}
+            />
+          )}
+          {truyVanLich.data && nhanVienLuoi.length === 0 && (
+            <TrangThaiRong
+              icon={CalendarDays}
+              tieuDe={danhSachCa.length === 0 ? t("ca.chuaCoCa") : t("lich.khongCoNhanVien")}
+            />
+          )}
+          {truyVanLich.data && nhanVienLuoi.length > 0 && (
+            <LuoiLich
+              tuan={tuan}
+              nhanVien={nhanVienLuoi}
+              buoi={truyVanLich.data}
+              caTheoId={caTheoId}
+              xepDuoc={xepDuoc && caDangDung.length > 0}
+              onXep={(userId, ngay) => setDangMo({ loai: "phanCa", userId, ngay })}
+              onHuy={(buoiCa) => setDangMo({ loai: "huyBuoi", buoi: buoiCa })}
+            />
+          )}
+        </The>
+      ) : (
+        <div className="max-w-[1440px]">
+          {truyVanCa.isPending && (
+            <The>
+              <TrangThaiTai dong={3} />
+            </The>
+          )}
+          {truyVanCa.isError && (
+            <The>
+              <TrangThaiLoi
+                thongDiep={thongDiepLoi(truyVanCa.error)}
+                onThuLai={() => void truyVanCa.refetch()}
+              />
+            </The>
+          )}
+          {truyVanCa.data && danhSachCa.length === 0 && (
+            <The>
+              <TrangThaiRong icon={Clock} tieuDe={t("ca.chuaCoCa")} />
+            </The>
+          )}
+          {danhSachCa.length > 0 && (
+            <Bang aria-label={t("ca.tieuDe")}>
+              <thead>
+                <tr>
+                  <Th>{t("ca.ten")}</Th>
+                  <Th>Khung giờ</Th>
+                  <Th>{t("ca.phongBan")}</Th>
+                  <Th>Trạng thái</Th>
+                  <Th className="w-16">
+                    <span className="sr-only">{t("nguoiDung.thaoTac")}</span>
+                  </Th>
+                </tr>
+              </thead>
+              <tbody>
+                {danhSachCa.map((ca) => (
+                  <Tr key={ca.id}>
+                    <Td>
+                      <span className="flex items-center gap-2 font-bold">
+                        <span
+                          aria-hidden
+                          className={`size-3.5 shrink-0 rounded-[3px] border-2 border-ink ${lopMau(mauTuId(ca.id))}`}
+                        />
+                        {ca.name}
+                      </span>
+                    </Td>
+                    <Td className="tabular-nums">
+                      {gioNgan(ca.start_time)}–{gioNgan(ca.end_time)}
+                    </Td>
+                    <Td>{tenPhong(ca.department_id)}</Td>
+                    <Td>
+                      <HuyHieu tong={ca.is_active ? "ok" : "trung"}>
+                        {ca.is_active ? t("ca.dangDung") : t("ca.daNgung")}
+                      </HuyHieu>
+                    </Td>
+                    <Td className="text-right">
+                      {xepDuoc && (
+                        <MenuHanhDong
+                          nhan={`Thao tác với ${ca.name}`}
+                          muc={[
+                            {
+                              nhan: t("ca.sua"),
+                              icon: Pencil,
+                              onChon: () => setDangMo({ loai: "suaCa", ca }),
+                            },
+                            // Ca đã ngừng không bật lại được: backend không có endpoint.
+                            {
+                              nhan: t("ca.ngung"),
+                              icon: Power,
+                              nguyHiem: true,
+                              an: !ca.is_active,
+                              onChon: () => setDangMo({ loai: "ngungCa", ca }),
+                            },
+                          ]}
+                        />
+                      )}
+                    </Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Bang>
           )}
         </div>
-
-        {truyVanCa.isPending && (
-          <p className="px-5 py-8 text-center text-sm text-muted">{t("chung.dangTai")}</p>
-        )}
-        {truyVanCa.isError && (
-          <p className="px-5 py-8 text-center text-sm text-danger-fg">
-            {thongDiepLoi(truyVanCa.error)}
-          </p>
-        )}
-        {truyVanCa.data && danhSachCa.length === 0 && (
-          <p className="px-5 py-8 text-center text-sm text-muted">{t("ca.chuaCoCa")}</p>
-        )}
-
-        {danhSachCa.length > 0 && (
-          <ul className="divide-y divide-border-subtle">
-            {danhSachCa.map((ca) => (
-              <li
-                key={ca.id}
-                className={`flex items-center justify-between gap-4 px-5 py-3 ${
-                  ca.is_active ? "" : "bg-surface/40 opacity-60"
-                }`}
-              >
-                <div className="min-w-0">
-                  <span className="block truncate text-sm font-semibold text-foreground">
-                    {ca.name}
-                  </span>
-                  <span className="block text-xs text-muted">
-                    {gioNgan(ca.start_time)}–{gioNgan(ca.end_time)}
-                    {" · "}
-                    {phongBan.find((p) => p.id === ca.department_id)?.name ??
-                      t("nguoiDung.khongPhong")}
-                  </span>
-                </div>
-
-                <div className="flex shrink-0 items-center gap-2">
-                  <span
-                    className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${
-                      ca.is_active
-                        ? "bg-dang-mo-bg text-dang-mo-fg"
-                        : "bg-da-dong-bg text-da-dong-fg"
-                    }`}
-                  >
-                    {ca.is_active ? t("ca.dangDung") : t("ca.daNgung")}
-                  </span>
-                  {xepDuoc && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setDangMo({ loai: "suaCa", ca })}
-                        className="whitespace-nowrap rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-surface"
-                      >
-                        {t("ca.sua")}
-                      </button>
-                      {/* Ca đã ngừng không hiện nút: backend không có endpoint
-                          bật lại, giống phòng ban và kênh ở #F2. */}
-                      {ca.is_active && (
-                        <button
-                          type="button"
-                          onClick={() => setDangMo({ loai: "ngungCa", ca })}
-                          className="whitespace-nowrap rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-danger-fg transition hover:bg-danger-bg"
-                        >
-                          {t("ca.ngung")}
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* ----- Lịch phân ca ----- */}
-      <section className="overflow-hidden rounded-lg border border-border-subtle bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-5 py-3">
-          <h2 className="text-base font-semibold text-foreground">{t("lich.tieuDe")}</h2>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => doiTuan(-7)}
-              className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-surface"
-            >
-              ← {t("lich.tuanTruoc")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMocTuan(new Date())}
-              className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-surface"
-            >
-              {t("lich.tuanNay")}
-            </button>
-            <button
-              type="button"
-              onClick={() => doiTuan(7)}
-              className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-surface"
-            >
-              {t("lich.tuanSau")} →
-            </button>
-            <span className="ml-1 text-xs text-muted">
-              {ngayVN(tuNgay)} – {ngayVN(denNgay)}
-            </span>
-          </div>
-        </div>
-
-        {truyVanLich.isPending && (
-          <p className="px-5 py-8 text-center text-sm text-muted">{t("chung.dangTai")}</p>
-        )}
-        {truyVanLich.isError && (
-          <p className="px-5 py-8 text-center text-sm text-danger-fg">
-            {thongDiepLoi(truyVanLich.error)}
-          </p>
-        )}
-
-        {truyVanLich.data && nhanVienLuoi.length === 0 && (
-          <p className="px-5 py-8 text-center text-sm text-muted">
-            {t("lich.khongCoNhanVien")}
-          </p>
-        )}
-
-        {truyVanLich.data && nhanVienLuoi.length > 0 && (
-          <LuoiLich
-            tuan={tuan}
-            nhanVien={nhanVienLuoi}
-            buoi={truyVanLich.data}
-            caTheoId={caTheoId}
-            xepDuoc={xepDuoc && caDangDung.length > 0}
-            onXep={(userId, ngay) => setDangMo({ loai: "phanCa", userId, ngay })}
-            onHuy={(buoiCa) => setDangMo({ loai: "huyBuoi", buoi: buoiCa })}
-          />
-        )}
-      </section>
+      )}
 
       {dangMo?.loai === "taoCa" && (
         <HopThoaiCa
