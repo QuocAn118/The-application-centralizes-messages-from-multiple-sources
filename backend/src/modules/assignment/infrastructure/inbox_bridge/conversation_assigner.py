@@ -27,6 +27,7 @@ from src.modules.inbox.domain.ports import IRealtimeNotifier
 from src.modules.inbox.infrastructure.directory.workforce_directory import (
     IdentityWorkforceDirectory,
 )
+from src.modules.inbox.infrastructure.realtime.sau_commit import NotifierSauCommit
 from src.modules.inbox.infrastructure.repositories.conversation_event_repository import (
     SqlAlchemyConversationEventRepository,
 )
@@ -62,7 +63,8 @@ class InboxConversationAssigner:
         self._assign = AssignConversationToAgent(
             conversation_repo=SqlAlchemyConversationRepository(session),
             directory=IdentityWorkforceDirectory(session),
-            notifier=notifier,
+            # Tín hiệu chỉ phát khi hook commit — phát sớm thì client đọc lại dữ liệu cũ.
+            notifier=NotifierSauCommit(notifier, session),
             clock=clock,
             event_repo=SqlAlchemyConversationEventRepository(session),
         )

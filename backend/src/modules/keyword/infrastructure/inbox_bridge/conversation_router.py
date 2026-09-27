@@ -24,6 +24,7 @@ from src.modules.inbox.domain.ports import IRealtimeNotifier
 from src.modules.inbox.infrastructure.directory.workforce_directory import (
     IdentityWorkforceDirectory,
 )
+from src.modules.inbox.infrastructure.realtime.sau_commit import NotifierSauCommit
 from src.modules.inbox.infrastructure.repositories.conversation_repository import (
     SqlAlchemyConversationRepository,
 )
@@ -50,7 +51,8 @@ class InboxConversationRouter:
         self._assign = AssignConversationToDepartment(
             conversation_repo=SqlAlchemyConversationRepository(session),
             directory=IdentityWorkforceDirectory(session),
-            notifier=notifier,
+            # Tín hiệu chỉ phát sau commit (xem NotifierSauCommit).
+            notifier=NotifierSauCommit(notifier, session),
             clock=clock,
         )
 
