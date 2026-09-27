@@ -54,6 +54,10 @@ from src.modules.inbox.infrastructure.models.customer_note_model import (  # noq
     CustomerNoteModel,
 )
 from src.modules.inbox.infrastructure.models.message_model import MessageModel  # noqa: F401
+from src.modules.inbox.infrastructure.models.tag_model import (  # noqa: F401
+    CustomerTagModel,
+    TagModel,
+)
 from src.modules.keyword.infrastructure.models.conversation_analysis_model import (  # noqa: F401
     ConversationAnalysisModel,
 )

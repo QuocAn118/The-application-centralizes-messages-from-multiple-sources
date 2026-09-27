@@ -68,7 +68,8 @@ hoa thường/dấu cách thừa), `customer_tags(customer_id, tag_id, PK)`.
   Không xoá cứng: ngừng dùng thì nhãn biến khỏi ô chọn, khách đang gắn vẫn giữ.
 - `PUT /customers/{id}/tags {tag_ids}` — ai đụng được khách đều gắn/gỡ được; chỉ
   gắn MỚI được nhãn đang dùng.
-- Chi tiết hội thoại thêm `customer_tags: [{id, name, color}]`.
+- Nhãn đang gắn của khách: `GET /customers/{id}/tags` (endpoint riêng — không đụng
+  use case chi tiết hội thoại).
 
 ### 3.5 BE-7 — Mẫu trả lời
 Bảng `reply_templates(id, department_id null=dùng chung, title, body, created_at, updated_at)`.

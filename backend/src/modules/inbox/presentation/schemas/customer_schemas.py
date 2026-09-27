@@ -27,3 +27,26 @@ class NoteResponse(BaseModel):
     @classmethod
     def from_view(cls, v: NoteView) -> "NoteResponse":
         return cls(**v.__dict__)
+
+
+class TagResponse(BaseModel):
+    id: UUID
+    name: str
+    color: str
+    is_active: bool
+
+
+class TagCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    # Chỉ swatch-1..8 — kiểm ở domain (TAG_COLOR_INVALID, 422).
+    color: str
+
+
+class TagUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    color: str | None = None
+    is_active: bool | None = None
+
+
+class CustomerTagsRequest(BaseModel):
+    tag_ids: list[UUID] = Field(max_length=50)
