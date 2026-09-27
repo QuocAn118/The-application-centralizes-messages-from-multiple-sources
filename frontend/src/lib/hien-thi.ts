@@ -387,8 +387,10 @@ export const NHAN_KET_QUA_PHAN_TICH: Record<AnalysisOutcome, string> = {
  * "Cần xem lại" (A2): AI không tự phân được — `AMBIGUOUS` (không đủ chắc) và
  * `NOT_ANALYZED` (không chạy được). Hai loại này cần người quyết phòng.
  */
+export const KET_QUA_CAN_XEM_LAI: readonly AnalysisOutcome[] = ["AMBIGUOUS", "NOT_ANALYZED"];
+
 export function canXemLai(outcome: AnalysisOutcome): boolean {
-  return outcome !== "AUTO_ASSIGNED";
+  return KET_QUA_CAN_XEM_LAI.includes(outcome);
 }
 
 /**
