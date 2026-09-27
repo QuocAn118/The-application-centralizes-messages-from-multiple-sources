@@ -1,18 +1,20 @@
 "use client";
 
 /**
- * Hộp thoại phân phòng ban (mockup Stitch "Phân phòng ban - OmniChat").
+ * Hộp thoại phân phòng ban (redesign 2a: dựng trên `HopThoai` — Radix lo focus,
+ * Esc, bấm nền).
  *
  * Danh sách phòng đã lọc theo quyền: Manager chỉ được phân về phòng của mình,
  * nên hiện cả danh sách rồi để server trả `ASSIGN_OUT_OF_SCOPE` là mời người
  * dùng vào một thất bại đã biết trước.
  */
 
-import { useEffect, useRef, useState } from "react";
-import { t } from "@/lib/i18n";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { t } from "@/lib/i18n";
 import { khoaPhongBan, layPhongBanHoatDong } from "@/lib/inbox-api";
 import { phongCoTheChon, type Actor } from "@/lib/quyen-hanh-dong";
+import { HopThoai, NutChinh, NutPhu } from "./hop-thoai";
 
 export function DialogPhanPhong({
   actor,
@@ -30,7 +32,6 @@ export function DialogPhanPhong({
   onXacNhan: (departmentId: string) => void;
 }) {
   const [chonTay, setChonTay] = useState<string | null>(null);
-  const hopRef = useRef<HTMLDivElement>(null);
 
   const { data, isPending, isError } = useQuery({
     queryKey: khoaPhongBan,
@@ -38,136 +39,59 @@ export function DialogPhanPhong({
   });
 
   const phongBan = data ? phongCoTheChon(actor, data.items) : [];
-
-  // Chỉ có một lựa chọn (Manager) thì coi như đã chọn sẵn — bắt bấm thêm một
-  // lần là vô ích. Tính khi render thay vì đồng bộ bằng effect: giá trị này suy
-  // ra được từ dữ liệu, không phải trạng thái độc lập.
+  // Chỉ một lựa chọn (Manager) thì coi như đã chọn sẵn — suy từ dữ liệu, không phải state.
   const dangChon = chonTay ?? (phongBan.length === 1 ? phongBan[0].id : null);
 
-  // Esc để đóng: hộp thoại nào cũng nên thoát được bằng bàn phím.
-  useEffect(() => {
-    function xuLy(e: KeyboardEvent) {
-      if (e.key === "Escape") onDong();
-    }
-    document.addEventListener("keydown", xuLy);
-    hopRef.current?.focus();
-    return () => document.removeEventListener("keydown", xuLy);
-  }, [onDong]);
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-      onClick={(e) => {
-        // Bấm ra nền thì đóng, nhưng bấm bên trong hộp thì không.
-        if (e.target === e.currentTarget) onDong();
-      }}
-    >
-      <div
-        ref={hopRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="tieu-de-phan-phong"
-        className="w-full max-w-[440px] rounded-lg bg-white p-6 shadow-xl outline-none"
-      >
-        <div className="flex items-start justify-between gap-4">
-          <h2 id="tieu-de-phan-phong" className="text-base font-bold text-foreground">
-            {t("phanPhong.tieuDe")}
-          </h2>
-          <button
-            type="button"
-            onClick={onDong}
-            aria-label={t("chung.dong")}
-            className="text-muted-soft transition hover:text-muted"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <p className="mt-1 text-sm text-muted">
-          Chọn phòng ban tiếp nhận hội thoại của {tenKhach}.
-        </p>
-
-        <div className="mt-5">
-          <p className="mb-2 text-sm font-medium text-foreground">{t("phanPhong.phongBan")}</p>
-
-          {isPending && <p className="text-xs text-muted">{t("phanPhong.dangTai")}</p>}
-
-          {isError && (
-            <p className="text-xs text-danger-fg">{t("phanPhong.loiTai")}</p>
-          )}
-
-          {!isPending && !isError && phongBan.length === 0 && (
-            <p className="text-xs text-muted">
-              {t("phanPhong.khongCoPhong")}
-            </p>
-          )}
-
-          <div className="space-y-2">
-            {phongBan.map((phong) => {
-              const chon = dangChon === phong.id;
-              return (
-                <label
-                  key={phong.id}
-                  className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3.5 py-3 transition ${
-                    chon
-                      ? "border-primary bg-primary-soft"
-                      : "border-border-subtle hover:bg-surface"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="phong-ban"
-                    value={phong.id}
-                    checked={chon}
-                    onChange={() => setChonTay(phong.id)}
-                    className="h-4 w-4 accent-primary"
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-foreground">
-                      {phong.name}
-                    </span>
-                    {phong.description && (
-                      <span className="block truncate text-xs text-muted">
-                        {phong.description}
-                      </span>
-                    )}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-
-        {loi && (
-          <p
-            role="alert"
-            className="mt-4 rounded-lg border border-danger-border bg-danger-bg px-3.5 py-2 text-xs text-danger-fg"
-          >
-            {loi}
-          </p>
-        )}
-
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onDong}
-            className="rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-muted transition hover:bg-surface"
-          >
-            {t("chung.huy")}
-          </button>
-          <button
-            type="button"
-            disabled={!dangChon || dangGui}
-            onClick={() => dangChon && onXacNhan(dangChon)}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+    <HopThoai
+      tieuDe={t("phanPhong.tieuDe")}
+      moTa={`Chọn phòng ban tiếp nhận hội thoại của ${tenKhach}.`}
+      loi={loi}
+      onDong={onDong}
+      chanDuoi={
+        <>
+          <NutPhu onClick={onDong}>{t("chung.huy")}</NutPhu>
+          <NutChinh disabled={!dangChon || dangGui} onClick={() => dangChon && onXacNhan(dangChon)}>
             {dangGui ? t("hanhDong.dangPhan") : t("hanhDong.phanPhong")}
-          </button>
-        </div>
-      </div>
-    </div>
+          </NutChinh>
+        </>
+      }
+    >
+      {isPending && <p className="text-sm text-ink-2">{t("phanPhong.dangTai")}</p>}
+      {isError && <p className="text-sm font-semibold text-bad">{t("phanPhong.loiTai")}</p>}
+      {!isPending && !isError && phongBan.length === 0 && (
+        <p className="text-sm text-ink-2">{t("phanPhong.khongCoPhong")}</p>
+      )}
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-2 text-sm font-bold text-ink">{t("phanPhong.phongBan")}</legend>
+        {phongBan.map((phong) => {
+          const chon = dangChon === phong.id;
+          return (
+            <label
+              key={phong.id}
+              className={`flex cursor-pointer items-center gap-3 rounded-nb border-2 border-ink px-3.5 py-3 ${
+                chon ? "bg-accent" : "bg-card hover:bg-sunken"
+              }`}
+            >
+              <input
+                type="radio"
+                name="phong-ban"
+                value={phong.id}
+                checked={chon}
+                onChange={() => setChonTay(phong.id)}
+                className="size-4 accent-ink"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold text-ink">{phong.name}</span>
+                {phong.description && (
+                  <span className="block truncate text-xs text-ink-2">{phong.description}</span>
+                )}
+              </span>
+            </label>
+          );
+        })}
+      </fieldset>
+    </HopThoai>
   );
 }

@@ -70,3 +70,31 @@ export function phongCoTheChon<T extends { id: string }>(
   }
   return [];
 }
+
+/**
+ * Có hiện ô chọn đổi/gỡ người phụ trách không (BE-2): Manager với hội thoại
+ * phòng mình, Admin mọi phòng; chỉ khi `DANG_MO`. Người khác chỉ thấy chữ.
+ */
+export function hienDoiNguoiPhuTrach(actor: Actor, hoiThoai: Conversation): boolean {
+  if (hoiThoai.status !== "DANG_MO") return false;
+  if (actor.role === "ADMIN") return true;
+  return actor.role === "MANAGER" && hoiThoai.department_id === actor.department_id;
+}
+
+export interface TuyChonNguoi {
+  id: string;
+  ten: string;
+}
+
+/**
+ * Tuỳ chọn cho ô chọn người phụ trách. Người đang phụ trách mà đã nghỉ / chuyển
+ * phòng (không còn trong `nguoiPhong`) vẫn được GIỮ làm một tuỳ chọn — không thì
+ * `<select>` rơi về tuỳ chọn đầu và hiện sai người (Review Focus #4).
+ */
+export function tuyChonNguoiPhuTrach(
+  nguoiPhong: TuyChonNguoi[],
+  hienTai: TuyChonNguoi | null,
+): TuyChonNguoi[] {
+  if (!hienTai || nguoiPhong.some((n) => n.id === hienTai.id)) return nguoiPhong;
+  return [{ id: hienTai.id, ten: `${hienTai.ten} (không còn trong phòng)` }, ...nguoiPhong];
+}
