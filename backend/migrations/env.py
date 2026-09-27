@@ -54,6 +54,9 @@ from src.modules.inbox.infrastructure.models.customer_note_model import (  # noq
     CustomerNoteModel,
 )
 from src.modules.inbox.infrastructure.models.message_model import MessageModel  # noqa: F401
+from src.modules.inbox.infrastructure.models.reply_template_model import (  # noqa: F401
+    ReplyTemplateModel,
+)
 from src.modules.inbox.infrastructure.models.tag_model import (  # noqa: F401
     CustomerTagModel,
     TagModel,
