@@ -60,10 +60,10 @@ const CAP_CHU: [string, string][] = [
 const CAP_DO_HOA: [string, string][] = [
   ["accent-2", "paper"],
   ["accent-2", "card"],
-  ["zalo", "card"],
-  ["facebook", "card"],
-  ["instagram", "card"],
-  ["telegram", "card"],
+  // Logo kênh xuất hiện trên cả ba nền (thẻ, nền app, đầu bảng/lõm).
+  ...["zalo", "facebook", "instagram", "telegram"].flatMap((k) =>
+    ["card", "paper", "sunken"].map((nen): [string, string] => [k, nen]),
+  ),
 ];
 
 describe("tương phản token (WCAG AA)", () => {

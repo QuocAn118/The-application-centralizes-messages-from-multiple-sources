@@ -114,7 +114,7 @@ const VI = {
   "kenh.TELEGRAM": "Telegram",
   "vai.STAFF": "Nhân viên",
   "vai.MANAGER": "Quản lý",
-  "vai.ADMIN": "Quản trị",
+  "vai.ADMIN": "Quản trị viên",
 
   // Đổi mật khẩu
   "doiMatKhau.tieuDe": "Đổi mật khẩu",

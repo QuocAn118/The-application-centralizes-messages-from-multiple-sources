@@ -196,7 +196,26 @@ export function TrangMau() {
           </div>
         </Muc>
 
-        <Muc tieuDe="Nút (có bóng = bấm được)">
+        <Muc tieuDe="Quy tắc bóng">
+          <div className="grid grid-cols-3 gap-6">
+            <div className="flex flex-col gap-3 rounded-nb border-2 border-ink bg-card p-4 shadow-nb">
+              <p className="text-sm font-bold text-ink">1. Nút: bóng nhỏ + phản hồi</p>
+              <p className="text-sm text-ink-2">Rê thì dịch 2px, nhấn thì dịch hết và bóng về 0. Bóng kèm phản hồi nghĩa là bấm được.</p>
+              <div><Nut bienThe="chinh" co="sm">Thử rê và nhấn</Nut></div>
+            </div>
+            <div className="flex flex-col gap-3 rounded-nb border-2 border-ink bg-card p-4 shadow-nb">
+              <p className="text-sm font-bold text-ink">2. Card, bảng, khung: bóng làm khung</p>
+              <p className="text-sm text-ink-2">Bóng 4px đánh dấu khối nổi của trang (thẻ, bảng, hộp thoại, menu). Không phản hồi khi rê hay nhấn.</p>
+            </div>
+            <div className="flex flex-col gap-3 rounded-nb border-2 border-ink bg-card p-4 shadow-nb">
+              <p className="text-sm font-bold text-ink">3. Huy hiệu: không bóng</p>
+              <p className="text-sm text-ink-2">Nhãn trạng thái không có bóng, nhờ vậy không ai nhầm nó với nút.</p>
+              <div className="flex gap-2"><HuyHieu tong="ok">Đang dùng</HuyHieu><HuyHieu tong="wait">Chờ duyệt</HuyHieu></div>
+            </div>
+          </div>
+        </Muc>
+
+        <Muc tieuDe="Nút (bóng nhỏ + phản hồi khi rê/nhấn)">
           <div className="flex flex-wrap items-center gap-3">
             <Nut bienThe="chinh" icon={Send}>
               Gửi trả lời
@@ -280,7 +299,7 @@ export function TrangMau() {
           </div>
         </Muc>
 
-        <Muc tieuDe="Huy hiệu (không bóng: không bấm được), kênh, avatar">
+        <Muc tieuDe="Huy hiệu (không bóng), logo kênh, avatar">
           <div className="flex flex-wrap items-center gap-3">
             <HuyHieu tong="ok">Đang dùng</HuyHieu>
             <HuyHieu tong="wait">Chờ duyệt</HuyHieu>

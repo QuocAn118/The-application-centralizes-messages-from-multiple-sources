@@ -1,7 +1,7 @@
 /**
- * Huy hiệu (badge) — nhãn trạng thái. **KHÔNG bóng, KHÔNG hover**: quy tắc "có
- * bóng = bấm được" là thứ phân biệt nhãn với nút (sửa lỗi "Đang dùng" trông như
- * nút bấm, GĐ1 S6).
+ * Huy hiệu (badge) — nhãn trạng thái. **KHÔNG bóng, KHÔNG hover** (quy tắc bóng,
+ * spec Phần 1 §3.2): nút có bóng nhỏ + phản hồi, huy hiệu thì không — đó là thứ
+ * phân biệt nhãn với nút (sửa lỗi "Đang dùng" trông như nút bấm, GĐ1 S6).
  */
 
 export type TongHuyHieu = "trung" | "ok" | "wait" | "bad" | "info";

@@ -2,7 +2,7 @@
 
 /**
  * Ô nhập, vùng nhập, ô chọn — viền 2px, nền ngà, không bóng (ô nhập không phải
- * thứ để "bấm", nên theo quy tắc "có bóng = bấm được" nó không có bóng).
+ * thứ để "bấm" — theo quy tắc bóng (spec Phần 1 §3.2) nó không có bóng).
  *
  * `OChon` là **`<select>` native** có style, không phải Radix Select: native đã
  * có sẵn bàn phím, đọc màn hình và bộ chọn của hệ điều hành. Danh sách tuỳ chọn

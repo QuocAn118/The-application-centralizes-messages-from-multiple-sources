@@ -30,11 +30,13 @@
   --bad: #a8201a;
   --bad-bg: #fce1dd;
 
-  /* Màu kênh — CHỈ cho icon nhỏ (≥ 3:1 trên nền thẻ) */
-  --zalo: #0068ff;
-  --facebook: #1877f2;
-  --instagram: #c13584;
-  --telegram: #1c8ac4;
+  /* Màu kênh — CHỈ cho icon logo nhỏ. Lấy MÀU CHÍNH THỨC của thương hiệu (gói
+   * simple-icons), trừ Telegram: #26A5E4 chính thức chỉ 2,3–2,7:1 trên nền
+   * kem/ngà (dưới 3:1 của WCAG 1.4.11) nên dùng bậc đậm hơn cùng sắc độ. */
+  --zalo: #0068ff; /* chính thức */
+  --facebook: #0866ff; /* chính thức */
+  --instagram: #ff0069; /* chính thức */
+  --telegram: #1c8ac4; /* chính thức #26a5e4 — trượt tương phản, làm đậm */
 
   /* 8 màu dịu dùng chung: nhãn khách, màu ca, nền avatar. Chữ ink trên mọi màu ≥ 12:1 */
   --swatch-1: #ffd9a8;

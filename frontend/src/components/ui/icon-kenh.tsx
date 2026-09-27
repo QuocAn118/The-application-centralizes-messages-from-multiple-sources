@@ -1,24 +1,27 @@
 /**
- * Icon kênh — chỉ dùng ở cỡ nhỏ, mỗi kênh một màu (đặc tả).
+ * Logo kênh — logo THƯƠNG HIỆU THẬT từ gói `simple-icons` (quyết định sau duyệt
+ * Phần 1), mỗi kênh một màu, chỉ dùng ở cỡ nhỏ.
  *
- * lucide-react **không có logo thương hiệu** (không Facebook, Instagram, Zalo,
- * Telegram), và cả brief lẫn taste-skill cấm vẽ SVG tay. Nên mỗi kênh dùng một
- * glyph chung có HÌNH KHÁC NHAU (phân biệt được cả khi không thấy màu) + màu kênh
- * + tên trong `title`/`aria-label`:
- * - Telegram: máy bay giấy — trùng ý logo thật.
- * - Zalo: bong bóng chat — trùng ý logo thật.
- * - Instagram: máy ảnh. Facebook: ngón cái.
+ * Nguồn path (ghi trong gói simple-icons 16.x):
+ * - Zalo: https://zalo.me
+ * - Telegram: https://telegram.org/tour/screenshots
+ * - Instagram: https://about.meta.com/brand/resources/instagram
+ * - Facebook: https://about.meta.com/brand/resources/facebook/logo
+ *
+ * Màu: dùng token `--zalo` … (globals.css) — màu chính thức, riêng Telegram làm
+ * đậm để đạt ≥ 3:1 (xem chú thích ở globals.css, khoá bằng tuong-phan.test.ts).
+ * Import từng icon theo tên để bundle chỉ mang đúng 4 path này.
  */
 
-import { Camera, MessageCircle, Send, ThumbsUp, type LucideIcon } from "lucide-react";
+import { siFacebook, siInstagram, siTelegram, siZalo, type SimpleIcon } from "simple-icons";
 import { NHAN_KENH } from "@/lib/hien-thi";
 import type { Platform } from "@/lib/types";
 
-const ICON: Record<Platform, LucideIcon> = {
-  ZALO: MessageCircle,
-  FACEBOOK: ThumbsUp,
-  INSTAGRAM: Camera,
-  TELEGRAM: Send,
+const LOGO: Record<Platform, SimpleIcon> = {
+  ZALO: siZalo,
+  FACEBOOK: siFacebook,
+  INSTAGRAM: siInstagram,
+  TELEGRAM: siTelegram,
 };
 
 const MAU: Record<Platform, string> = {
@@ -29,17 +32,31 @@ const MAU: Record<Platform, string> = {
 };
 
 export function IconKenh({ kenh, co = 16 }: { kenh: Platform; co?: number }) {
-  const Icon = ICON[kenh];
+  if (kenh === "ZALO") {
+    // Path Zalo của simple-icons là CHỮ "Zalo" (wordmark), không phải biểu tượng
+    // gọn như ba kênh kia: ở 16px nó thành một vệt chữ không đọc được. Dựng theo
+    // đúng bố cục icon ứng dụng chính thức của Zalo — chữ trắng trên ô xanh — vẫn
+    // dùng NGUYÊN path chính thức, không vẽ tay. Chữ trắng trên #0068FF: 4,7:1.
+    return (
+      <svg role="img" aria-label={NHAN_KENH.ZALO} viewBox="0 0 24 24" width={co} height={co} className="shrink-0 text-zalo">
+        <title>{NHAN_KENH.ZALO}</title>
+        <rect width="24" height="24" rx="5" fill="currentColor" />
+        <path d={siZalo.path} fill="#fff" transform="translate(12 12) scale(0.86) translate(-12 -12)" />
+      </svg>
+    );
+  }
   return (
-    <Icon
+    <svg
       role="img"
       aria-label={NHAN_KENH[kenh]}
+      viewBox="0 0 24 24"
       width={co}
       height={co}
-      strokeWidth={2.5}
+      fill="currentColor"
       className={`shrink-0 ${MAU[kenh]}`}
     >
       <title>{NHAN_KENH[kenh]}</title>
-    </Icon>
+      <path d={LOGO[kenh].path} />
+    </svg>
   );
 }
