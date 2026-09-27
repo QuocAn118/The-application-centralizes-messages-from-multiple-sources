@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  boDau,
   dungDongChat,
   gopTrang,
   hienSoChuaDoc,
   laChoLau,
+  lenhMau,
+  locMau,
   mocTuongDoi,
   nenDanhDauDaDoc,
   nhanCho,
   nhanNgay,
+  nhanPhamViGhiChu,
   noiDungSuKien,
   phutCho,
 } from "./hop-thu";
@@ -161,5 +165,65 @@ describe("dungDongChat", () => {
     const dong = dungDongChat([tin("a", luc(26, 23, 58)), tin("b", luc(27, 0, 1))], [], BAY_GIO);
     expect(dong.map((d) => (d.loai === "ngay" ? d.nhan : d.loai))).toEqual(["Hôm qua", "tin", "Hôm nay", "tin"]);
     expect(dong[3].loai === "tin" && dong[3].dauNhom).toBe(true);
+  });
+});
+
+describe("2b: dòng phân phòng", () => {
+  it("phân tay", () => {
+    expect(noiDungSuKien(suKien("DEPARTMENT_ASSIGNED", { department_name: "Phòng Bảo hành" }))).toBe(
+      "An phân về Phòng Bảo hành",
+    );
+  });
+  it("tự phân kèm lý do", () => {
+    expect(
+      noiDungSuKien(
+        suKien("AUTO_ROUTED", { department_name: "Phòng Bảo hành", detail: "khớp từ khoá bảo hành" }),
+      ),
+    ).toBe("Tự động chuyển tới Phòng Bảo hành — khớp từ khoá bảo hành");
+  });
+  it("tự phân không có lý do thì không treo dấu gạch", () => {
+    expect(noiDungSuKien(suKien("AUTO_ROUTED", { department_name: "Phòng X", detail: null }))).toBe(
+      "Tự động chuyển tới Phòng X",
+    );
+  });
+});
+
+describe("2b: mẫu trả lời", () => {
+  const mau = [
+    { title: "Báo giá", body: "Dạ gửi anh/chị bảng giá" },
+    { title: "Chào hỏi", body: "Xin chào, OmniChat nghe" },
+    { title: "Đổi trả", body: "Chính sách đổi trả 7 ngày" },
+  ];
+
+  it.each([
+    ["/", ""],
+    ["/bao", "bao"],
+    ["/bao gia", "bao gia"],
+  ])("lenhMau(%j) = %j", (vao, ra) => {
+    expect(lenhMau(vao)).toBe(ra);
+  });
+
+  it.each(["xin chao", "1/2 kg", "/bao\ngia", " /bao"])("không phải lệnh mẫu: %j", (vao) => {
+    expect(lenhMau(vao)).toBeNull();
+  });
+
+  it("lọc không phân biệt dấu, theo tiêu đề hoặc nội dung", () => {
+    expect(locMau(mau, "bao gia").map((m) => m.title)).toEqual(["Báo giá"]);
+    expect(locMau(mau, "doi").map((m) => m.title)).toEqual(["Đổi trả"]);
+    expect(locMau(mau, "omnichat").map((m) => m.title)).toEqual(["Chào hỏi"]);
+    expect(locMau(mau, "  ")).toHaveLength(3);
+  });
+
+  it("boDau xử lý đ", () => {
+    expect(boDau("Đổi ĐƠN")).toBe("doi don");
+  });
+});
+
+describe("2b: phạm vi ghi chú", () => {
+  it("phòng", () => {
+    expect(nhanPhamViGhiChu("Phòng Kinh doanh")).toBe("Chỉ phòng Phòng Kinh doanh thấy ghi chú này");
+  });
+  it("admin", () => {
+    expect(nhanPhamViGhiChu(null)).toBe("Chỉ quản trị viên thấy ghi chú này");
   });
 });

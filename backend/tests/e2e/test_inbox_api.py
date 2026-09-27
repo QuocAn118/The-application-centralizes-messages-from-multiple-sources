@@ -354,6 +354,13 @@ async def test_manager_phan_hoi_thoai_cho_phan(
     assert phan.status_code == 200
     assert phan.json()["status"] == "DANG_MO"
     assert phan.json()["department_id"] == phong_id
+    # 2b: dòng hệ thống "A phân về Phòng M" — tên người + tên phòng do backend tra.
+    (su_kien,) = phan.json()["events"]
+    assert (su_kien["kind"], su_kien["actor_name"], su_kien["department_name"]) == (
+        "DEPARTMENT_ASSIGNED",
+        "NV",
+        "Phong M",
+    )
 
 
 async def test_staff_khong_thay_hoi_thoai_phong_khac(

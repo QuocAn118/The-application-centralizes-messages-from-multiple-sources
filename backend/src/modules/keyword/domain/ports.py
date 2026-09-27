@@ -66,7 +66,11 @@ class IConversationRouter(Protocol):
     thành công.
     """
 
-    async def assign_to_department(self, conversation_id: UUID, department_id: UUID) -> bool: ...
+    async def assign_to_department(
+        self, conversation_id: UUID, department_id: UUID, ly_do: str | None = None
+    ) -> bool:
+        """``ly_do`` hiện trong dòng hệ thống "Tự động chuyển tới Phòng X — …" (2b)."""
+        ...
 
 
 class ClassifierError(Exception):

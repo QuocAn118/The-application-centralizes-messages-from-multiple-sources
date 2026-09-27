@@ -62,6 +62,10 @@ async def don_du_lieu(engine: AsyncEngine) -> AsyncIterator[None]:
                 "conversation_analyses, keywords, "
                 "shift_assignments, shifts, kpi_targets, requests, "
                 "attachments, messages, conversations, customers, channels, "
+                # Redesign 2a/2b. `tags`, `reply_templates` không treo khoá ngoại vào
+                # bảng nào ở đây nên CASCADE không với tới — phải liệt kê.
+                "conversation_events, conversation_reads, customer_notes, customer_tags, "
+                "tags, reply_templates, "
                 "audit_logs, refresh_tokens, users, departments RESTART IDENTITY CASCADE"
             )
         )

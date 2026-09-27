@@ -36,6 +36,7 @@ class IConversationRepository(Protocol):
         q: str | None = None,
         assigned_to: UUID | None = None,
         unassigned: bool = False,
+        customer_id: UUID | None = None,
     ) -> list[Conversation]:
         """Liệt kê hội thoại trong phạm vi phòng ban cho phép.
 
@@ -72,4 +73,5 @@ class IConversationRepository(Protocol):
         q: str | None = None,
         assigned_to: UUID | None = None,
         unassigned: bool = False,
+        customer_id: UUID | None = None,
     ) -> int: ...

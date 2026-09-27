@@ -419,3 +419,46 @@ class TestTenNguoiVaTimeline:
         assert v.customer_external_id.startswith("c_")
         (e,) = v.events
         assert (e.kind, e.actor_name, e.from_name, e.to_name) == ("REASSIGNED", None, "An", "Bình")
+
+
+async def test_dong_phan_phong_co_ten_phong_va_ly_do() -> None:
+    """2b: sự kiện phân phòng trả tên phòng (tra theo lô) + lý do tự phân."""
+    from src.modules.inbox.domain.entities.conversation_event import (
+        ConversationEvent,
+        ConversationEventKind,
+    )
+    from tests.unit.inbox.fakes import (
+        FakeConversationEventRepository,
+        FakeWorkforceDirectory,
+    )
+
+    kho = _KhoDuLieu()
+    su_kien = FakeConversationEventRepository()
+    await su_kien.add(
+        ConversationEvent.ghi(
+            kho.ht_a.id,
+            ConversationEventKind.AUTO_ROUTED,
+            BAY_GIO,
+            department_id=PHONG_A,
+            detail="khớp từ khoá bảo hành",
+        )
+    )
+    thu_muc = FakeWorkforceDirectory()
+    thu_muc.ten_phong[PHONG_A] = "Phòng Bảo hành"
+    uc = GetConversation(
+        kho.conversation_repo,
+        kho.message_repo,
+        kho.channel_repo,
+        kho.customer_repo,
+        event_repo=su_kien,
+        directory=thu_muc,
+    )
+    admin = InboxActor(user_id=new_id(), role=ActorRole.ADMIN, department_id=None)
+
+    (e,) = (await uc.execute(admin, kho.ht_a.id)).events
+
+    assert (e.kind, e.department_name, e.detail) == (
+        "AUTO_ROUTED",
+        "Phòng Bảo hành",
+        "khớp từ khoá bảo hành",
+    )

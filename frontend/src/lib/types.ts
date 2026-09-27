@@ -120,7 +120,15 @@ export interface InboxItem {
 }
 
 /** Loại dòng hệ thống trong khung chat (BE-2, bảng `conversation_events`). */
-export type EventKind = "TAKEN" | "AUTO_ASSIGNED" | "ASSIGNED" | "REASSIGNED" | "UNASSIGNED";
+export type EventKind =
+  | "TAKEN"
+  | "AUTO_ASSIGNED"
+  | "ASSIGNED"
+  | "REASSIGNED"
+  | "UNASSIGNED"
+  // 2b: dòng phân phòng.
+  | "DEPARTMENT_ASSIGNED"
+  | "AUTO_ROUTED";
 
 /** Một dòng hệ thống. Tên `null` = hệ thống / không tra được. */
 export interface ConversationEvent {
@@ -130,6 +138,46 @@ export interface ConversationEvent {
   actor_name: string | null;
   from_name: string | null;
   to_name: string | null;
+  /** 2b: phòng đích của dòng phân phòng. */
+  department_name?: string | null;
+  /** 2b: lý do tự phân ("khớp từ khoá …" / "theo nhu cầu: …"). */
+  detail?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Panel khách + ô soạn (redesign 2b)
+// ---------------------------------------------------------------------------
+
+/** Ghi chú nội bộ (BE-5). `department_id = null` = ghi chú của quản trị viên. */
+export interface CustomerNote {
+  id: string;
+  customer_id: string;
+  department_id: string | null;
+  department_name: string | null;
+  author_id: string;
+  author_name: string | null;
+  body: string;
+  created_at: string;
+}
+
+/** Màu nhãn chỉ từ bảng màu đã kiểm tương phản (backend từ chối giá trị khác). */
+export type MauNhan = `swatch-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8}`;
+
+/** Nhãn khách dùng chung (BE-6). */
+export interface Tag {
+  id: string;
+  name: string;
+  color: MauNhan;
+  is_active: boolean;
+}
+
+/** Mẫu trả lời (BE-7). `department_id = null` = dùng chung mọi phòng. */
+export interface ReplyTemplate {
+  id: string;
+  department_id: string | null;
+  title: string;
+  body: string;
+  updated_at: string;
 }
 
 /** Chi tiết hội thoại — như `InboxItem` nhưng kèm danh sách tin. */

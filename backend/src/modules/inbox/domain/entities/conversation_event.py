@@ -20,6 +20,8 @@ class ConversationEventKind(StrEnum):
     ASSIGNED = "ASSIGNED"  # Manager/Admin giao khi chưa có ai
     REASSIGNED = "REASSIGNED"  # đổi từ người này sang người khác
     UNASSIGNED = "UNASSIGNED"  # gỡ người phụ trách
+    DEPARTMENT_ASSIGNED = "DEPARTMENT_ASSIGNED"  # Manager/Admin bấm Phân phòng (2b)
+    AUTO_ROUTED = "AUTO_ROUTED"  # #2 tự phân phòng; ``detail`` = lý do (2b)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -31,6 +33,9 @@ class ConversationEvent:
     from_user_id: UUID | None
     to_user_id: UUID | None
     created_at: datetime
+    # 2b: phòng đích của sự kiện phân phòng + lý do tự phân ("khớp từ khoá …").
+    department_id: UUID | None = None
+    detail: str | None = None
 
     @classmethod
     def ghi(
@@ -41,6 +46,8 @@ class ConversationEvent:
         actor_user_id: UUID | None = None,
         from_user_id: UUID | None = None,
         to_user_id: UUID | None = None,
+        department_id: UUID | None = None,
+        detail: str | None = None,
     ) -> "ConversationEvent":
         return cls(
             id=new_id(),
@@ -50,4 +57,6 @@ class ConversationEvent:
             from_user_id=from_user_id,
             to_user_id=to_user_id,
             created_at=now,
+            department_id=department_id,
+            detail=detail,
         )

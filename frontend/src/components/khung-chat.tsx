@@ -352,20 +352,21 @@ function HeaderHoiThoai({
           )}
           {hoiThoai.status === "DA_DONG" && <HuyHieu>Đã đóng</HuyHieu>}
         </div>
-        <p className="mt-0.5 flex items-center gap-1.5 text-sm text-ink-2">
+        {/* Dòng 2: kênh · phòng · người phụ trách — dòng 1 dành cho tên + nút, để
+            tên khách không bị cắt khi có cả ô chọn lẫn "Nhận việc" (2b). */}
+        <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-ink-2">
           <IconKenh kenh={hoiThoai.platform} co={14} />
           {NHAN_KENH[hoiThoai.platform]}
           <span aria-hidden>·</span>
           {tenPhong ?? <span className="font-semibold text-wait">Chờ phân phòng</span>}
-        </p>
+          <ONguoiPhuTrach
+            hoiThoai={hoiThoai}
+            choDoi={actor ? hienDoiNguoiPhuTrach(actor, hoiThoai) : false}
+            dangDoi={dangDoiNguoi}
+            onDoi={onDoiNguoi}
+          />
+        </div>
       </div>
-
-      <ONguoiPhuTrach
-        hoiThoai={hoiThoai}
-        choDoi={actor ? hienDoiNguoiPhuTrach(actor, hoiThoai) : false}
-        dangDoi={dangDoiNguoi}
-        onDoi={onDoiNguoi}
-      />
 
       {coPhanPhong && <Nut onClick={onMoPhanPhong}>{t("hanhDong.phanPhong")}</Nut>}
       {coNhanViec && (
@@ -434,7 +435,7 @@ function ONguoiPhuTrach({
           const moi = e.target.value || null;
           if (moi !== (hienTai?.id ?? null)) onDoi(moi);
         }}
-        className="w-52"
+        className="w-48 [&_select]:h-8"
       >
         <option value="">{hienTai ? "— Gỡ người phụ trách —" : "— Chưa ai nhận —"}</option>
         {tuyChon.map((n) => (

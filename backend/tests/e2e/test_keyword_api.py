@@ -274,6 +274,23 @@ class TestAutoAssignViaWebhook:
         assert items[0]["outcome"] == "AUTO_ASSIGNED"
         assert items[0]["suggested_department_id"] == ids["phong"]
 
+        # 2b: dòng hệ thống "Tự động chuyển tới Phòng … — khớp từ khoá tu van":
+        # cụm nhu cầu "can tu van" chứa từ khoá "tu van" của phòng được chọn.
+        async with engine.begin() as conn:
+            su_kien = (
+                await conn.execute(
+                    text(
+                        "SELECT kind, actor_user_id, department_id, detail FROM conversation_events"
+                    )
+                )
+            ).one()
+        assert (su_kien.kind, su_kien.actor_user_id, str(su_kien.department_id)) == (
+            "AUTO_ROUTED",
+            None,
+            ids["phong"],
+        )
+        assert su_kien.detail == "khớp từ khoá tu van"
+
     async def test_llm_loi_thi_tin_van_vao_va_giu_cho_phan(
         self, app_kw, client_kw: AsyncClient, engine: AsyncEngine
     ) -> None:

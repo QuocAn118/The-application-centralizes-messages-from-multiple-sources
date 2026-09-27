@@ -72,7 +72,7 @@ class _Router:
     def __init__(self) -> None:
         self.da_gan: list[tuple] = []
 
-    async def assign_to_department(self, conversation_id, department_id) -> bool:  # type: ignore[no-untyped-def]
+    async def assign_to_department(self, conversation_id, department_id, ly_do=None) -> bool:  # type: ignore[no-untyped-def]
         self.da_gan.append((conversation_id, department_id))
         return True
 

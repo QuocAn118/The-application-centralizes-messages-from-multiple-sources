@@ -12,8 +12,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { t } from "@/lib/i18n";
-import { Info, Paperclip, SendHorizontal, X } from "lucide-react";
-import type { ConversationStatus } from "@/lib/types";
+import { Info, MessageSquareText, Paperclip, SendHorizontal, X } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { lenhMau, locMau } from "@/lib/hop-thu";
+import type { ConversationStatus, ReplyTemplate } from "@/lib/types";
+import { DanhSachMau, HopQuanLyMau, ID_DANH_SACH_MAU, idMucMau, useMau } from "./mau-tra-loi";
 import { Nut } from "./ui/nut";
 import { NutIcon } from "./ui/nut-icon";
 
@@ -60,6 +63,32 @@ export function OSoanTin({
   const oRef = useRef<HTMLTextAreaElement>(null);
   const oTepRef = useRef<HTMLInputElement>(null);
   const khoa = lyDoKhoa(status);
+
+  // ---- Mẫu trả lời (BE-7): gõ "/" ở đầu ô hoặc bấm nút ----
+  const { user } = useAuth();
+  const { data: tatCaMau = [], isPending: dangTaiMau } = useMau();
+  const [moTay, setMoTay] = useState(false);
+  const [dongTay, setDongTay] = useState(false);
+  const [chiSo, setChiSo] = useState(0);
+  const [moQuanLyMau, setMoQuanLyMau] = useState(false);
+  const chuLenh = lenhMau(noiDung);
+  const moMau = !dongTay && (chuLenh !== null || moTay);
+  const mauKhop = locMau(tatCaMau, chuLenh ?? "");
+  const chiSoHopLe = Math.min(chiSo, Math.max(mauKhop.length - 1, 0));
+
+  function chonMau(m: ReplyTemplate) {
+    const o = oRef.current;
+    if (chuLenh !== null || !o) {
+      setNoiDung(m.body); // "/bao gia" → thay cả lệnh bằng nội dung mẫu
+    } else {
+      // Mở bằng nút: chèn tại con trỏ, giữ phần đã gõ.
+      const dau = o.selectionStart ?? noiDung.length;
+      const cuoi = o.selectionEnd ?? dau;
+      setNoiDung(noiDung.slice(0, dau) + m.body + noiDung.slice(cuoi));
+    }
+    setMoTay(false);
+    o?.focus();
+  }
   // Có ảnh thì gửi được dù không gõ chữ.
   const trong = noiDung.trim().length === 0 && anh.length === 0;
 
@@ -119,6 +148,26 @@ export function OSoanTin({
   }
 
   function xuLyPhim(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (moMau) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const n = mauKhop.length;
+        if (n) setChiSo((chiSoHopLe + (e.key === "ArrowDown" ? 1 : n - 1)) % n);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMoTay(false);
+        setDongTay(true);
+        return;
+      }
+      if (e.key === "Enter" && !e.shiftKey) {
+        // Danh sách đang mở: Enter chèn mẫu, KHÔNG gửi "/bao gia" cho khách.
+        e.preventDefault();
+        if (mauKhop[chiSoHopLe]) chonMau(mauKhop[chiSoHopLe]);
+        return;
+      }
+    }
     // Enter gửi, Shift+Enter xuống dòng — thói quen của mọi ứng dụng chat.
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -138,7 +187,24 @@ export function OSoanTin({
   }
 
   return (
-    <div className="border-t-2 border-ink bg-card px-4 pb-2 pt-3">
+    <div className="relative border-t-2 border-ink bg-card px-4 pb-2 pt-3">
+      {moMau && (
+        <DanhSachMau
+          mau={mauKhop}
+          chiSo={chiSoHopLe}
+          dangTai={dangTaiMau}
+          onChon={chonMau}
+          onQuanLy={
+            user?.role === "MANAGER" || user?.role === "ADMIN"
+              ? () => {
+                  setMoTay(false);
+                  setMoQuanLyMau(true);
+                }
+              : undefined
+          }
+        />
+      )}
+      {moQuanLyMau && <HopQuanLyMau onDong={() => setMoQuanLyMau(false)} />}
       {anh.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2">
           {anh.map((a) => (
@@ -184,14 +250,32 @@ export function OSoanTin({
           disabled={dangGui}
         />
 
+        <NutIcon
+          icon={MessageSquareText}
+          nhan="Mẫu trả lời (gõ / ở đầu ô)"
+          aria-expanded={moMau}
+          onClick={() => {
+            setDongTay(false);
+            setMoTay((cu) => !cu);
+            oRef.current?.focus();
+          }}
+          disabled={dangGui}
+        />
+
         <textarea
           ref={oRef}
           rows={1}
           value={noiDung}
           maxLength={DAI_TOI_DA}
           disabled={dangGui}
-          onChange={(e) => setNoiDung(e.target.value)}
+          onChange={(e) => {
+            setNoiDung(e.target.value);
+            setDongTay(false);
+            setChiSo(0);
+          }}
           onKeyDown={xuLyPhim}
+          aria-controls={moMau ? ID_DANH_SACH_MAU : undefined}
+          aria-activedescendant={moMau && mauKhop.length ? idMucMau(chiSoHopLe) : undefined}
           placeholder={t("soan.nhapNoiDung")}
           aria-label={t("soan.nhan")}
           aria-describedby="goi-y-phim-soan"
@@ -205,7 +289,7 @@ export function OSoanTin({
 
       <div className="mt-1.5 flex justify-between text-xs text-ink-2">
         <span id="goi-y-phim-soan">
-          <kbd className="font-sans font-bold">Enter</kbd> để gửi · <kbd className="font-sans font-bold">Shift+Enter</kbd> xuống dòng
+          <kbd className="font-sans font-bold">Enter</kbd> để gửi · <kbd className="font-sans font-bold">Shift+Enter</kbd> xuống dòng · <kbd className="font-sans font-bold">/</kbd> mẫu trả lời
         </span>
         {noiDung.length > DAI_TOI_DA - 500 && (
           <span>

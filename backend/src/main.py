@@ -270,7 +270,13 @@ def _wire_inbox(app: FastAPI, settings: Settings) -> None:
     from src.modules.inbox.presentation.routers.channel_router import (
         router as channel_router,
     )
+    from src.modules.inbox.presentation.routers.customer_router import (
+        router as customer_router,
+    )
     from src.modules.inbox.presentation.routers.inbox_router import router as inbox_router
+    from src.modules.inbox.presentation.routers.reply_template_router import (
+        router as reply_template_router,
+    )
     from src.modules.inbox.presentation.routers.webhook_router import (
         router as webhook_router,
     )
@@ -317,6 +323,8 @@ def _wire_inbox(app: FastAPI, settings: Settings) -> None:
 
     app.include_router(webhook_router, prefix="/api/v1")
     app.include_router(inbox_router, prefix="/api/v1")
+    app.include_router(customer_router, prefix="/api/v1")
+    app.include_router(reply_template_router, prefix="/api/v1")
     app.include_router(channel_router, prefix="/api/v1")
     app.include_router(ws_router)
 
