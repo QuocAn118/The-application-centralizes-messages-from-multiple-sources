@@ -1,5 +1,6 @@
 """Use case đọc kết quả phân tích hội thoại theo phạm vi quyền."""
 
+from collections.abc import Sequence
 from uuid import UUID
 
 from src.modules.keyword.application.actor import ActorRole, KeywordActor
@@ -16,6 +17,7 @@ from src.modules.keyword.domain.ports import IConversationDirectory
 from src.modules.keyword.domain.repositories.analysis_repository import (
     IAnalysisRepository,
 )
+from src.modules.keyword.domain.value_objects.extracted_term import AnalysisOutcome
 from src.shared.application.exceptions import NotFoundError, PermissionDeniedError
 
 
@@ -34,20 +36,37 @@ def _view(a: ConversationAnalysis) -> AnalysisView:
 
 
 class ListConversationAnalyses:
-    """Liệt kê phân tích theo phạm vi phòng đề xuất của người gọi.
+    """Liệt kê phân tích theo phạm vi của người gọi (BE-10, 2026-09).
 
-    Admin: tất cả. Manager/Staff: phòng mình (theo ``suggested_department_id``).
+    - Admin: tất cả.
+    - Manager: đề xuất về phòng mình **cộng** mọi hội thoại HIỆN đang chờ phân —
+      nhất quán với quy tắc "phân tích lại" (Manager nào cũng cứu được hàng chờ
+      chung). Trước đây AMBIGUOUS/NOT_ANALYZED luôn có phòng đề xuất ``null`` nên
+      chỉ Admin thấy, tức đúng những hội thoại cần người nhất lại bị giấu.
+    - Staff: đề xuất về phòng mình (Staff không thấy hàng chờ phân ở Hộp thư).
+
+    ``outcomes`` lọc kết cục trên TOÀN BỘ dữ liệu (lọc "Cần xem lại" ở màn Phân
+    tích AI) — lọc sau phân trang ở client chỉ lọc được một trang.
     """
 
     def __init__(self, analysis_repo: IAnalysisRepository) -> None:
         self._analysis_repo = analysis_repo
 
     async def execute(
-        self, actor: KeywordActor, limit: int = 50, offset: int = 0
+        self,
+        actor: KeywordActor,
+        limit: int = 50,
+        offset: int = 0,
+        outcomes: Sequence[AnalysisOutcome] | None = None,
     ) -> Page[AnalysisView]:
         department_ids = pham_vi_phong_doc(actor)
-        items = await self._analysis_repo.list_for_departments(department_ids, limit, offset)
-        total = await self._analysis_repo.count_for_departments(department_ids)
+        kem_cho_phan = actor.role is ActorRole.MANAGER
+        items = await self._analysis_repo.list_for_departments(
+            department_ids, limit, offset, kem_cho_phan=kem_cho_phan, outcomes=outcomes
+        )
+        total = await self._analysis_repo.count_for_departments(
+            department_ids, kem_cho_phan=kem_cho_phan, outcomes=outcomes
+        )
         return Page(items=[_view(a) for a in items], total=total, limit=limit, offset=offset)
 
 

@@ -4,6 +4,7 @@ Fake phản ánh hành vi thật của repository/port; khi hợp đồng đổi
 test đỏ. Mock thì không.
 """
 
+from collections.abc import Sequence
 from datetime import datetime
 from uuid import UUID
 
@@ -16,6 +17,7 @@ from src.modules.keyword.domain.ports import (
     ConversationSnapshot,
 )
 from src.modules.keyword.domain.value_objects.extracted_term import (
+    AnalysisOutcome,
     ClassificationResult,
     DepartmentKeywords,
 )
@@ -67,6 +69,8 @@ class FakeKeywordRepository:
 class FakeAnalysisRepository:
     def __init__(self) -> None:
         self.items: list[ConversationAnalysis] = []
+        # Hội thoại HIỆN đang chờ phân (department_id NULL bên inbox).
+        self.cho_phan: set[UUID] = set()
 
     async def get_by_id(self, analysis_id: UUID) -> ConversationAnalysis | None:
         return next((a for a in self.items if a.id == analysis_id), None)
@@ -78,19 +82,43 @@ class FakeAnalysisRepository:
         ds = [a for a in self.items if a.conversation_id == conversation_id]
         return sorted(ds, key=lambda a: a.created_at, reverse=True)
 
-    def _loc(self, department_ids: list[UUID] | None) -> list[ConversationAnalysis]:
+    def _loc(
+        self,
+        department_ids: list[UUID] | None,
+        kem_cho_phan: bool = False,
+        outcomes: Sequence[AnalysisOutcome] | None = None,
+    ) -> list[ConversationAnalysis]:
         ds = list(self.items)
         if department_ids is not None:
-            ds = [a for a in ds if a.suggested_department_id in department_ids]
+            ds = [
+                a
+                for a in ds
+                if a.suggested_department_id in department_ids
+                or (kem_cho_phan and a.conversation_id in self.cho_phan)
+            ]
+        if outcomes is not None:
+            ds = [a for a in ds if a.outcome in outcomes]
         return sorted(ds, key=lambda a: a.created_at, reverse=True)
 
     async def list_for_departments(
-        self, department_ids: list[UUID] | None, limit: int = 50, offset: int = 0
+        self,
+        department_ids: list[UUID] | None,
+        limit: int = 50,
+        offset: int = 0,
+        *,
+        kem_cho_phan: bool = False,
+        outcomes: Sequence[AnalysisOutcome] | None = None,
     ) -> list[ConversationAnalysis]:
-        return self._loc(department_ids)[offset : offset + limit]
+        return self._loc(department_ids, kem_cho_phan, outcomes)[offset : offset + limit]
 
-    async def count_for_departments(self, department_ids: list[UUID] | None) -> int:
-        return len(self._loc(department_ids))
+    async def count_for_departments(
+        self,
+        department_ids: list[UUID] | None,
+        *,
+        kem_cho_phan: bool = False,
+        outcomes: Sequence[AnalysisOutcome] | None = None,
+    ) -> int:
+        return len(self._loc(department_ids, kem_cho_phan, outcomes))
 
 
 class FakeWorkforceDirectory:
