@@ -37,6 +37,11 @@ function hoiThoai(ghiDe: Partial<Conversation> = {}): Conversation {
     assigned_user_id: null,
     last_message_at: "2026-08-05T10:00:00Z",
     messages: [],
+    unread_count: 0,
+    waiting_since: null,
+    assigned_user_name: null,
+    customer_external_id: "ext1",
+    events: [],
     ...ghiDe,
   };
 }
