@@ -94,4 +94,5 @@ class InboxConversationDirectory:
             conversation_id=conversation_id,
             is_awaiting=conversation.status is ConversationStatus.CHO_PHAN,
             first_texts=tuple(first_texts),
+            department_id=conversation.department_id,
         )
