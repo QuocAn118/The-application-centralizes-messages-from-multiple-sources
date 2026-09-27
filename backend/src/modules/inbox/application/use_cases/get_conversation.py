@@ -98,6 +98,11 @@ class GetConversation:
         def _ten(u: UUID | None) -> str | None:
             return ten.get(u) if u is not None else None
 
+        phong = [e.department_id for e in su_kien if e.department_id is not None]
+        ten_phong: dict[UUID, str] = {}
+        if self._directory is not None and phong:
+            ten_phong = await self._directory.get_department_names(phong)
+
         return ConversationView(
             conversation_id=conversation.id,
             channel_id=conversation.channel_id,
@@ -120,6 +125,8 @@ class GetConversation:
                     actor_name=_ten(e.actor_user_id),
                     from_name=_ten(e.from_user_id),
                     to_name=_ten(e.to_user_id),
+                    department_name=ten_phong.get(e.department_id) if e.department_id else None,
+                    detail=e.detail,
                 )
                 for e in su_kien
             ),

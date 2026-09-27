@@ -23,6 +23,7 @@ from src.modules.keyword.application.dto.keyword_dto import (
 from src.modules.keyword.domain.entities.conversation_analysis import (
     ConversationAnalysis,
 )
+from src.modules.keyword.domain.entities.keyword import Keyword
 from src.modules.keyword.domain.ports import (
     ClassifierError,
     IConversationClassifier,
@@ -37,6 +38,7 @@ from src.modules.keyword.domain.repositories.keyword_repository import IKeywordR
 from src.modules.keyword.domain.value_objects.extracted_term import (
     AnalysisOutcome,
     DepartmentKeywords,
+    ExtractedTerm,
 )
 from src.shared.application.ports import IClock
 
@@ -59,6 +61,21 @@ def _view(a: ConversationAnalysis) -> AnalysisView:
         suggested_department_id=a.suggested_department_id,
         confidence=a.confidence,
     )
+
+
+def ly_do_tu_phan(tu_khoa_phong: list[Keyword], cum: tuple[ExtractedTerm, ...]) -> str | None:
+    """Lý do tự phân cho dòng hệ thống (2b), nói ĐÚNG điều hệ thống biết.
+
+    LLM chỉ trả phòng + cụm nhu cầu, không nói "khớp từ khoá nào". Nên so chuỗi đã
+    chuẩn hoá: từ khoá của phòng được chọn nằm trong cụm nhu cầu → "khớp từ khoá …".
+    Không khớp (LLM suy luận) → "theo nhu cầu: …" — không bịa ra từ khoá.
+    """
+    khop = [k.text for k in tu_khoa_phong if any(k.normalized in t.normalized for t in cum)]
+    if khop:
+        return "khớp từ khoá " + ", ".join(dict.fromkeys(khop))
+    if cum:
+        return "theo nhu cầu: " + ", ".join(t.text for t in cum[:3])
+    return None
 
 
 class AnalyzeConversation:
@@ -113,7 +130,8 @@ class AnalyzeConversation:
                 return None
 
         now = self._clock.now()
-        departments = await self._danh_muc_theo_phong()
+        tu_khoa = await self._keyword_repo.list_all_active()
+        departments = self._danh_muc_theo_phong(tu_khoa)
 
         try:
             result = await self._classifier.classify(snapshot.first_texts, departments)
@@ -130,7 +148,12 @@ class AnalyzeConversation:
 
         if hop_le and du_tin_cay:
             assert result.department_id is not None  # cho mypy: hợp_le đảm bảo
-            if await self._router.assign_to_department(conversation_id, result.department_id):
+            ly_do = ly_do_tu_phan(
+                [k for k in tu_khoa if k.department_id == result.department_id], result.terms
+            )
+            if await self._router.assign_to_department(
+                conversation_id, result.department_id, ly_do
+            ):
                 return await self._luu(
                     ConversationAnalysis.auto_assigned(
                         conversation_id=conversation_id,
@@ -154,10 +177,11 @@ class AnalyzeConversation:
             )
         return await self._luu(ConversationAnalysis.not_analyzed(conversation_id, now))
 
-    async def _danh_muc_theo_phong(self) -> tuple[DepartmentKeywords, ...]:
+    @staticmethod
+    def _danh_muc_theo_phong(tu_khoa: list[Keyword]) -> tuple[DepartmentKeywords, ...]:
         """Gom từ khoá theo phòng để bơm vào prompt LLM."""
         gom: dict[UUID, list[str]] = defaultdict(list)
-        for kw in await self._keyword_repo.list_all_active():
+        for kw in tu_khoa:
             gom[kw.department_id].append(kw.text)
         return tuple(
             DepartmentKeywords(department_id=dept, keywords=tuple(kws)) for dept, kws in gom.items()

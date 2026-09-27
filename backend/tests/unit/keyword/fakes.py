@@ -125,10 +125,14 @@ class FakeConversationDirectory:
 class FakeConversationRouter:
     def __init__(self) -> None:
         self.assigned: list[tuple[UUID, UUID]] = []
+        self.ly_do: list[str | None] = []
         self.succeed = True
 
-    async def assign_to_department(self, conversation_id: UUID, department_id: UUID) -> bool:
+    async def assign_to_department(
+        self, conversation_id: UUID, department_id: UUID, ly_do: str | None = None
+    ) -> bool:
         if self.succeed:
+            self.ly_do.append(ly_do)
             self.assigned.append((conversation_id, department_id))
         return self.succeed
 

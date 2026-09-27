@@ -25,6 +25,9 @@ from src.modules.inbox.infrastructure.directory.workforce_directory import (
     IdentityWorkforceDirectory,
 )
 from src.modules.inbox.infrastructure.realtime.sau_commit import NotifierSauCommit
+from src.modules.inbox.infrastructure.repositories.conversation_event_repository import (
+    SqlAlchemyConversationEventRepository,
+)
 from src.modules.inbox.infrastructure.repositories.conversation_repository import (
     SqlAlchemyConversationRepository,
 )
@@ -54,11 +57,16 @@ class InboxConversationRouter:
             # Tín hiệu chỉ phát sau commit (xem NotifierSauCommit).
             notifier=NotifierSauCommit(notifier, session),
             clock=clock,
+            event_repo=SqlAlchemyConversationEventRepository(session),
         )
 
-    async def assign_to_department(self, conversation_id: UUID, department_id: UUID) -> bool:
+    async def assign_to_department(
+        self, conversation_id: UUID, department_id: UUID, ly_do: str | None = None
+    ) -> bool:
         try:
-            await self._assign.execute(_SYSTEM_ACTOR, conversation_id, department_id)
+            await self._assign.execute(
+                _SYSTEM_ACTOR, conversation_id, department_id, tu_dong=True, ly_do=ly_do
+            )
         except (DomainError, ApplicationError):
             logger.warning(
                 "Tự phân hội thoại thất bại — giữ CHO_PHAN",

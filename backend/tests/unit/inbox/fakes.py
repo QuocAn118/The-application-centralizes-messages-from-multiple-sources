@@ -380,6 +380,7 @@ class FakeWorkforceDirectory:
     def __init__(self, agents: list[AgentInfo] | None = None) -> None:
         self._agents: dict[UUID, AgentInfo] = {a.user_id: a for a in (agents or [])}
         self.active_departments: set[UUID] = set()
+        self.ten_phong: dict[UUID, str] = {}
 
     async def get_agent(self, user_id: UUID) -> AgentInfo | None:
         return self._agents.get(user_id)
@@ -389,6 +390,9 @@ class FakeWorkforceDirectory:
 
     async def get_names(self, user_ids: list[UUID]) -> dict[UUID, str]:
         return {u: self._agents[u].full_name for u in user_ids if u in self._agents}
+
+    async def get_department_names(self, department_ids: list[UUID]) -> dict[UUID, str]:
+        return {d: self.ten_phong[d] for d in department_ids if d in self.ten_phong}
 
 
 class FakeRealtimeNotifier:
