@@ -14,7 +14,7 @@ Idempotent: chạy nhiều lần ra cùng trạng thái. Tạo nếu thiếu, s�
   Manager B, Staff A.
 - 2 tài khoản **đang chờ đổi mật khẩu tạm** (Manager, Staff) — đưa về lại trạng
   thái này MỖI lần chạy, vì kịch bản `ui-f2.mjs` đổi mật khẩu của chúng.
-- Mẫu ca 08:00–17:00 ở phòng A + 1 ca ACTIVE của Staff A trong tháng hiện tại.
+- Mẫu ca 08:00-17:00 ở phòng A + 1 ca ACTIVE của Staff A trong tháng hiện tại.
 - Mục tiêu KPI "hội thoại đã đóng" của Staff A cho tháng hiện tại.
 - 1 đơn CHỜ DUYỆT của Staff A và của Manager A (kịch bản duyệt/từ chối tiêu thụ).
 
@@ -66,7 +66,7 @@ TAI_KHOAN: list[tuple[str, str, str, str | None, bool]] = [
 ]
 
 
-class LoiSeed(Exception):
+class SeedError(Exception):
     pass
 
 
@@ -74,8 +74,14 @@ class Api:
     def __init__(self, goc: str) -> None:
         self.goc = goc.rstrip("/")
 
-    def goi(self, phuong_thuc: str, duong: str, token: str | None = None,
-            than: Any = None, kiem: tuple[int, ...] = (200, 201, 204)) -> Any:
+    def goi(
+        self,
+        phuong_thuc: str,
+        duong: str,
+        token: str | None = None,
+        than: Any = None,
+        kiem: tuple[int, ...] = (200, 201, 204),
+    ) -> Any:
         du_lieu = json.dumps(than).encode() if than is not None else None
         yeu_cau = urllib.request.Request(self.goc + duong, data=du_lieu, method=phuong_thuc)
         yeu_cau.add_header("Content-Type", "application/json")
@@ -88,20 +94,19 @@ class Api:
             ma, tho = loi.code, loi.read().decode()
         ket_qua = json.loads(tho) if tho else None
         if ma not in kiem:
-            raise LoiSeed(f"{phuong_thuc} {duong} -> {ma}: {tho[:300]}")
+            raise SeedError(f"{phuong_thuc} {duong} -> {ma}: {tho[:300]}")
         return ket_qua
 
     def dang_nhap(self, email: str, mat_khau: str) -> str:
-        return self.goi("POST", "/auth/login", than={"email": email, "password": mat_khau})["access_token"]
+        phan_hoi = self.goi("POST", "/auth/login", than={"email": email, "password": mat_khau})
+        return str(phan_hoi["access_token"])
 
 
 def bao_dam_localhost(goc: str) -> None:
     """Từ chối chạy nếu backend không ở máy này — script đặt lại mật khẩu thật."""
     may = urlparse(goc).hostname
     if may not in ("127.0.0.1", "localhost", "::1"):
-        raise SystemExit(
-            f"TỪ CHỐI: backend {goc} không ở localhost. Script này chỉ dành cho dev."
-        )
+        raise SystemExit(f"TỪ CHỐI: backend {goc} không ở localhost. Script này chỉ dành cho dev.")
 
 
 def phong(api: Api, tk: str) -> dict[str, str]:
@@ -112,17 +117,21 @@ def phong(api: Api, tk: str) -> dict[str, str]:
     for ten in (PHONG_A, PHONG_B, PHONG_C):
         p = theo_ten.get(ten)
         if p is None:
-            p = api.goi("POST", "/departments", tk, {"name": ten, "description": "Dữ liệu kiểm chứng"})
+            p = api.goi(
+                "POST", "/departments", tk, {"name": ten, "description": "Dữ liệu kiểm chứng"}
+            )
             print(f"  + tạo phòng {ten}")
         elif not p.get("is_active", True):
             # Phòng ban không bật lại được (#F2) — báo rõ thay vì âm thầm dùng phòng chết.
-            raise LoiSeed(f"Phòng '{ten}' đã bị vô hiệu hoá và không bật lại được.")
+            raise SeedError(f"Phòng '{ten}' đã bị vô hiệu hoá và không bật lại được.")
         ket_qua[ten] = p["id"]
     return ket_qua
 
 
 def tim_nguoi(api: Api, tk: str, email: str) -> dict[str, Any] | None:
-    ds = api.goi("GET", "/users?" + urlencode({"search": email, "limit": 20, "offset": 0}), tk)["items"]
+    ds = api.goi("GET", "/users?" + urlencode({"search": email, "limit": 20, "offset": 0}), tk)[
+        "items"
+    ]
     return next((u for u in ds if u["email"].lower() == email.lower()), None)
 
 
@@ -134,10 +143,18 @@ def tai_khoan(api: Api, tk: str, id_phong: dict[str, str]) -> dict[str, str]:
         u = tim_nguoi(api, tk, email)
         tam = MAT_KHAU_TAM if cho_doi else "Tam-" + secrets.token_urlsafe(9) + "1a"
         if u is None:
-            u = api.goi("POST", "/users", tk, {
-                "email": email, "full_name": ten, "role": vai,
-                "department_id": dept, "password": tam,
-            })
+            u = api.goi(
+                "POST",
+                "/users",
+                tk,
+                {
+                    "email": email,
+                    "full_name": ten,
+                    "role": vai,
+                    "department_id": dept,
+                    "password": tam,
+                },
+            )
             print(f"  + tạo {email}")
         else:
             if not u["is_active"]:
@@ -155,59 +172,107 @@ def tai_khoan(api: Api, tk: str, id_phong: dict[str, str]) -> dict[str, str]:
             # Đăng nhập bằng mật khẩu tạm rồi tự đổi sang mật khẩu cố định: đi đúng
             # luồng người dùng thật, và xoá cờ bắt đổi.
             tk_nguoi = api.dang_nhap(email, tam)
-            api.goi("POST", "/auth/change-password", tk_nguoi,
-                    {"current_password": tam, "new_password": MAT_KHAU})
+            api.goi(
+                "POST",
+                "/auth/change-password",
+                tk_nguoi,
+                {"current_password": tam, "new_password": MAT_KHAU},
+            )
         ids[email] = u["id"]
         print(f"  = {email:32} {'CHỜ ĐỔI (' + MAT_KHAU_TAM + ')' if cho_doi else 'sẵn sàng'}")
     return ids
 
 
 def ca_va_kpi(api: Api, tk: str, id_phong: dict[str, str], id_staff: str) -> None:
-    """Mẫu ca 08:00–17:00 ở phòng A, 1 ca ACTIVE của Staff A trong tháng này, KPI tháng này."""
+    """Mẫu ca 08:00-17:00 ở phòng A, 1 ca ACTIVE của Staff A trong tháng này, KPI tháng này."""
     hom_nay = date.today()
     ds_ca = api.goi("GET", "/shifts?is_active=true", tk)
-    ca = next((c for c in ds_ca if c["department_id"] == id_phong[PHONG_A]
-               and str(c["start_time"]).startswith("08:00") and str(c["end_time"]).startswith("17:00")), None)
+    ca = next(
+        (
+            c
+            for c in ds_ca
+            if c["department_id"] == id_phong[PHONG_A]
+            and str(c["start_time"]).startswith("08:00")
+            and str(c["end_time"]).startswith("17:00")
+        ),
+        None,
+    )
     if ca is None:
-        ca = api.goi("POST", "/shifts", tk, {"name": "Ca hành chính kiểm chứng", "start_time": "08:00",
-                                              "end_time": "17:00", "department_id": id_phong[PHONG_A]})
+        ca = api.goi(
+            "POST",
+            "/shifts",
+            tk,
+            {
+                "name": "Ca hành chính kiểm chứng",
+                "start_time": "08:00",
+                "end_time": "17:00",
+                "department_id": id_phong[PHONG_A],
+            },
+        )
         print("  + tạo mẫu ca 08:00-17:00")
 
     dau = hom_nay.replace(day=1)
     cuoi = hom_nay.replace(day=calendar.monthrange(hom_nay.year, hom_nay.month)[1])
-    lich = api.goi("GET", "/shift-assignments?" + urlencode(
-        {"date_from": dau.isoformat(), "date_to": cuoi.isoformat()}), tk)
+    lich = api.goi(
+        "GET",
+        "/shift-assignments?"
+        + urlencode({"date_from": dau.isoformat(), "date_to": cuoi.isoformat()}),
+        tk,
+    )
     co_ca = any(p["user_id"] == id_staff and p["status"] == "ACTIVE" for p in lich)
     if not co_ca:
         # Không phân ca lùi ngày: chọn hôm nay (luôn nằm trong tháng này).
-        api.goi("POST", "/shift-assignments", tk,
-                {"shift_id": ca["id"], "user_id": id_staff, "work_date": hom_nay.isoformat()})
+        api.goi(
+            "POST",
+            "/shift-assignments",
+            tk,
+            {"shift_id": ca["id"], "user_id": id_staff, "work_date": hom_nay.isoformat()},
+        )
         print(f"  + phân ca Staff A ngày {hom_nay.isoformat()}")
 
     # POST /kpi-targets là UPSERT (#F3) — gọi lại không nhân bản.
-    api.goi("POST", "/kpi-targets", tk, {
-        "subject_type": "USER", "subject_id": id_staff, "metric_type": "CONVERSATIONS_CLOSED",
-        "period_year": hom_nay.year, "period_month": hom_nay.month, "target_value": "99",
-    })
+    api.goi(
+        "POST",
+        "/kpi-targets",
+        tk,
+        {
+            "subject_type": "USER",
+            "subject_id": id_staff,
+            "metric_type": "CONVERSATIONS_CLOSED",
+            "period_year": hom_nay.year,
+            "period_month": hom_nay.month,
+            "target_value": "99",
+        },
+    )
     print(f"  = KPI Staff A tháng {hom_nay.month}/{hom_nay.year}")
 
 
 def don_cho_duyet(api: Api) -> None:
     """Mỗi người (Staff A, Manager A) có đúng ≥1 đơn CHỜ DUYỆT mang lý do kiểm chứng."""
     thang_sau = (date.today().replace(day=28) + timedelta(days=4)).replace(day=1)
-    for nhan, email in (("staffA", "f3.staffa.76aa2a@congty.vn"), ("mgrA", "f3.mgra.76aa2a@congty.vn")):
+    for nhan, email in (
+        ("staffA", "f3.staffa.76aa2a@congty.vn"),
+        ("mgrA", "f3.mgra.76aa2a@congty.vn"),
+    ):
         tk = api.dang_nhap(email, MAT_KHAU)
         ly_do = f"Don kiem chung cua {nhan}"
-        dang_cho = api.goi("GET", "/requests?" + urlencode(
-            {"status": "CHO_DUYET", "limit": 100, "offset": 0}), tk)["items"]
+        dang_cho = api.goi(
+            "GET", "/requests?" + urlencode({"status": "CHO_DUYET", "limit": 100, "offset": 0}), tk
+        )["items"]
         if any(d["reason"] == ly_do for d in dang_cho):
             print(f"  = đã có đơn chờ duyệt của {nhan}")
             continue
-        api.goi("POST", "/requests", tk, {
-            "request_type": "NGHI_PHEP", "reason": ly_do,
-            "leave_start": thang_sau.isoformat(),
-            "leave_end": (thang_sau + timedelta(days=2)).isoformat(),
-        })
+        api.goi(
+            "POST",
+            "/requests",
+            tk,
+            {
+                "request_type": "NGHI_PHEP",
+                "reason": ly_do,
+                "leave_start": thang_sau.isoformat(),
+                "leave_end": (thang_sau + timedelta(days=2)).isoformat(),
+            },
+        )
         print(f"  + đơn chờ duyệt của {nhan}")
 
 
@@ -231,7 +296,7 @@ def main() -> int:
         ids = tai_khoan(api, tk, id_phong)
         ca_va_kpi(api, tk, id_phong, ids["f3.staffa.76aa2a@congty.vn"])
         don_cho_duyet(api)
-    except LoiSeed as loi:
+    except SeedError as loi:
         print(f"LỖI: {loi}")
         return 1
 
@@ -239,8 +304,10 @@ def main() -> int:
     print(f'  ADMIN_EMAIL="{email_admin}" ADMIN_PASS="{mk_admin}" PASS="{MAT_KHAU}"')
     print('  MGRA_EMAIL="f3.mgra.76aa2a@congty.vn" MGRB_EMAIL="f3.mgrb.76aa2a@congty.vn"')
     print('  STAFFA_EMAIL="f3.staffa.76aa2a@congty.vn"')
-    print(f'  MGR_EMAIL="kc.mgr.tam@congty.vn" MGR_PASS="{MAT_KHAU_TAM}" MGR_NEW_PASS="{MAT_KHAU_MOI}"')
-    print(f'  STAFF_EMAIL="kc.staff.tam@congty.vn" STAFF_PASS="{MAT_KHAU_TAM}" STAFF_NEW_PASS="{MAT_KHAU_MOI}"')
+    for vai, email in (("MGR", "kc.mgr.tam@congty.vn"), ("STAFF", "kc.staff.tam@congty.vn")):
+        print(
+            f'  {vai}_EMAIL="{email}" {vai}_PASS="{MAT_KHAU_TAM}" {vai}_NEW_PASS="{MAT_KHAU_MOI}"'
+        )
     return 0
 
 
