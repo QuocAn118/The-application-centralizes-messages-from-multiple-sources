@@ -98,6 +98,9 @@ class FakeConversationRepository:
         # Tên khách để mô phỏng lọc theo ``q``; ở bản thật tên nằm ở bảng
         # ``customers`` và repository lọc bằng subquery.
         self.ten_khach: dict[UUID, str | None] = {}
+        # BE-1: số trả về + tham số lần gọi gần nhất của count_unread_for_scope.
+        self.so_chua_doc = 0
+        self.hoi_dem_chua_doc: tuple[list[UUID] | None, bool, UUID] | None = None
 
     async def get_by_id(self, conversation_id: UUID) -> Conversation | None:
         return self._conversations.get(conversation_id)
@@ -172,6 +175,12 @@ class FakeConversationRepository:
         loc = self._loc(department_ids, include_awaiting, status, q, assigned_to, unassigned)
         return loc[offset : offset + limit]
 
+    async def count_unread_for_scope(
+        self, department_ids: list[UUID] | None, include_awaiting: bool, user_id: UUID
+    ) -> int:
+        self.hoi_dem_chua_doc = (department_ids, include_awaiting, user_id)
+        return self.so_chua_doc
+
     async def count_for_scope(
         self,
         department_ids: list[UUID] | None,
@@ -184,10 +193,31 @@ class FakeConversationRepository:
         return len(self._loc(department_ids, include_awaiting, status, q, assigned_to, unassigned))
 
 
+class FakeReadRepository:
+    """Ghi lại mọi lần đánh dấu đã đọc: (user_id, conversation_id, at)."""
+
+    def __init__(self) -> None:
+        self.da_doc: list[tuple[UUID, UUID, datetime]] = []
+
+    async def mark_read(self, user_id: UUID, conversation_id: UUID, at: datetime) -> None:
+        self.da_doc.append((user_id, conversation_id, at))
+
+
 class FakeMessageRepository:
     def __init__(self) -> None:
         self.messages: list[Message] = []
         self._attachments: dict[UUID, list[Attachment]] = {}
+        # BE-1/BE-9: đặt sẵn kết quả; SQL thật được kiểm ở test tích hợp.
+        self.chua_doc: dict[UUID, int] = {}
+        self.cho_tu: dict[UUID, datetime] = {}
+        self.hoi_chua_doc_cua: UUID | None = None
+
+    async def unread_counts(self, user_id: UUID, conversation_ids: list[UUID]) -> dict[UUID, int]:
+        self.hoi_chua_doc_cua = user_id
+        return {i: n for i, n in self.chua_doc.items() if i in conversation_ids and n > 0}
+
+    async def waiting_since(self, conversation_ids: list[UUID]) -> dict[UUID, datetime]:
+        return {i: t for i, t in self.cho_tu.items() if i in conversation_ids}
 
     async def add(self, message: Message, attachments: list[Attachment]) -> None:
         self.messages.append(message)

@@ -44,6 +44,15 @@ class IConversationRepository(Protocol):
         """
         ...
 
+    async def count_unread_for_scope(
+        self, department_ids: list[UUID] | None, include_awaiting: bool, user_id: UUID
+    ) -> int:
+        """Số hội thoại trong phạm vi có tin vào chưa đọc với người này (BE-1, nav).
+
+        Bỏ hội thoại ``DA_DONG``.
+        """
+        ...
+
     async def count_for_scope(
         self,
         department_ids: list[UUID] | None,

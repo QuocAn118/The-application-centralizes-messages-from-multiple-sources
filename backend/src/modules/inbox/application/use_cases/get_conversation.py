@@ -9,6 +9,7 @@ from src.modules.inbox.application.dto.inbox_dto import (
     ConversationView,
     MessageView,
 )
+from src.modules.inbox.domain.entities.conversation import ConversationStatus
 from src.modules.inbox.domain.entities.message import Message
 from src.modules.inbox.domain.repositories.channel_repository import IChannelRepository
 from src.modules.inbox.domain.repositories.conversation_repository import (
@@ -64,6 +65,11 @@ class GetConversation:
             conversation.id, limit=gioi_han, offset=vi_tri, newest=newest
         )
         message_views = [await self._to_message_view(m) for m in messages]
+        cho_tu = None
+        if conversation.status is not ConversationStatus.DA_DONG:
+            cho_tu = (await self._message_repo.waiting_since([conversation.id])).get(
+                conversation.id
+            )
 
         return ConversationView(
             conversation_id=conversation.id,
@@ -76,6 +82,7 @@ class GetConversation:
             assigned_user_id=conversation.assigned_user_id,
             last_message_at=conversation.last_message_at,
             messages=tuple(message_views),
+            waiting_since=cho_tu,
         )
 
     async def _to_message_view(self, message: Message) -> MessageView:

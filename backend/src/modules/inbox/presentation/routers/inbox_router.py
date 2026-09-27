@@ -14,6 +14,10 @@ from src.modules.inbox.application.use_cases.assign_conversation_to_department i
 from src.modules.inbox.application.use_cases.close_conversation import CloseConversation
 from src.modules.inbox.application.use_cases.get_conversation import GetConversation
 from src.modules.inbox.application.use_cases.list_inbox import ListInbox, LocNguoiPhuTrach
+from src.modules.inbox.application.use_cases.read_state import (
+    CountUnreadConversations,
+    MarkConversationRead,
+)
 from src.modules.inbox.application.use_cases.reply_to_conversation import (
     ReplyToConversation,
 )
@@ -41,6 +45,9 @@ from src.modules.inbox.infrastructure.repositories.customer_repository import (
 from src.modules.inbox.infrastructure.repositories.message_repository import (
     SqlAlchemyMessageRepository,
 )
+from src.modules.inbox.infrastructure.repositories.read_repository import (
+    SqlAlchemyReadRepository,
+)
 from src.modules.inbox.presentation.dependencies import (
     Actor,
     AttachmentStore,
@@ -61,6 +68,7 @@ from src.modules.inbox.presentation.schemas.inbox_schemas import (
     KyUrl,
     MessageResponse,
     ReplyRequest,
+    UnreadCountResponse,
 )
 from src.shared.application.exceptions import (
     ApplicationError,
@@ -189,6 +197,27 @@ async def _doc_noi_dung_tra_loi(
     return text, tep
 
 
+@router.get("/inbox/unread-count", response_model=UnreadCountResponse)
+async def dem_chua_doc(actor: Actor, session: DbSession) -> UnreadCountResponse:
+    """Số hội thoại có tin chưa đọc (BE-1) — cho huy hiệu trên thanh điều hướng.
+
+    Khai báo TRƯỚC ``/inbox/{conversation_id}``: ngược lại "unread-count" bị hiểu là
+    một mã hội thoại và trả 422 (không phải UUID).
+    """
+    so = await CountUnreadConversations(SqlAlchemyConversationRepository(session)).execute(actor)
+    return UnreadCountResponse(conversations=so)
+
+
+@router.post("/inbox/{conversation_id}/read", status_code=204)
+async def danh_dau_da_doc(
+    conversation_id: UUID, actor: Actor, session: DbSession, clock: Clock
+) -> None:
+    """Đánh dấu người gọi đã đọc hội thoại tới bây giờ (BE-1). Trả 204."""
+    await MarkConversationRead(
+        SqlAlchemyConversationRepository(session), SqlAlchemyReadRepository(session), clock
+    ).execute(actor, conversation_id)
+
+
 @router.get("/inbox/{conversation_id}", response_model=ConversationResponse)
 async def xem_hoi_thoai(
     conversation_id: UUID,
@@ -303,6 +332,7 @@ async def tra_loi(
         notifier=notifier,
         clock=clock,
         public_url=_bo_url_cong_khai(signer, settings),
+        read_repo=SqlAlchemyReadRepository(session),
     )
     view = await use_case.execute(
         actor=actor,

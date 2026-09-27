@@ -28,6 +28,10 @@ class InboxItemResponse(BaseModel):
     assigned_user_id: UUID | None
     last_message_at: datetime
     last_message_preview: str | None = None
+    # BE-1: tin vào người gọi chưa đọc (hội thoại đã đóng luôn 0).
+    unread_count: int = 0
+    # BE-9: khách chờ từ lúc nào; null = không chờ.
+    waiting_since: datetime | None = None
 
     @classmethod
     def from_dto(cls, item: InboxItem) -> "InboxItemResponse":
@@ -42,6 +46,8 @@ class InboxItemResponse(BaseModel):
             assigned_user_id=item.assigned_user_id,
             last_message_at=item.last_message_at,
             last_message_preview=item.last_message_preview,
+            unread_count=item.unread_count,
+            waiting_since=item.waiting_since,
         )
 
 
@@ -115,6 +121,7 @@ class ConversationResponse(BaseModel):
     assigned_user_id: UUID | None
     last_message_at: datetime
     messages: list[MessageResponse]
+    waiting_since: datetime | None = None
 
     @classmethod
     def from_dto(cls, v: ConversationView, ky_url: KyUrl | None = None) -> "ConversationResponse":
@@ -129,7 +136,14 @@ class ConversationResponse(BaseModel):
             assigned_user_id=v.assigned_user_id,
             last_message_at=v.last_message_at,
             messages=[MessageResponse.from_dto(m, ky_url, v.conversation_id) for m in v.messages],
+            waiting_since=v.waiting_since,
         )
+
+
+class UnreadCountResponse(BaseModel):
+    """Huy hiệu nav: số hội thoại trong phạm vi có tin chưa đọc (BE-1)."""
+
+    conversations: int
 
 
 class ReplyRequest(BaseModel):

@@ -8,6 +8,7 @@ Bộ lọc phạm vi được ép ở đây, người gọi không tự nới r�
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
@@ -125,10 +126,28 @@ class ListInbox:
                 [c.id for c in conversations]
             )
 
-        items = [await self._to_item(c, preview.get(c.id)) for c in conversations]
+        # BE-1/BE-9: cũng một truy vấn cho cả trang mỗi loại. Hội thoại đã đóng
+        # không bao giờ "chưa đọc" hay "đang chờ" — đã xử lý xong, không làm nhiễu.
+        chua_doc: dict[UUID, int] = {}
+        cho_tu: dict[UUID, datetime] = {}
+        con_mo = [c.id for c in conversations if c.status is not ConversationStatus.DA_DONG]
+        if self._message_repo is not None and con_mo:
+            chua_doc = await self._message_repo.unread_counts(actor.user_id, con_mo)
+            cho_tu = await self._message_repo.waiting_since(con_mo)
+
+        items = [
+            await self._to_item(c, preview.get(c.id), chua_doc.get(c.id, 0), cho_tu.get(c.id))
+            for c in conversations
+        ]
         return Page(items=items, total=tong, limit=gioi_han, offset=vi_tri)
 
-    async def _to_item(self, conversation: Conversation, preview: str | None = None) -> InboxItem:
+    async def _to_item(
+        self,
+        conversation: Conversation,
+        preview: str | None = None,
+        unread_count: int = 0,
+        waiting_since: datetime | None = None,
+    ) -> InboxItem:
         channel = await self._channel_repo.get_by_id(conversation.channel_id)
         customer = await self._customer_repo.get_by_id(conversation.customer_id)
         if channel is None or customer is None:  # pragma: no cover - dữ liệu luôn nhất quán
@@ -144,4 +163,6 @@ class ListInbox:
             assigned_user_id=conversation.assigned_user_id,
             last_message_at=conversation.last_message_at,
             last_message_preview=_rut_gon(preview),
+            unread_count=unread_count,
+            waiting_since=waiting_since,
         )
