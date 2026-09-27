@@ -23,6 +23,7 @@ from src.modules.inbox.domain.ports import (
     IWorkforceDirectory,
 )
 from src.modules.inbox.infrastructure.attachments.signed_url import AttachmentUrlSigner
+from src.modules.inbox.infrastructure.realtime.sau_commit import NotifierSauCommit
 from src.shared.application.exceptions import AuthenticationError
 from src.shared.infrastructure.clock import SystemClock
 from src.shared.infrastructure.config import Settings, get_settings
@@ -111,9 +112,10 @@ def get_clock() -> SystemClock:
     return SystemClock()
 
 
-def get_notifier(request: Request) -> IRealtimeNotifier:
-    """Notifier realtime dùng chung, đặt ở app.state (WebSocketNotifier)."""
-    return request.app.state.inbox_notifier  # type: ignore[no-any-return]
+def get_notifier(request: Request, session: DbSession) -> IRealtimeNotifier:
+    """Notifier realtime của request: bọc WebSocketNotifier dùng chung ở app.state,
+    giữ tín hiệu tới khi ``session`` commit (xem ``NotifierSauCommit``)."""
+    return NotifierSauCommit(request.app.state.inbox_notifier, session)
 
 
 def get_directory_for(request: Request, session: AsyncSession) -> IWorkforceDirectory:

@@ -179,7 +179,7 @@ export function DanhSachInbox() {
             aria-label="Lọc theo trạng thái"
             value={status ?? ""}
             onChange={(e) => dieuHuong({ status: laTrangThai(e.target.value) ? e.target.value : null })}
-            className="w-[128px] shrink-0"
+            className="w-[152px] shrink-0"
           >
             <option value="">Mọi trạng thái</option>
             {/* Staff không bao giờ nhận hội thoại chờ phân (server lọc) — ẩn cho khỏi hiểu nhầm. */}
