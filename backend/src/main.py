@@ -147,7 +147,11 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=ma_http,
             content={
-                "error": {"code": ma_loi, "message": thong_diep, "details": None},
+                "error": {
+                    "code": ma_loi,
+                    "message": thong_diep,
+                    "details": jsonable_encoder(getattr(exc, "details", None)),
+                },
                 "request_id": request_id_var.get(),
             },
         )

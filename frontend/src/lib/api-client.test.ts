@@ -55,6 +55,19 @@ describe("apiRequest — đường thuận", () => {
     expect(init.headers.Authorization).toBe("Bearer token-abc");
   });
 
+  it("mảng trong query thành tham số lặp, undefined bị bỏ", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { ok: true }));
+
+    await apiRequest("/analyses", {
+      query: { outcome: ["AMBIGUOUS", "NOT_ANALYZED"], limit: 25, offset: undefined },
+    });
+
+    const url = new URL(fetchMock.mock.calls[0][0]);
+    expect(url.searchParams.getAll("outcome")).toEqual(["AMBIGUOUS", "NOT_ANALYZED"]);
+    expect(url.searchParams.get("limit")).toBe("25");
+    expect(url.searchParams.has("offset")).toBe(false);
+  });
+
   it("không gắn Bearer khi skipAuth (dùng cho chính lời gọi đăng nhập)", async () => {
     setAccessToken("token-abc");
     fetchMock.mockResolvedValueOnce(jsonResponse(200, { ok: true }));

@@ -19,7 +19,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t } from "@/lib/i18n";
-import { khoaTuKhoa, suaTuKhoa, taoTuKhoa } from "@/lib/tu-khoa-api";
+import { khoaTuKhoa, suaTuKhoa, taoTuKhoa, tuKhoaTrung } from "@/lib/tu-khoa-api";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { HopThoai, NutChinh, NutPhu } from "@/components/hop-thoai";
 import { Truong } from "@/components/ui/truong";
@@ -28,6 +28,14 @@ import type { Department, Keyword } from "@/lib/types";
 
 /** Trùng `max_length=200` của `CreateKeywordRequest`. */
 const DAI_TOI_DA = 200;
+
+/** Lỗi trùng thì nói rõ trùng với từ khoá nào (409 `details`), không bắt người dùng đi tìm. */
+function loiHienThi(loi: unknown): string {
+  const trung = tuKhoaTrung(loi);
+  return trung
+    ? `${thongDiepLoi(loi)} ${t("tuKhoa.trungVoi", { ten: trung.text })}`
+    : thongDiepLoi(loi);
+}
 
 export function HopThoaiTuKhoa({
   tuKhoa,
@@ -66,7 +74,7 @@ export function HopThoaiTuKhoa({
     <HopThoai
       tieuDe={dangSua ? t("tuKhoa.suaTieuDe") : t("tuKhoa.them")}
       moTa={dangSua ? tuKhoa.text : undefined}
-      loi={luu.isError ? thongDiepLoi(luu.error) : null}
+      loi={luu.isError ? loiHienThi(luu.error) : null}
       onDong={onDong}
       chanDuoi={
         <>

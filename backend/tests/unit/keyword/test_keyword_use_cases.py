@@ -78,10 +78,14 @@ class TestCreateKeyword:
     async def test_trung_normalized_bi_chan(self) -> None:
         # "Bảo Hành" và "bao hanh" chuẩn hoá giống nhau -> trùng.
         bc = _Boi()
-        await bc.create.execute(_manager(), PHONG_A, "Bảo Hành")
+        da_co = await bc.create.execute(_manager(), PHONG_A, "Bảo Hành")
 
-        with pytest.raises(ConflictError):
+        with pytest.raises(ConflictError) as loi:
             await bc.create.execute(_manager(), PHONG_A, "bao hanh")
+        # Kèm từ khoá ĐANG CÓ (không phải cái vừa gõ) để UI chỉ đúng chip.
+        assert loi.value.details == {
+            "existing_keyword": {"id": str(da_co.id), "text": "Bảo Hành", "normalized": "bao hanh"}
+        }
 
     async def test_cung_text_khac_phong_khong_trung(self) -> None:
         bc = _Boi()
@@ -107,12 +111,15 @@ class TestUpdateKeyword:
 
     async def test_doi_thanh_trung_bi_chan(self) -> None:
         bc = _Boi()
-        await bc.repo.add(Keyword.create(department_id=PHONG_A, text="Bảo hành", now=BAY_GIO))
+        kw1 = Keyword.create(department_id=PHONG_A, text="Bảo hành", now=BAY_GIO)
+        await bc.repo.add(kw1)
         kw2 = Keyword.create(department_id=PHONG_A, text="Đổi trả", now=BAY_GIO)
         await bc.repo.add(kw2)
 
-        with pytest.raises(ConflictError):
+        with pytest.raises(ConflictError) as loi:
             await bc.update.execute(_manager(), kw2.id, "bao hanh")
+        assert loi.value.details is not None
+        assert loi.value.details["existing_keyword"]["id"] == str(kw1.id)
 
     async def test_khong_ton_tai(self) -> None:
         bc = _Boi()

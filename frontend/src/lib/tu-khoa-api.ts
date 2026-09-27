@@ -10,8 +10,8 @@
  * - `DELETE /keywords/{id}` trả **204 No Content**
  */
 
-import { api } from "./api-client";
-import type { ConversationAnalysis, Keyword, PageResponse } from "./types";
+import { ApiError, api } from "./api-client";
+import type { AnalysisOutcome, ConversationAnalysis, Keyword, PageResponse } from "./types";
 
 /** Số dòng mỗi trang phân tích. Backend chặn trần ở 100. */
 export const KICH_THUOC_TRANG_PHAN_TICH = 25;
@@ -22,7 +22,8 @@ export const khoaTuKhoa = {
   },
   phanTich: {
     all: ["phan-tich"] as const,
-    trang: (offset: number) => ["phan-tich", "trang", offset] as const,
+    trang: (offset: number, loc: string) => ["phan-tich", "trang", loc, offset] as const,
+    dem: (loc: string) => ["phan-tich", "dem", loc] as const,
   },
 };
 
@@ -72,14 +73,32 @@ export function xoaTuKhoa(keywordId: string): Promise<void> {
 // Phân tích AI
 // ---------------------------------------------------------------------------
 
-/** Chỉ đọc. Phạm vi lọc theo `suggested_department_id`. */
+/**
+ * Chỉ đọc. Phạm vi do backend lọc (BE-10): Admin tất cả; Manager phòng đề xuất
+ * + hội thoại đang chờ phân; Staff phòng đề xuất.
+ *
+ * `outcomes` lọc Ở SERVER trên toàn bộ dữ liệu (`?outcome=` lặp được) — lọc ở
+ * client sau phân trang chỉ lọc được trang đang xem.
+ */
 export function layDanhSachPhanTich(
-  thamSo: { limit: number; offset: number },
+  thamSo: { limit: number; offset: number; outcomes?: readonly AnalysisOutcome[] },
   signal?: AbortSignal,
 ): Promise<PageResponse<ConversationAnalysis>> {
   return api.get<PageResponse<ConversationAnalysis>>(
     "/analyses",
-    { limit: thamSo.limit, offset: thamSo.offset },
+    { limit: thamSo.limit, offset: thamSo.offset, outcome: thamSo.outcomes },
     signal,
   );
+}
+
+/**
+ * Từ khoá ĐANG CÓ mà lỗi 409 `KEYWORD_DUPLICATE` chỉ ra (`error.details.existing_keyword`).
+ * `null` nếu không phải lỗi trùng hoặc server không gửi kèm — UI khi đó chỉ hiện
+ * thông điệp, không đoán (RB-3: FE không tự bỏ dấu để tìm chip trùng).
+ */
+export function tuKhoaTrung(loi: unknown): { id: string; text: string } | null {
+  if (!(loi instanceof ApiError) || loi.code !== "KEYWORD_DUPLICATE") return null;
+  const k = (loi.details as { existing_keyword?: { id?: unknown; text?: unknown } } | null)
+    ?.existing_keyword;
+  return typeof k?.id === "string" && typeof k.text === "string" ? { id: k.id, text: k.text } : null;
 }

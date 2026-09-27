@@ -450,6 +450,7 @@ const VI = {
   "tuKhoa.dsCuaPhong": "Từ khoá của {phong}",
   "tuKhoa.themNhanhGoiY": "+ Thêm từ khoá, Enter",
   "tuKhoa.themNhanhNhan": "Thêm từ khoá cho {phong}",
+  "tuKhoa.trungVoi": "Trùng với “{ten}” (đang tô đỏ).",
   "tuKhoa.timGoiY": "Tìm từ khoá…",
 
   "phanTich.tieuDe": "Phân tích hội thoại bằng AI",
@@ -468,7 +469,8 @@ const VI = {
   "phanTich.chiDoc": "Màn này chỉ để xem. Kết quả do AI tự chạy khi có hội thoại mới.",
   "phanTich.khongRoPhong": "Không xác định được phòng",
   "phanTich.canXemLai": "Cần xem lại",
-  "phanTich.demCanXemLai": "{so} kết quả trên trang này AI chưa tự phân được phòng — cần người quyết.",
+  "phanTich.locKetQua": "Lọc kết quả phân tích",
+  "phanTich.khongCanXemLai": "Không có hội thoại nào cần xem lại",
   "phanTich.moHoiThoai": "Mở hội thoại",
 
   // Báo cáo (#F5)

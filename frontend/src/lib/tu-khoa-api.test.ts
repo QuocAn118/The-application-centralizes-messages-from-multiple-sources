@@ -6,13 +6,14 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { __resetApiClientState, setAccessToken } from "./api-client";
+import { ApiError, __resetApiClientState, setAccessToken } from "./api-client";
 import {
   KICH_THUOC_TRANG_PHAN_TICH,
   layDanhSachPhanTich,
   layDanhSachTuKhoa,
   suaTuKhoa,
   taoTuKhoa,
+  tuKhoaTrung,
   xoaTuKhoa,
 } from "./tu-khoa-api";
 
@@ -118,10 +119,33 @@ describe("layDanhSachPhanTich", () => {
     expect(urlDaGoi().searchParams.get("offset")).toBe("50");
   });
 
+  it("BE-10: lọc kết cục gửi thành tham số outcome lặp; không lọc thì không gửi", async () => {
+    fetchMock.mockImplementation(async () => jsonResponse({ items: [], total: 0, limit: 25, offset: 0 }));
+    await layDanhSachPhanTich({ limit: 25, offset: 0, outcomes: ["AMBIGUOUS", "NOT_ANALYZED"] });
+    expect(urlDaGoi(0).searchParams.getAll("outcome")).toEqual(["AMBIGUOUS", "NOT_ANALYZED"]);
+    await layDanhSachPhanTich({ limit: 25, offset: 0 });
+    expect(urlDaGoi(1).searchParams.has("outcome")).toBe(false);
+  });
+
   it("kích thước trang mặc định nằm trong trần 100 của backend", () => {
     // Gửi limit > 100 là 422 (đã thử thật). Hằng số này mà vượt trần thì mọi
     // lời gọi đều hỏng, nên khoá lại.
     expect(KICH_THUOC_TRANG_PHAN_TICH).toBeLessThanOrEqual(100);
     expect(KICH_THUOC_TRANG_PHAN_TICH).toBeGreaterThan(0);
+  });
+});
+
+describe("tuKhoaTrung", () => {
+  it("đọc từ khoá đang có từ details của 409 KEYWORD_DUPLICATE", () => {
+    const loi = new ApiError(409, "KEYWORD_DUPLICATE", "Trùng", {
+      existing_keyword: { id: "k1", text: "Bảo Hành", normalized: "bao hanh" },
+    });
+    expect(tuKhoaTrung(loi)).toEqual({ id: "k1", text: "Bảo Hành" });
+  });
+
+  it("không đoán khi không phải lỗi trùng hoặc thiếu details", () => {
+    expect(tuKhoaTrung(new ApiError(409, "KEYWORD_DUPLICATE", "Trùng", null))).toBeNull();
+    expect(tuKhoaTrung(new ApiError(404, "KEYWORD_NOT_FOUND", "x", { existing_keyword: { id: "k", text: "t" } }))).toBeNull();
+    expect(tuKhoaTrung(new Error("mạng"))).toBeNull();
   });
 });

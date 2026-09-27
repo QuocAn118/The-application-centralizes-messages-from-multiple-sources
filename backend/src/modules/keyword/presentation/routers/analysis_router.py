@@ -1,6 +1,7 @@
 """Endpoint xem kết quả phân tích hội thoại + kích hoạt phân tích lại.
 
-Phạm vi quyền: Admin tất cả; Manager/Staff theo phòng đề xuất. Kích hoạt lại
+Phạm vi quyền danh sách: Admin tất cả; Manager phòng đề xuất + hội thoại chờ
+phân; Staff phòng đề xuất. Kích hoạt lại
 (``force``) cho Manager/Admin chạy lại LLM cho một hội thoại (ví dụ vừa thêm từ
 khoá). Lỗi LLM được use case nuốt gọn, không nổi ra HTTP.
 """
@@ -15,6 +16,7 @@ from src.modules.keyword.application.use_cases.analysis_read import (
     GetConversationAnalyses,
     ListConversationAnalyses,
 )
+from src.modules.keyword.domain.value_objects.extracted_term import AnalysisOutcome
 from src.modules.keyword.infrastructure.repositories.analysis_repository import (
     SqlAlchemyAnalysisRepository,
 )
@@ -37,9 +39,11 @@ async def liet_ke_phan_tich(
     session: DbSession,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    # Lặp được: ?outcome=AMBIGUOUS&outcome=NOT_ANALYZED. Không truyền = mọi kết cục.
+    outcome: Annotated[list[AnalysisOutcome] | None, Query()] = None,
 ) -> AnalysisPageResponse:
     page = await ListConversationAnalyses(SqlAlchemyAnalysisRepository(session)).execute(
-        actor, limit=limit, offset=offset
+        actor, limit=limit, offset=offset, outcomes=outcome
     )
     return AnalysisPageResponse.from_page(page)
 
