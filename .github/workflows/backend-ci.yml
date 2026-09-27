@@ -46,6 +46,12 @@ jobs:
       - name: Cài dependency
         run: uv sync --locked
 
+      # APP_ENV khác development thì app BẮT BUỘC có CHANNEL_CIPHER_KEY (chốt chặn ở
+      # main._wire_inbox). Sinh khoá Fernet ngẫu nhiên cho riêng lần chạy này — không
+      # commit khoá nào. Thiếu bước này thì conftest e2e hỏng ngay lúc import (exit 4).
+      - name: Sinh khoá mã hoá kênh cho CI
+        run: echo "CHANNEL_CIPHER_KEY=$(uv run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> "$GITHUB_ENV"
+
       - name: Kiểm tra định dạng mã
         run: uv run ruff format --check .
 
