@@ -26,7 +26,13 @@ import { useQuery } from "@tanstack/react-query";
 import { t } from "@/lib/i18n";
 import Link from "next/link";
 import { MessageSquare, Sparkles, TriangleAlert } from "lucide-react";
-import { NHAN_KET_QUA_PHAN_TICH, canXemLai, doTinCay, mocDayDu } from "@/lib/hien-thi";
+import {
+  KET_QUA_CAN_XEM_LAI,
+  NHAN_KET_QUA_PHAN_TICH,
+  canXemLai,
+  doTinCay,
+  mocDayDu,
+} from "@/lib/hien-thi";
 import { mocTuongDoi } from "@/lib/hop-thu";
 import { khoaQuanTri, layDanhSachPhongBan } from "@/lib/quan-tri-api";
 import {
@@ -38,6 +44,7 @@ import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { ThanhPhanTrang } from "@/components/thanh-phan-trang";
 import { Bang, Td, Th, Tr } from "@/components/ui/bang";
 import { DauTrang } from "@/components/ui/dau-trang";
+import { Nut } from "@/components/ui/nut";
 import { The } from "@/components/ui/the";
 import { HuyHieu, type TongHuyHieu } from "@/components/ui/huy-hieu";
 import { TrangThaiLoi, TrangThaiRong, TrangThaiTai } from "@/components/ui/trang-thai";
@@ -53,14 +60,38 @@ const TONG_KET_QUA: Record<AnalysisOutcome, TongHuyHieu> = {
   NOT_ANALYZED: "trung",
 };
 
+type Loc = "tat-ca" | "can-xem-lai";
+
 export function ManPhanTich() {
   const [offset, setOffset] = useState(0);
+  const [loc, setLoc] = useState<Loc>("tat-ca");
 
+  // A2: lọc Ở SERVER (BE-10) nên đúng trên toàn bộ dữ liệu, không chỉ trang đang xem.
   const truyVan = useQuery({
-    queryKey: khoaTuKhoa.phanTich.trang(offset),
+    queryKey: khoaTuKhoa.phanTich.trang(offset, loc),
     queryFn: ({ signal }) =>
-      layDanhSachPhanTich({ limit: KICH_THUOC_TRANG_PHAN_TICH, offset }, signal),
+      layDanhSachPhanTich(
+        {
+          limit: KICH_THUOC_TRANG_PHAN_TICH,
+          offset,
+          outcomes: loc === "can-xem-lai" ? KET_QUA_CAN_XEM_LAI : undefined,
+        },
+        signal,
+      ),
   });
+
+  // Số trên nút "Cần xem lại": chỉ cần `total`, nên xin 1 dòng.
+  const truyVanDem = useQuery({
+    queryKey: khoaTuKhoa.phanTich.dem("can-xem-lai"),
+    queryFn: ({ signal }) =>
+      layDanhSachPhanTich({ limit: 1, offset: 0, outcomes: KET_QUA_CAN_XEM_LAI }, signal),
+  });
+  const soCanXemLai = truyVanDem.data?.total;
+
+  const locTheo = (moi: Loc) => {
+    setLoc(moi);
+    setOffset(0);
+  };
 
   const truyVanPhongBan = useQuery({
     queryKey: khoaQuanTri.phongBan.all,
@@ -72,11 +103,33 @@ export function ManPhanTich() {
   const danhSach = truyVan.data?.items ?? [];
 
   const bayGio = new Date();
-  const soCanXemLai = danhSach.filter((pt) => canXemLai(pt.outcome)).length;
 
   return (
     <div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-8 py-6">
       <DauTrang tieuDe={t("phanTich.tieuDe")} moTa={t("phanTich.chiDoc")} />
+
+      <div role="group" aria-label={t("phanTich.locKetQua")} className="flex flex-wrap gap-2">
+        <Nut
+          co="sm"
+          bienThe={loc === "tat-ca" ? "chinh" : "phu"}
+          aria-pressed={loc === "tat-ca"}
+          onClick={() => locTheo("tat-ca")}
+        >
+          {t("quanTri.tatCa")}
+        </Nut>
+        <Nut
+          co="sm"
+          icon={TriangleAlert}
+          bienThe={loc === "can-xem-lai" ? "chinh" : "phu"}
+          aria-pressed={loc === "can-xem-lai"}
+          onClick={() => locTheo("can-xem-lai")}
+        >
+          {t("phanTich.canXemLai")}
+          {soCanXemLai !== undefined && soCanXemLai > 0 && (
+            <span className="rounded-full bg-ink px-1.5 text-xs font-extrabold text-card">{soCanXemLai}</span>
+          )}
+        </Nut>
+      </div>
 
       {truyVan.isPending && (
         <The>
@@ -90,21 +143,11 @@ export function ManPhanTich() {
       )}
       {truyVan.data && danhSach.length === 0 && (
         <The>
-          <TrangThaiRong icon={Sparkles} tieuDe={t("phanTich.chuaCo")} />
+          <TrangThaiRong
+            icon={Sparkles}
+            tieuDe={loc === "can-xem-lai" ? t("phanTich.khongCanXemLai") : t("phanTich.chuaCo")}
+          />
         </The>
-      )}
-
-      {/* A2 (phần làm được không cần backend): dòng cần người xem được tô và
-          đếm trên trang. Lọc thật cần `GET /analyses?outcome=` — danh sách phân
-          trang nên lọc tại client chỉ lọc được trang đang xem, sẽ nói dối. */}
-      {soCanXemLai > 0 && (
-        <p className="flex items-center gap-2 text-sm text-ink">
-          <HuyHieu tong="wait">
-            <TriangleAlert aria-hidden className="size-3.5" strokeWidth={2.5} />
-            {t("phanTich.canXemLai")}
-          </HuyHieu>
-          {t("phanTich.demCanXemLai", { so: soCanXemLai })}
-        </p>
       )}
 
       {danhSach.length > 0 && (

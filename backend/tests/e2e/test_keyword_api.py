@@ -200,6 +200,42 @@ class TestKeywordCrud:
         r = await client_kw.delete(f"/api/v1/keywords/{kw_id}", headers=_bearer(tok))
         assert r.status_code == 204
 
+    async def test_trung_tra_409_kem_tu_khoa_dang_co(
+        self, client_kw: AsyncClient, engine: AsyncEngine
+    ) -> None:
+        ids = await _seed(engine)
+        tok = await _login(client_kw, "manager@x.vn")
+        r = await client_kw.post(
+            "/api/v1/keywords",
+            headers=_bearer(tok),
+            json={"department_id": ids["phong"], "text": "Bảo Hành"},
+        )
+        da_co = r.json()
+
+        for sai in ("bao hanh", "  BẢO   hành "):
+            r = await client_kw.post(
+                "/api/v1/keywords",
+                headers=_bearer(tok),
+                json={"department_id": ids["phong"], "text": sai},
+            )
+            assert r.status_code == 409, r.text
+            loi = r.json()["error"]
+            assert loi["code"] == "KEYWORD_DUPLICATE"
+            assert loi["details"] == {
+                "existing_keyword": {
+                    "id": da_co["id"],
+                    "text": "Bảo Hành",
+                    "normalized": "bao hanh",
+                }
+            }
+
+        # Lỗi nghiệp vụ khác vẫn giữ details = null như cũ.
+        r = await client_kw.delete(
+            "/api/v1/keywords/00000000-0000-0000-0000-000000000000", headers=_bearer(tok)
+        )
+        assert r.status_code == 404
+        assert r.json()["error"]["details"] is None
+
     async def test_staff_khong_crud_duoc(self, client_kw: AsyncClient, engine: AsyncEngine) -> None:
         ids = await _seed(engine)
         tok = await _login(client_kw, "staff@x.vn")
@@ -453,3 +489,97 @@ class TestRetriggerAnalysis:
 
         r = await client_kw.post(f"/api/v1/conversations/{new_id()}/analyses", headers=_bearer(tok))
         assert r.status_code == 403, r.text
+
+
+# ----- BE-10: phạm vi danh sách + lọc outcome -----
+
+
+class TestDanhSachPhanTichBe10:
+    async def _hai_hoi_thoai_cho_phan(self, app_kw, client_kw, engine, ids):  # type: ignore[no-untyped-def]
+        moi = TestRetriggerAnalysis._hoi_thoai_moi
+        # AMBIGUOUS nghiêng về phòng 2 (tin cậy thấp) -> chờ phân, phòng đề xuất NULL.
+        mo_ho = await moi(
+            self,  # type: ignore[arg-type]
+            app_kw,
+            client_kw,
+            engine,
+            "oa_be10_1",
+            _FakeClassifier(UUID(ids["phong2"]), Decimal("0.2")),
+        )
+        # LLM lỗi -> NOT_ANALYZED, chờ phân.
+        loi = await moi(
+            self,  # type: ignore[arg-type]
+            app_kw,
+            client_kw,
+            engine,
+            "oa_be10_2",
+            _FakeClassifier(None, Decimal("0"), raise_error=True),
+        )
+        return str(mo_ho), str(loi)
+
+    async def test_manager_thay_hang_cho_phan_nhung_khong_thay_phong_khac(
+        self, app_kw, client_kw: AsyncClient, engine: AsyncEngine
+    ) -> None:
+        ids = await _seed(engine)
+        mo_ho, loi = await self._hai_hoi_thoai_cho_phan(app_kw, client_kw, engine, ids)
+
+        tok_m = await _login(client_kw, "manager@x.vn")
+        r = await client_kw.get("/api/v1/analyses", headers=_bearer(tok_m))
+        assert r.status_code == 200, r.text
+        thay = {(i["conversation_id"], i["outcome"]) for i in r.json()["items"]}
+        assert (mo_ho, "AMBIGUOUS") in thay
+        assert (loi, "NOT_ANALYZED") in thay
+
+        # Hội thoại mơ hồ giờ đã thuộc phòng 2 -> Manager phòng 1 không còn thấy.
+        async with engine.begin() as conn:
+            await conn.execute(
+                text(
+                    "UPDATE conversations SET department_id = :p, status = 'DANG_MO' WHERE id = :id"
+                ),
+                {"p": ids["phong2"], "id": mo_ho},
+            )
+        r = await client_kw.get("/api/v1/analyses", headers=_bearer(tok_m))
+        ds = [i["conversation_id"] for i in r.json()["items"]]
+        assert mo_ho not in ds
+        assert loi in ds
+        assert r.json()["total"] == 1
+
+        # Staff không thấy hàng chờ phân (Hộp thư cũng không cho Staff xem).
+        r = await client_kw.get(
+            "/api/v1/analyses", headers=_bearer(await _login(client_kw, "staff@x.vn"))
+        )
+        assert r.json()["total"] == 0
+
+    async def test_loc_outcome_can_xem_lai_tren_toan_bo(
+        self, app_kw, client_kw: AsyncClient, engine: AsyncEngine
+    ) -> None:
+        ids = await _seed(engine)
+        mo_ho, loi = await self._hai_hoi_thoai_cho_phan(app_kw, client_kw, engine, ids)
+        tu_phan = await TestRetriggerAnalysis._hoi_thoai_moi(
+            self,  # type: ignore[arg-type]
+            app_kw,
+            client_kw,
+            engine,
+            "oa_be10_3",
+            _FakeClassifier(UUID(ids["phong"]), Decimal("0.95")),
+        )
+        admin = _bearer(await _login(client_kw, "admin@x.vn"))
+
+        r = await client_kw.get("/api/v1/analyses", headers=admin)
+        assert r.json()["total"] == 3
+
+        # limit=1: total vẫn là số trên TOÀN BỘ dữ liệu khớp bộ lọc.
+        r = await client_kw.get(
+            "/api/v1/analyses?outcome=AMBIGUOUS&outcome=NOT_ANALYZED&limit=1", headers=admin
+        )
+        assert r.status_code == 200, r.text
+        assert r.json()["total"] == 2
+        assert len(r.json()["items"]) == 1
+        r = await client_kw.get(
+            "/api/v1/analyses?outcome=AMBIGUOUS&outcome=NOT_ANALYZED", headers=admin
+        )
+        assert {i["conversation_id"] for i in r.json()["items"]} == {mo_ho, loi}
+        assert str(tu_phan) not in {i["conversation_id"] for i in r.json()["items"]}
+
+        r = await client_kw.get("/api/v1/analyses?outcome=KHONG_CO", headers=admin)
+        assert r.status_code == 422

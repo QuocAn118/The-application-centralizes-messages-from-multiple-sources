@@ -14,7 +14,8 @@ Idempotent: chạy nhiều lần ra cùng trạng thái. Tạo nếu thiếu, s�
   Manager B, Staff A.
 - 2 tài khoản **đang chờ đổi mật khẩu tạm** (Manager, Staff) — đưa về lại trạng
   thái này MỖI lần chạy, vì kịch bản `ui-f2.mjs` đổi mật khẩu của chúng.
-- Mẫu ca 08:00-17:00 ở phòng A + 1 ca ACTIVE của Staff A trong tháng hiện tại.
+- Mẫu ca 08:00-17:00 ở phòng A + 1 ca ACTIVE của Staff A trong tháng hiện tại;
+  mẫu ca ở phòng B + 1 ca ACTIVE của Manager B (người có ca, KHÔNG có mục tiêu KPI).
 - Mục tiêu KPI "hội thoại đã đóng" của Staff A cho tháng hiện tại.
 - 1 đơn CHỜ DUYỆT của Staff A và của Manager A (kịch bản duyệt/từ chối tiêu thụ).
 
@@ -183,15 +184,15 @@ def tai_khoan(api: Api, tk: str, id_phong: dict[str, str]) -> dict[str, str]:
     return ids
 
 
-def ca_va_kpi(api: Api, tk: str, id_phong: dict[str, str], id_staff: str) -> None:
-    """Mẫu ca 08:00-17:00 ở phòng A, 1 ca ACTIVE của Staff A trong tháng này, KPI tháng này."""
+def bao_dam_ca(api: Api, tk: str, id_phong: str, id_user: str, nhan: str) -> None:
+    """Mẫu ca 08:00-17:00 ở ``id_phong`` + ≥1 buổi ca ACTIVE của ``id_user`` trong tháng này."""
     hom_nay = date.today()
     ds_ca = api.goi("GET", "/shifts?is_active=true", tk)
     ca = next(
         (
             c
             for c in ds_ca
-            if c["department_id"] == id_phong[PHONG_A]
+            if c["department_id"] == id_phong
             and str(c["start_time"]).startswith("08:00")
             and str(c["end_time"]).startswith("17:00")
         ),
@@ -206,10 +207,10 @@ def ca_va_kpi(api: Api, tk: str, id_phong: dict[str, str], id_staff: str) -> Non
                 "name": "Ca hành chính kiểm chứng",
                 "start_time": "08:00",
                 "end_time": "17:00",
-                "department_id": id_phong[PHONG_A],
+                "department_id": id_phong,
             },
         )
-        print("  + tạo mẫu ca 08:00-17:00")
+        print(f"  + tạo mẫu ca 08:00-17:00 ({nhan})")
 
     dau = hom_nay.replace(day=1)
     cuoi = hom_nay.replace(day=calendar.monthrange(hom_nay.year, hom_nay.month)[1])
@@ -219,16 +220,31 @@ def ca_va_kpi(api: Api, tk: str, id_phong: dict[str, str], id_staff: str) -> Non
         + urlencode({"date_from": dau.isoformat(), "date_to": cuoi.isoformat()}),
         tk,
     )
-    co_ca = any(p["user_id"] == id_staff and p["status"] == "ACTIVE" for p in lich)
+    co_ca = any(p["user_id"] == id_user and p["status"] == "ACTIVE" for p in lich)
     if not co_ca:
         # Không phân ca lùi ngày: chọn hôm nay (luôn nằm trong tháng này).
         api.goi(
             "POST",
             "/shift-assignments",
             tk,
-            {"shift_id": ca["id"], "user_id": id_staff, "work_date": hom_nay.isoformat()},
+            {"shift_id": ca["id"], "user_id": id_user, "work_date": hom_nay.isoformat()},
         )
-        print(f"  + phân ca Staff A ngày {hom_nay.isoformat()}")
+        print(f"  + phân ca {nhan} ngày {hom_nay.isoformat()}")
+
+
+def ca_va_kpi(api: Api, tk: str, id_phong: dict[str, str], ids: dict[str, str]) -> None:
+    """Ca + KPI cho các kịch bản Nhân sự và Báo cáo Ca & KPI.
+
+    - Staff A (phòng A): 1 ca ACTIVE trong tháng + mục tiêu KPI tháng này.
+    - Manager B (phòng B): 1 ca ACTIVE trong tháng và **KHÔNG BAO GIỜ** có mục tiêu
+      KPI — dòng "có ca, chưa đặt mục tiêu" (null/null → "—") của báo cáo Ca & KPI
+      (``ui-f5-gd2``). Phòng B vì kịch bản KPI (``ui-f3-gd3``) đặt mục tiêu trong
+      phòng A. Trước đây dòng này sống nhờ dữ liệu tay ngoài seed.
+    """
+    hom_nay = date.today()
+    id_staff = ids["f3.staffa.76aa2a@congty.vn"]
+    bao_dam_ca(api, tk, id_phong[PHONG_A], id_staff, "Staff A")
+    bao_dam_ca(api, tk, id_phong[PHONG_B], ids["f3.mgrb.76aa2a@congty.vn"], "Manager B")
 
     # POST /kpi-targets là UPSERT (#F3) — gọi lại không nhân bản.
     api.goi(
@@ -294,7 +310,7 @@ def main() -> int:
         tk = api.dang_nhap(email_admin, mk_admin)
         id_phong = phong(api, tk)
         ids = tai_khoan(api, tk, id_phong)
-        ca_va_kpi(api, tk, id_phong, ids["f3.staffa.76aa2a@congty.vn"])
+        ca_va_kpi(api, tk, id_phong, ids)
         don_cho_duyet(api)
     except SeedError as loi:
         print(f"LỖI: {loi}")

@@ -13,7 +13,10 @@ from src.modules.keyword.domain.entities.conversation_analysis import (
     ConversationAnalysis,
 )
 from src.modules.keyword.domain.ports import ConversationSnapshot
-from src.modules.keyword.domain.value_objects.extracted_term import ExtractedTerm
+from src.modules.keyword.domain.value_objects.extracted_term import (
+    AnalysisOutcome,
+    ExtractedTerm,
+)
 from src.shared.application.exceptions import NotFoundError, PermissionDeniedError
 from src.shared.domain.identifiers import new_id
 from tests.unit.keyword.fakes import FakeAnalysisRepository, FakeConversationDirectory
@@ -58,6 +61,65 @@ class TestList:
         page = await ListConversationAnalyses(repo).execute(_staff(PHONG_A))
         assert page.total == 1
         assert page.items[0].suggested_department_id == PHONG_A
+
+
+class TestListBe10:
+    """BE-10: Manager thấy thêm hàng chờ phân; lọc outcome trên toàn bộ dữ liệu."""
+
+    async def _repo(self) -> tuple[FakeAnalysisRepository, dict[str, object]]:
+        repo = FakeAnalysisRepository()
+        cho_mo_ho, cho_loi, da_thuoc_b = new_id(), new_id(), new_id()
+        mo_ho = ConversationAnalysis.ambiguous(
+            conversation_id=cho_mo_ho,
+            extracted_terms=(ExtractedTerm(text="x", normalized="x"),),
+            confidence=Decimal("0.2"),
+            now=BAY_GIO,
+        )
+        await repo.add(mo_ho)
+        await repo.add(ConversationAnalysis.not_analyzed(conversation_id=cho_loi, now=BAY_GIO))
+        # Từng mơ hồ nhưng giờ đã thuộc phòng B -> KHÔNG còn trong hàng chờ.
+        await repo.add(
+            ConversationAnalysis.ambiguous(
+                conversation_id=da_thuoc_b,
+                extracted_terms=(),
+                confidence=Decimal("0.1"),
+                now=BAY_GIO,
+            )
+        )
+        await repo.add(_phan_tich(new_id(), PHONG_A))
+        await repo.add(_phan_tich(new_id(), PHONG_B))
+        repo.cho_phan = {cho_mo_ho, cho_loi}
+        return repo, {"cho_mo_ho": cho_mo_ho, "cho_loi": cho_loi, "da_thuoc_b": da_thuoc_b}
+
+    async def test_manager_thay_phong_minh_cong_hang_cho_phan(self) -> None:
+        repo, ht = await self._repo()
+        page = await ListConversationAnalyses(repo).execute(_manager(PHONG_A))
+        thay = {v.conversation_id for v in page.items}
+        assert ht["cho_mo_ho"] in thay and ht["cho_loi"] in thay
+        assert ht["da_thuoc_b"] not in thay
+        assert page.total == 3  # 2 chờ phân + 1 đề xuất về A; không có của B
+
+    async def test_staff_khong_thay_hang_cho_phan(self) -> None:
+        repo, _ = await self._repo()
+        page = await ListConversationAnalyses(repo).execute(_staff(PHONG_A))
+        assert page.total == 1
+
+    async def test_loc_outcome_tren_toan_bo_du_lieu(self) -> None:
+        repo, _ = await self._repo()
+        can_xem_lai = [AnalysisOutcome.AMBIGUOUS, AnalysisOutcome.NOT_ANALYZED]
+        # limit=1: total vẫn đếm trên toàn bộ, không phải trang đang xem.
+        page = await ListConversationAnalyses(repo).execute(
+            _admin(), limit=1, offset=0, outcomes=can_xem_lai
+        )
+        assert page.total == 3
+        assert page.items[0].outcome in can_xem_lai
+
+    async def test_loc_outcome_van_giu_pham_vi(self) -> None:
+        repo, _ = await self._repo()
+        page = await ListConversationAnalyses(repo).execute(
+            _manager(PHONG_A), outcomes=[AnalysisOutcome.AMBIGUOUS]
+        )
+        assert page.total == 1  # mơ hồ đang chờ phân; mơ hồ đã thuộc B bị loại
 
 
 class TestGet:

@@ -53,6 +53,8 @@ export function ManTuKhoa() {
   const queryClient = useQueryClient();
   const [tim, setTim] = useState("");
   const [dangMo, setDangMo] = useState<DangMo>(null);
+  // Id từ khoá đang có mà lần thêm nhanh vừa rồi trùng với (409 details) — tô chip đó.
+  const [chipTrung, setChipTrung] = useState<string | null>(null);
 
   const truyVan = useQuery({
     queryKey: khoaTuKhoa.tuKhoa.all,
@@ -202,6 +204,7 @@ export function ManTuKhoa() {
                 <ChipTuKhoa
                   key={k.id}
                   tuKhoa={k}
+                  trung={k.id === chipTrung}
                   onSua={suaDuoc(k) ? () => setDangMo({ loai: "sua", tuKhoa: k }) : null}
                   onXoa={suaDuoc(k) ? () => setDangMo({ loai: "xoa", tuKhoa: k }) : null}
                 />
@@ -210,7 +213,7 @@ export function ManTuKhoa() {
                 <li className="self-center text-sm text-ink-2">{t("tuKhoa.chuaCoTrongPhong")}</li>
               )}
               {/* Đang tìm thì ẩn ô thêm: thêm giữa lúc lọc dễ tưởng từ mới "biến mất". */}
-              {themNhanhDuoc && !tim && <OThemNhanh phongId={phong.id} tenPhong={phong.ten} />}
+              {themNhanhDuoc && !tim && <OThemNhanh phongId={phong.id} tenPhong={phong.ten} onTrung={setChipTrung} />}
             </ul>
           </The>
         );
