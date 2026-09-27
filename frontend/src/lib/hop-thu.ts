@@ -116,6 +116,10 @@ export function noiDungSuKien(e: ConversationEvent): string {
       return `Chuyển từ ${ten(e.from_name)} sang ${ten(e.to_name)}`;
     case "UNASSIGNED":
       return `Gỡ người phụ trách ${ten(e.from_name)}`;
+    case "DEPARTMENT_ASSIGNED":
+      return `${ten(e.actor_name)} phân về ${ten(e.department_name ?? null)}`;
+    case "AUTO_ROUTED":
+      return `Tự động chuyển tới ${ten(e.department_name ?? null)}${e.detail ? ` — ${e.detail}` : ""}`;
   }
 }
 
@@ -182,4 +186,37 @@ export function dungDongChat(tin: Message[], suKien: ConversationEvent[], now: D
     tinTruoc = m.tin;
   }
   return ra;
+}
+
+// ---------------------------------------------------------------------------
+// 2b: mẫu trả lời, ghi chú
+// ---------------------------------------------------------------------------
+
+/** Bỏ dấu + thường hoá để lọc: gõ "bao gia" vẫn ra "Báo giá". */
+export function boDau(chu: string): string {
+  return chu.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "d").toLowerCase();
+}
+
+/**
+ * Chữ lọc mẫu khi người dùng gõ `/` ở ĐẦU ô soạn; `null` = không ở chế độ mẫu.
+ * Chỉ tính khi cả ô là một dòng bắt đầu bằng `/` — gõ `/` giữa câu (đường dẫn,
+ * phân số) không được bật danh sách mẫu.
+ */
+export function lenhMau(noiDung: string): string | null {
+  const m = /^\/([^\n]*)$/.exec(noiDung);
+  return m ? m[1] : null;
+}
+
+/** Lọc mẫu theo tiêu đề hoặc nội dung, không phân biệt dấu. */
+export function locMau<T extends { title: string; body: string }>(mau: T[], chu: string): T[] {
+  const tim = boDau(chu.trim());
+  if (!tim) return mau;
+  return mau.filter((m) => boDau(m.title).includes(tim) || boDau(m.body).includes(tim));
+}
+
+/** Dòng nói rõ ai thấy ghi chú (GĐ1 §10.4). */
+export function nhanPhamViGhiChu(departmentName: string | null): string {
+  return departmentName
+    ? `Chỉ phòng ${departmentName} thấy ghi chú này`
+    : "Chỉ quản trị viên thấy ghi chú này";
 }
