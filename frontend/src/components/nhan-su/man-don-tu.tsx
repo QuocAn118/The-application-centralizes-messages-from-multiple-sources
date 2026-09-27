@@ -12,10 +12,12 @@
  */
 
 import { useMemo, useState } from "react";
+import { FileText, Plus } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { t } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-context";
 import { NHAN_LOAI_DON, NHAN_TRANG_THAI_DON } from "@/lib/hien-thi";
+import { hienSoChuaDoc } from "@/lib/hop-thu";
 import {
   KICH_THUOC_TRANG_DON,
   duyetDon,
@@ -32,10 +34,11 @@ import { HopXacNhan } from "@/components/hop-xac-nhan";
 import { BangDon, type ThaoTacDon } from "./bang-don";
 import { HopThoaiGuiDon } from "./hop-thoai-gui-don";
 import { HopThoaiTuChoi } from "./hop-thoai-tu-choi";
+import { DauTrang } from "@/components/ui/dau-trang";
+import { The } from "@/components/ui/the";
+import { Nut } from "@/components/ui/nut";
+import { TrangThaiLoi, TrangThaiRong, TrangThaiTai } from "@/components/ui/trang-thai";
 import type { LeaveRequest, RequestStatus } from "@/lib/types";
-
-const LOP_SELECT =
-  "rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary";
 
 const TRANG_THAI: readonly RequestStatus[] = [
   "CHO_DUYET",
@@ -49,10 +52,12 @@ type DangMo = { loai: "gui" } | { loai: ThaoTacDon; don: LeaveRequest } | null;
 export function ManDonTu() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [thamSo, setThamSo] = useState<ThamSoDon>({
+  // D1: Manager/Admin mở ra ở "Chờ duyệt" — việc cần làm, không lẫn đơn đã quyết.
+  const [thamSo, setThamSo] = useState<ThamSoDon>(() => ({
     limit: KICH_THUOC_TRANG_DON,
     offset: 0,
-  });
+    status: user && user.role !== "STAFF" ? "CHO_DUYET" : undefined,
+  }));
   const [dangMo, setDangMo] = useState<DangMo>(null);
 
   const truyVanDon = useQuery({
@@ -69,6 +74,13 @@ export function ManDonTu() {
     // hiện "Không rõ" và `hienDuyet` nhận `null`. Staff vốn không duyệt đơn
     // nên không mất gì. Không thử lại để khỏi bắn 403 liên tục.
     retry: false,
+  });
+
+  // Số trên nút "Chờ duyệt": chỉ cần `total`, nên xin 1 dòng.
+  const truyVanDemCho = useQuery({
+    queryKey: [...khoaNhanSu.don.all, "dem-cho"],
+    queryFn: ({ signal }) =>
+      layDanhSachDon({ status: "CHO_DUYET", limit: 1, offset: 0 }, signal),
   });
 
   const nguoiTheoId = useMemo(
@@ -105,95 +117,97 @@ export function ManDonTu() {
     return nguoiTheoId.get(don.requester_id)?.full_name ?? t("nhatKy.khongRo");
   }
 
+  const soCho = hienSoChuaDoc(truyVanDemCho.data?.total ?? 0);
+  const locTheo = (status: RequestStatus | undefined) =>
+    setThamSo((truoc) => ({ ...truoc, status, offset: 0 }));
+
   return (
-    <div className="px-6 py-6">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-base font-semibold text-foreground">{t("don.tieuDe")}</h2>
-        {hienGuiDon(actor) ? (
-          <button
-            type="button"
-            onClick={() => setDangMo({ loai: "gui" })}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95"
+    <div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-8 py-6">
+      <DauTrang
+        tieuDe={t("don.tieuDe")}
+        moTa={
+          actor.role === "STAFF"
+            ? "Đơn bạn đã gửi và kết quả duyệt."
+            : "Duyệt đơn nghỉ phép, đổi ca, giải trình trong phạm vi của bạn."
+        }
+        hanhDong={
+          hienGuiDon(actor) ? (
+            <Nut bienThe="chinh" icon={Plus} onClick={() => setDangMo({ loai: "gui" })}>
+              {t("don.guiDon")}
+            </Nut>
+          ) : (
+            // D2 / RB-1: Admin không gửi đơn được vì không thuộc phòng nào — nói rõ
+            // ngay chỗ lẽ ra có nút, thay vì để người dùng tự hỏi nút đâu.
+            <p className="max-w-[36ch] rounded-nb border-2 border-dashed border-ink-2 px-3 py-2 text-xs text-ink-2">
+              {t("don.adminKhongGuiDuoc")}
+            </p>
+          )
+        }
+      />
+
+      <div role="group" aria-label={t("don.locTrangThai")} className="flex flex-wrap gap-2">
+        {TRANG_THAI.map((tt) => (
+          <Nut
+            key={tt}
+            co="sm"
+            bienThe={thamSo.status === tt ? "chinh" : "phu"}
+            aria-pressed={thamSo.status === tt}
+            onClick={() => locTheo(tt)}
           >
-            + {t("don.guiDon")}
-          </button>
-        ) : (
-          // RB-1: Admin không gửi đơn được vì không thuộc phòng nào. Nói rõ lý
-          // do thay vì để chỗ trống — người dùng sẽ tự hỏi nút đâu.
-          <p className="text-xs text-muted">{t("don.adminKhongGuiDuoc")}</p>
-        )}
+            {NHAN_TRANG_THAI_DON[tt]}
+            {tt === "CHO_DUYET" && soCho && (
+              <span className="rounded-full bg-ink px-1.5 text-xs font-extrabold text-card">{soCho}</span>
+            )}
+          </Nut>
+        ))}
+        <Nut
+          co="sm"
+          bienThe={thamSo.status === undefined ? "chinh" : "phu"}
+          aria-pressed={thamSo.status === undefined}
+          onClick={() => locTheo(undefined)}
+        >
+          {t("quanTri.tatCa")}
+        </Nut>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border-subtle bg-white">
-        <div className="flex flex-wrap items-center gap-3 border-b border-border-subtle px-4 py-3">
-          <select
-            aria-label={t("don.locTrangThai")}
-            value={thamSo.status ?? ""}
-            onChange={(e) =>
-              setThamSo((truoc) => ({
-                ...truoc,
-                status: (e.target.value || undefined) as RequestStatus | undefined,
-                offset: 0,
-              }))
-            }
-            className={LOP_SELECT}
-          >
-            <option value="">
-              {t("don.locTrangThai")}: {t("quanTri.tatCa")}
-            </option>
-            {TRANG_THAI.map((tt) => (
-              <option key={tt} value={tt}>
-                {NHAN_TRANG_THAI_DON[tt]}
-              </option>
-            ))}
-          </select>
+      {truyVanDon.isPending && (
+        <The>
+          <TrangThaiTai />
+        </The>
+      )}
+      {truyVanDon.isError && (
+        <The>
+          <TrangThaiLoi
+            thongDiep={thongDiepLoi(truyVanDon.error)}
+            onThuLai={() => void truyVanDon.refetch()}
+          />
+        </The>
+      )}
+      {trang && trang.items.length === 0 && (
+        <The>
+          <TrangThaiRong
+            icon={FileText}
+            tieuDe={thamSo.status === "CHO_DUYET" ? "Không có đơn nào chờ duyệt" : t("quanTri.trong")}
+          />
+        </The>
+      )}
+      {trang && trang.items.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <BangDon
+            danhSach={trang.items}
+            nguoiTheoId={nguoiTheoId}
+            actor={actor}
+            chonThaoTac={(thaoTac, don) => setDangMo({ loai: thaoTac, don })}
+          />
+          <ThanhPhanTrang
+            offset={trang.offset}
+            limit={trang.limit}
+            total={trang.total}
+            dangTai={truyVanDon.isFetching}
+            doiOffset={(offsetMoi) => setThamSo((truoc) => ({ ...truoc, offset: offsetMoi }))}
+          />
         </div>
-
-        {truyVanDon.isPending && (
-          <p className="px-5 py-10 text-center text-sm text-muted">
-            {t("chung.dangTai")}
-          </p>
-        )}
-
-        {truyVanDon.isError && (
-          <div className="px-5 py-10 text-center">
-            <p className="text-sm text-danger-fg">{thongDiepLoi(truyVanDon.error)}</p>
-            <button
-              type="button"
-              onClick={() => void truyVanDon.refetch()}
-              className="mt-3 rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-surface"
-            >
-              {t("chung.thuLai")}
-            </button>
-          </div>
-        )}
-
-        {trang && trang.items.length === 0 && (
-          <p className="px-5 py-10 text-center text-sm text-muted">
-            {t("quanTri.trong")}
-          </p>
-        )}
-
-        {trang && trang.items.length > 0 && (
-          <>
-            <BangDon
-              danhSach={trang.items}
-              nguoiTheoId={nguoiTheoId}
-              actor={actor}
-              chonThaoTac={(thaoTac, don) => setDangMo({ loai: thaoTac, don })}
-            />
-            <ThanhPhanTrang
-              offset={trang.offset}
-              limit={trang.limit}
-              total={trang.total}
-              dangTai={truyVanDon.isFetching}
-              doiOffset={(offsetMoi) =>
-                setThamSo((truoc) => ({ ...truoc, offset: offsetMoi }))
-              }
-            />
-          </>
-        )}
-      </div>
+      )}
 
       {dangMo?.loai === "gui" && <HopThoaiGuiDon onDong={() => setDangMo(null)} />}
 

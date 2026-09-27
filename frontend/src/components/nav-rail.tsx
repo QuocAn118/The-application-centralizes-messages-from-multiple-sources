@@ -41,6 +41,8 @@ import type { Role } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { khoaInbox, layDemChuaDoc } from "@/lib/inbox-api";
 import { hienSoChuaDoc } from "@/lib/hop-thu";
+import { khoaNhanSu, layDanhSachDon } from "@/lib/nhan-su-api";
+import { demDonCanDuyet } from "@/lib/quyen-nhan-su";
 import { GoiY } from "./ui/goi-y";
 
 interface MucNav {
@@ -75,6 +77,28 @@ function HuyHieuChuaDoc() {
   });
   const so = hienSoChuaDoc(data?.conversations ?? 0);
   if (!so) return null;
+  return <SoTrenIcon so={so} moTa={`${so} hội thoại chưa đọc`} />;
+}
+
+/**
+ * Số đơn chờ mà người xem duyệt được (X14) — chỉ Manager/Admin. Khoá dưới
+ * `khoaNhanSu.don.all` nên duyệt / từ chối / gửi đơn là làm mới luôn.
+ */
+function HuyHieuDonCho() {
+  const { user } = useAuth();
+  const duyetDuoc = user?.role === "MANAGER" || user?.role === "ADMIN";
+  const { data } = useQuery({
+    queryKey: [...khoaNhanSu.don.all, "cho-duyet-nav"],
+    queryFn: ({ signal }) => layDanhSachDon({ status: "CHO_DUYET", limit: 100, offset: 0 }, signal),
+    enabled: duyetDuoc,
+  });
+  if (!user || !duyetDuoc || !data) return null;
+  const so = hienSoChuaDoc(demDonCanDuyet(user, data.items));
+  if (!so) return null;
+  return <SoTrenIcon so={so} moTa={`${so} đơn chờ duyệt`} />;
+}
+
+function SoTrenIcon({ so, moTa }: { so: string; moTa: string }) {
   return (
     <>
       <span
@@ -83,7 +107,7 @@ function HuyHieuChuaDoc() {
       >
         {so}
       </span>
-      <span className="sr-only"> ({so} hội thoại chưa đọc)</span>
+      <span className="sr-only"> ({moTa})</span>
     </>
   );
 }
@@ -137,6 +161,7 @@ export function NavRail() {
             <span className="relative">
               <Icon aria-hidden className="size-5" strokeWidth={dangO ? 2.5 : 2} />
               {muc.khu === "/inbox" && <HuyHieuChuaDoc />}
+              {muc.khu === "/nhan-su" && <HuyHieuDonCho />}
             </span>
             {t(muc.nhan)}
           </Link>

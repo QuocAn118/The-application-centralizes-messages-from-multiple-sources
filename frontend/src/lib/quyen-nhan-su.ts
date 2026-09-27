@@ -122,3 +122,14 @@ export function datDuocMucTieuKpi(vai: Role): boolean {
 export function xemDuocKpiPhong(vai: Role): boolean {
   return vai !== "STAFF";
 }
+
+/**
+ * Số đơn chờ mà người này duyệt được — huy hiệu "Nhân sự" trên nav rail (X14).
+ *
+ * Không tra vai người gửi (`null`): backend chỉ cho một Manager mỗi phòng, nên
+ * trong phạm vi của một Manager không có đơn của Manager khác ngoài chính họ —
+ * và đơn của chính mình `hienDuyet` đã loại.
+ */
+export function demDonCanDuyet(actor: NguoiNhanSu, danhSach: LeaveRequest[]): number {
+  return danhSach.filter((d) => hienDuyet(actor, d, null)).length;
+}
