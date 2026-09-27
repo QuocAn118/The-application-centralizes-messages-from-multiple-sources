@@ -12,6 +12,7 @@ from src.modules.keyword.application.dto.keyword_dto import (
 from src.modules.keyword.domain.entities.conversation_analysis import (
     ConversationAnalysis,
 )
+from src.modules.keyword.domain.ports import IConversationDirectory
 from src.modules.keyword.domain.repositories.analysis_repository import (
     IAnalysisRepository,
 )
@@ -80,41 +81,32 @@ class GetConversationAnalyses:
 
 
 class BaoDamKichHoatPhanTichDuoc:
-    """Gác phạm vi cho việc **kích hoạt phân tích lại** (nợ N5).
+    """Gác phạm vi cho việc **kích hoạt phân tích lại** (nợ N5, sửa lại 2026-09).
 
-    Trước đây ``POST /conversations/{id}/analyses`` chỉ kiểm vai Manager/Admin,
-    không kiểm phòng — trong khi ``GET`` cùng đường dẫn đó lại kiểm. Đo thật:
-    một Manager **GET** phân tích của hội thoại phòng khác nhận **403**, nhưng
-    **POST** kích hoạt lại chính hội thoại đó nhận **200**. Đường GHI dễ hơn
-    đường ĐỌC là ngược đời, và ghi ở đây nghĩa là gọi LLM (tốn tiền) rồi có thể
-    định tuyến lại hội thoại của phòng khác.
-
-    Quy tắc, cố ý khớp với ``GetConversationAnalyses``:
+    Xét theo phòng **HIỆN TẠI** của hội thoại, không theo bản ghi phân tích:
 
     - Admin: mọi hội thoại.
-    - Manager: hội thoại **đã có** bản ghi phân tích đề xuất về phòng mình.
-    - Hội thoại **chưa có bản ghi nào**: cho qua. ``CHO_PHAN`` nghĩa là chưa
-      thuộc phòng nào (``status`` suy ra từ ``department_id`` ở #1), nên không
-      có phòng để mà xâm phạm — đây chính là trường hợp dùng chính đáng: Manager
-      vừa thêm từ khoá và muốn AI thử phân lại hàng chờ chung.
+    - Hội thoại chờ phân (chưa thuộc phòng nào): Manager nào cũng được — đây là
+      trường hợp dùng chính đáng: AI lỗi / mơ hồ lúc đầu, Manager thêm từ khoá rồi
+      cho phân tích lại hàng chờ chung.
+    - Hội thoại đã thuộc phòng X: chỉ Manager phòng X.
 
-    Nói cách khác: chặn việc *đụng vào hội thoại của phòng khác*, không chặn
-    việc *giúp phân hàng chờ chưa của ai*.
+    Bản trước (b82935a2) xét theo bản ghi phân tích nên chặn nhầm hội thoại chờ
+    phân đã có bản ghi NOT_ANALYZED, hoặc AMBIGUOUS nghiêng về phòng khác.
     """
 
-    def __init__(self, analysis_repo: IAnalysisRepository) -> None:
-        self._analysis_repo = analysis_repo
+    def __init__(self, conversation_directory: IConversationDirectory) -> None:
+        self._conversation_directory = conversation_directory
 
     async def execute(self, actor: KeywordActor, conversation_id: UUID) -> None:
         if actor.role is ActorRole.ADMIN:
             return
 
-        items = await self._analysis_repo.list_for_conversation(conversation_id)
-        if not items:
-            # Chưa phân tích lần nào -> chưa thuộc phòng nào -> ai cũng giúp được.
+        snapshot = await self._conversation_directory.get_snapshot(conversation_id, 1)
+        if snapshot is None or snapshot.department_id is None:
+            # Không có / chờ phân -> chưa thuộc phòng nào -> ai cũng giúp được.
             return
-
-        if any(a.suggested_department_id == actor.department_id for a in items):
+        if snapshot.department_id == actor.department_id:
             return
 
         raise PermissionDeniedError(

@@ -42,6 +42,8 @@ class ConversationSnapshot:
     conversation_id: UUID
     is_awaiting: bool
     first_texts: tuple[str, ...]
+    # Phòng HIỆN TẠI của hội thoại (None = CHO_PHAN) — gác quyền phân tích lại.
+    department_id: UUID | None = None
 
 
 class IConversationDirectory(Protocol):
