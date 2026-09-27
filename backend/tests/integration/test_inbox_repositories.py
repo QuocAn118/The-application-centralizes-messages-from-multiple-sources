@@ -296,6 +296,37 @@ class TestLocNguoiPhuTrach:
         assert await repo.count_for_scope([phong_a], False, assigned_to=toi) == 0
 
 
+class TestLichSuKhach:
+    """BE-4: `customer_id` chồng lên phạm vi phòng — không lộ hội thoại phòng khác."""
+
+    async def test_loc_theo_khach_va_giu_pham_vi(self, db_session: AsyncSession) -> None:
+        repo = SqlAlchemyConversationRepository(db_session)
+        phong_a, phong_b = new_id(), new_id()
+        ch = await _kenh(db_session)
+        khach, khach_khac = await _khach(db_session, ch.id), await _khach(db_session, ch.id)
+        cu_a = Conversation.start(
+            channel_id=ch.id, customer_id=khach.id, department_id=phong_a, now=BAY_GIO
+        )
+        cu_a.close(BAY_GIO)
+        moi_b = Conversation.start(
+            channel_id=ch.id, customer_id=khach.id, department_id=phong_b, now=BAY_GIO
+        )
+        cua_nguoi_khac = Conversation.start(
+            channel_id=ch.id, customer_id=khach_khac.id, department_id=phong_a, now=BAY_GIO
+        )
+        for c in (cu_a, moi_b, cua_nguoi_khac):
+            await repo.add(c)
+        await db_session.flush()
+
+        tat_ca = await repo.list_for_scope(None, False, customer_id=khach.id)
+        assert {c.id for c in tat_ca} == {cu_a.id, moi_b.id}
+        assert await repo.count_for_scope(None, False, customer_id=khach.id) == 2
+
+        # Nhân viên phòng A chỉ thấy phần lịch sử thuộc phòng A.
+        chi_a = await repo.list_for_scope([phong_a], False, customer_id=khach.id)
+        assert [c.id for c in chi_a] == [cu_a.id]
+
+
 class TestMessageRoundTrip:
     async def test_luu_tin_voi_dinh_kem(self, db_session: AsyncSession) -> None:
         repo = SqlAlchemyMessageRepository(db_session)

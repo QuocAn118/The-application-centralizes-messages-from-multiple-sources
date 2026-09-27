@@ -110,6 +110,9 @@ async def liet_ke_inbox(
         LocNguoiPhuTrach | None,
         Query(description='"me" = của tôi, "none" = chưa ai nhận (BE-3)'),
     ] = None,
+    customer_id: Annotated[
+        UUID | None, Query(description="Lịch sử hội thoại của một khách (BE-4)")
+    ] = None,
 ) -> PageResponse[InboxItemResponse]:
     trang = await ListInbox(
         SqlAlchemyConversationRepository(session),
@@ -117,7 +120,15 @@ async def liet_ke_inbox(
         SqlAlchemyChannelRepository(session),
         SqlAlchemyMessageRepository(session),
         directory=directory,
-    ).execute(actor=actor, status=status, limit=limit, offset=offset, q=q, assignee=assignee)
+    ).execute(
+        actor=actor,
+        status=status,
+        limit=limit,
+        offset=offset,
+        q=q,
+        assignee=assignee,
+        customer_id=customer_id,
+    )
     return PageResponse(
         items=[InboxItemResponse.from_dto(i) for i in trang.items],
         total=trang.total,

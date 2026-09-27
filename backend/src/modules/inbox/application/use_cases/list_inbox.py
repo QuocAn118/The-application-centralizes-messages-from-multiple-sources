@@ -90,8 +90,10 @@ class ListInbox:
         offset: int = 0,
         q: str | None = None,
         assignee: LocNguoiPhuTrach | None = None,
+        customer_id: UUID | None = None,
     ) -> Page[InboxItem]:
-        """``q`` lọc theo tên khách; ``assignee`` lọc theo người phụ trách (BE-3).
+        """``q`` lọc theo tên khách; ``assignee`` lọc theo người phụ trách (BE-3);
+        ``customer_id`` = lịch sử hội thoại của một khách (BE-4).
 
         Cả hai CHỒNG lên phạm vi quyền đã ép trước — không nới rộng được.
         """
@@ -113,6 +115,7 @@ class ListInbox:
             q=tu_khoa,
             assigned_to=giao_cho,
             unassigned=chua_ai_nhan,
+            customer_id=customer_id,
         )
         tong = await self._conversation_repo.count_for_scope(
             department_ids=pv.department_ids,
@@ -121,6 +124,7 @@ class ListInbox:
             q=tu_khoa,
             assigned_to=giao_cho,
             unassigned=chua_ai_nhan,
+            customer_id=customer_id,
         )
         # Một truy vấn lấy preview cho cả trang, trước khi dựng từng dòng —
         # hỏi trong vòng lặp sẽ thành N+1 truy vấn.
