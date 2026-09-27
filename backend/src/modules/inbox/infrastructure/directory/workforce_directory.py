@@ -11,6 +11,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.modules.identity.infrastructure.models.department_model import DepartmentModel
 from src.modules.identity.infrastructure.models.user_model import UserModel
 from src.modules.identity.infrastructure.repositories.department_repository import (
     SqlAlchemyDepartmentRepository,
@@ -52,3 +53,11 @@ class IdentityWorkforceDirectory:
         cau = select(UserModel.id, UserModel.full_name).where(UserModel.id.in_(set(user_ids)))
         ket_qua = await self._session.execute(cau)
         return {hang.id: hang.full_name for hang in ket_qua}
+
+    async def get_department_names(self, department_ids: list[UUID]) -> dict[UUID, str]:
+        if not department_ids:
+            return {}
+        cau = select(DepartmentModel.id, DepartmentModel.name).where(
+            DepartmentModel.id.in_(set(department_ids))
+        )
+        return {hang.id: hang.name for hang in await self._session.execute(cau)}

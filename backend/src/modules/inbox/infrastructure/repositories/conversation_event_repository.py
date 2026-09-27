@@ -28,6 +28,8 @@ class SqlAlchemyConversationEventRepository:
                 from_user_id=event.from_user_id,
                 to_user_id=event.to_user_id,
                 created_at=event.created_at,
+                department_id=event.department_id,
+                detail=event.detail,
             )
         )
 
@@ -48,6 +50,8 @@ class SqlAlchemyConversationEventRepository:
                 from_user_id=m.from_user_id,
                 to_user_id=m.to_user_id,
                 created_at=m.created_at,
+                department_id=m.department_id,
+                detail=m.detail,
             )
             for m in ket_qua.scalars()
         ]

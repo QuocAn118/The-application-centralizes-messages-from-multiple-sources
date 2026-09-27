@@ -14,10 +14,12 @@ from src.modules.inbox.domain.entities.conversation import (
     ConversationStatus,
     NotAwaitingAssignmentError,
 )
+from src.modules.inbox.domain.entities.conversation_event import ConversationEventKind
 from src.shared.application.exceptions import NotFoundError, PermissionDeniedError
 from src.shared.domain.identifiers import new_id
 from tests.unit.inbox.fakes import (
     FakeClock,
+    FakeConversationEventRepository,
     FakeConversationRepository,
     FakeRealtimeNotifier,
     FakeWorkforceDirectory,
@@ -90,6 +92,49 @@ class TestPhanPhong:
 
         with pytest.raises(NotFoundError):
             await uc.execute(admin, ht.id, PHONG_A)
+
+    async def test_phan_tay_ghi_dong_he_thong(self) -> None:
+        ht = _cho_phan()
+        repo = FakeConversationRepository()
+        await repo.add(ht)
+        directory = FakeWorkforceDirectory()
+        directory.active_departments.add(PHONG_A)
+        su_kien = FakeConversationEventRepository()
+        uc = AssignConversationToDepartment(
+            repo, directory, FakeRealtimeNotifier(), FakeClock(BAY_GIO), event_repo=su_kien
+        )
+        manager = InboxActor(user_id=new_id(), role=ActorRole.MANAGER, department_id=PHONG_A)
+
+        await uc.execute(manager, ht.id, PHONG_A)
+
+        (e,) = su_kien.events
+        assert (e.kind, e.actor_user_id, e.department_id, e.detail) == (
+            ConversationEventKind.DEPARTMENT_ASSIGNED,
+            manager.user_id,
+            PHONG_A,
+            None,
+        )
+
+    async def test_tu_phan_ghi_ly_do_khong_ghi_nguoi(self) -> None:
+        ht = _cho_phan()
+        repo = FakeConversationRepository()
+        await repo.add(ht)
+        directory = FakeWorkforceDirectory()
+        directory.active_departments.add(PHONG_A)
+        su_kien = FakeConversationEventRepository()
+        uc = AssignConversationToDepartment(
+            repo, directory, FakeRealtimeNotifier(), FakeClock(BAY_GIO), event_repo=su_kien
+        )
+        he_thong = InboxActor(user_id=new_id(), role=ActorRole.ADMIN, department_id=None)
+
+        await uc.execute(he_thong, ht.id, PHONG_A, tu_dong=True, ly_do="khớp từ khoá bảo hành")
+
+        (e,) = su_kien.events
+        assert (e.kind, e.actor_user_id, e.detail) == (
+            ConversationEventKind.AUTO_ROUTED,
+            None,
+            "khớp từ khoá bảo hành",
+        )
 
     async def test_hoi_thoai_dang_mo_khong_phan_lai_duoc(self) -> None:
         ht = _dang_mo()

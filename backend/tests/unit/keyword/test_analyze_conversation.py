@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from src.modules.keyword.application.use_cases.analyze_conversation import (
     AnalyzeConversation,
+    ly_do_tu_phan,
 )
 from src.modules.keyword.domain.entities.keyword import Keyword
 from src.modules.keyword.domain.ports import ConversationSnapshot
@@ -75,6 +76,8 @@ class TestTuPhan:
         assert view.outcome is AnalysisOutcome.AUTO_ASSIGNED
         assert view.suggested_department_id == PHONG_BH
         assert bc.router.assigned == [(HT, PHONG_BH)]
+        # "lỗi" không chứa từ khoá "bảo hành" → nói theo nhu cầu, không bịa từ khoá.
+        assert bc.router.ly_do == ["theo nhu cầu: lỗi"]
         # Danh mục 2 phòng được bơm cho LLM.
         assert len(bc.classifier.departments_seen[0]) == 2
 
@@ -200,3 +203,23 @@ class TestBoQua:
         view = await bc.uc.execute(new_id())
 
         assert view is None
+
+
+class TestLyDoTuPhan:
+    """Dòng "Tự động chuyển tới Phòng X — …" chỉ nói điều hệ thống thật sự biết."""
+
+    def _kw(self, text: str) -> Keyword:
+        return Keyword.create(department_id=PHONG_BH, text=text, now=BAY_GIO)
+
+    def test_tu_khoa_nam_trong_cum_nhu_cau(self) -> None:
+        cum = (ExtractedTerm(text="Cần bảo hành gấp", normalized="can bao hanh gap"),)
+        assert ly_do_tu_phan([self._kw("Bảo hành"), self._kw("đổi trả")], cum) == (
+            "khớp từ khoá Bảo hành"
+        )
+
+    def test_khong_khop_thi_neu_nhu_cau_toi_da_3(self) -> None:
+        cum = tuple(ExtractedTerm(text=t, normalized=t) for t in ("a", "b", "c", "d"))
+        assert ly_do_tu_phan([self._kw("bảo hành")], cum) == "theo nhu cầu: a, b, c"
+
+    def test_khong_co_gi_thi_khong_co_ly_do(self) -> None:
+        assert ly_do_tu_phan([self._kw("bảo hành")], ()) is None

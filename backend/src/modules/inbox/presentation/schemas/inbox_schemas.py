@@ -122,6 +122,8 @@ class EventResponse(BaseModel):
     actor_name: str | None
     from_name: str | None
     to_name: str | None
+    department_name: str | None = None
+    detail: str | None = None
 
 
 class ConversationResponse(BaseModel):
@@ -165,6 +167,8 @@ class ConversationResponse(BaseModel):
                     actor_name=e.actor_name,
                     from_name=e.from_name,
                     to_name=e.to_name,
+                    department_name=e.department_name,
+                    detail=e.detail,
                 )
                 for e in v.events
             ],

@@ -139,11 +139,13 @@ class SqlAlchemyConversationRepository:
         q: str | None = None,
         assigned_to: UUID | None = None,
         unassigned: bool = False,
+        customer_id: UUID | None = None,
     ) -> list[Conversation]:
         cau = select(ConversationModel).where(
             *self._dieu_kien_pham_vi(department_ids, include_awaiting, status),
             *self._dieu_kien_tim_kiem(q),
             *self._dieu_kien_nguoi_phu_trach(assigned_to, unassigned),
+            *([ConversationModel.customer_id == customer_id] if customer_id else []),
         )
         cau = cau.order_by(ConversationModel.last_message_at.desc()).limit(limit).offset(offset)
         ket_qua = await self._session.execute(cau)
@@ -223,6 +225,7 @@ class SqlAlchemyConversationRepository:
         q: str | None = None,
         assigned_to: UUID | None = None,
         unassigned: bool = False,
+        customer_id: UUID | None = None,
     ) -> int:
         cau = (
             select(func.count())
@@ -231,6 +234,7 @@ class SqlAlchemyConversationRepository:
                 *self._dieu_kien_pham_vi(department_ids, include_awaiting, status),
                 *self._dieu_kien_tim_kiem(q),
                 *self._dieu_kien_nguoi_phu_trach(assigned_to, unassigned),
+                *([ConversationModel.customer_id == customer_id] if customer_id else []),
             )
         )
         ket_qua = await self._session.execute(cau)

@@ -187,6 +187,10 @@ class IWorkforceDirectory(Protocol):
         """Tên hiển thị theo lô (BE-2). Người không tồn tại thì không có khoá."""
         ...
 
+    async def get_department_names(self, department_ids: list[UUID]) -> dict[UUID, str]:
+        """Tên phòng theo lô (2b, dòng phân phòng). Kể cả phòng đã ngừng hoạt động."""
+        ...
+
 
 class IRealtimeNotifier(Protocol):
     """Đẩy tín hiệu 'có thay đổi' tới các client đang xem phạm vi liên quan.

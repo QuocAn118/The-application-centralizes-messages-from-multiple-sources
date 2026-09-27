@@ -81,6 +81,9 @@ class EventView:
     actor_name: str | None
     from_name: str | None
     to_name: str | None
+    # 2b: dòng phân phòng.
+    department_name: str | None = None
+    detail: str | None = None
 
 
 @dataclass(frozen=True)
