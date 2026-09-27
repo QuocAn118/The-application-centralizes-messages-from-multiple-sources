@@ -2,8 +2,8 @@
  * Thẻ khung ngoài: viền 2px + bóng cứng 4px. Theo đặc tả, viền dày và bóng CHỈ
  * dành cho khung ngoài; bên trong (bảng, danh sách) dùng kẻ mảnh 1px `line`.
  *
- * Thẻ không có hành vi bấm nhưng vẫn có bóng: đó là "khối nổi" của trang, không
- * phải nút. Quy tắc "có bóng = bấm được" áp cho phần tử NHỎ (nút vs nhãn).
+ * Quy tắc bóng (spec Phần 1 §3.2): card/bảng/khung có bóng 4px LÀM KHUNG, không
+ * phản hồi khi rê/nhấn — khác nút (bóng nhỏ + phản hồi) và huy hiệu (không bóng).
  */
 
 export function The({

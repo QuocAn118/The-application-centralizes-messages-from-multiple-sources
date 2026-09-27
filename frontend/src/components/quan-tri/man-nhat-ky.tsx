@@ -194,7 +194,7 @@ export function ManNhatKy() {
           <>
             <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="border-b border-border-subtle bg-surface/60 text-[11px] font-bold uppercase tracking-wider text-muted">
+                <tr className="border-b border-border-subtle bg-surface/60 text-xs font-bold uppercase tracking-wider text-muted">
                   <th scope="col" className="w-44 px-5 py-3.5">
                     {t("nhatKy.cotThoiGian")}
                   </th>

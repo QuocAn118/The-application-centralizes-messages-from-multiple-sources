@@ -3,10 +3,10 @@
 /**
  * Nút Neo-Brutalism — nút gốc của cả app.
  *
- * **Có bóng = bấm được.** Nút có bóng cứng; rê thì dịch 2px về phía bóng như
- * đang được ấn, nhấn thì dịch hẳn và bóng về 0. Badge và phần tử tĩnh KHÔNG có
- * bóng — đó là cách người dùng phân biệt nút với nhãn (sửa lỗi "Đang dùng" trông
- * như nút bấm).
+ * **Quy tắc bóng (spec Phần 1 §3.2):** nút = bóng NHỎ + PHẢN HỒI (rê dịch 2px,
+ * nhấn dịch hết và bóng về 0). Card/bảng/khung cũng có bóng nhưng KHÔNG phản
+ * hồi. Huy hiệu KHÔNG có bóng — đó là cách phân biệt nút với nhãn (sửa lỗi
+ * "Đang dùng" trông như nút bấm).
  *
  * Nút vô hiệu: nền lõm, viền đứt, bỏ bóng, chữ `ink-2` (vẫn 7,5:1). Cố ý KHÔNG
  * làm mờ bằng `opacity` như trước: nút mờ nhạt trông như trang tải lỗi.

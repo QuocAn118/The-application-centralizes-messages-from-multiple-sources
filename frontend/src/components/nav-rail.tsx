@@ -10,7 +10,7 @@
  *   (biết có khu này, không bấm vào thứ chắc chắn hỏng).
  *
  * Mục đang ở: nền vàng, KHÔNG bóng (không còn là thứ để bấm). Mục khác: rê thì
- * hiện viền + bóng — quy tắc "có bóng = bấm được".
+ * hiện viền + bóng khi rê (quy tắc bóng: mục bấm được có bóng nhỏ + phản hồi).
  *
  * `aria-current="true"` chứ không phải `"page"`: mục này chỉ KHU VỰC đang mở;
  * trang cụ thể do thanh tab bên trong đánh dấu `"page"`. Hai chỗ cùng `"page"` thì
@@ -60,7 +60,7 @@ const MUC: MucNav[] = [
 ];
 
 const LOP_MUC =
-  "flex w-16 flex-col items-center gap-1 rounded-nb border-2 py-2 text-[11px] font-bold leading-tight";
+  "flex w-16 flex-col items-center gap-1 rounded-nb border-2 py-2 text-xs font-bold leading-tight";
 
 export function NavRail() {
   const pathname = usePathname();

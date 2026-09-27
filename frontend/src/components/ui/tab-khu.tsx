@@ -5,7 +5,7 @@
  * nhau trước đây (X10). Mỗi khu chỉ còn lo danh sách tab và điều kiện vai.
  *
  * Tab đang mở: nền vàng + viền, KHÔNG bóng (không phải thứ để bấm nữa). Tab khác
- * hiện viền + bóng khi rê — đúng quy tắc "có bóng = bấm được".
+ * hiện viền + bóng nhỏ khi rê (quy tắc bóng, spec Phần 1 §3.2).
  *
  * Giữ nguyên cấu trúc `header > nav[aria-label] > a[aria-current="page"]`: các
  * kịch bản kiểm chứng #F2–#F5 dựa vào đó.

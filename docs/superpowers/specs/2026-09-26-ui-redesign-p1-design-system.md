@@ -62,8 +62,17 @@ trên. Đổi màu làm tụt dưới ngưỡng thì test đỏ.
 - **Bo góc: một giá trị duy nhất `6px`** cho mọi thứ (kể cả avatar — avatar vuông
   bo 6px, không tròn). Ngoại lệ duy nhất: chấm trạng thái tròn.
 - **Bóng cứng:** `--shadow: 4px 4px 0 ink`, `--shadow-sm: 2px 2px 0 ink`.
-  - **Quy tắc ngữ nghĩa: có bóng = bấm được.** Badge, thẻ tĩnh trong bảng: không
-    bóng. Đây là cách giải I/S6 ("Đang dùng" trông như nút).
+  - **Quy tắc bóng (sửa sau duyệt Phần 1 cho khớp thực tế).** Bóng có BA vai
+    trò, phân biệt bằng cỡ bóng và việc có phản hồi hay không:
+    1. **Nút** = bóng NHỎ (`2px`; nút chính `4px`) **+ phản hồi**: rê dịch 2px,
+       nhấn dịch hết và bóng về 0. Bóng + phản hồi = bấm được.
+    2. **Card / bảng / khung** (thẻ, bảng, hộp thoại, menu, đầu khu) = bóng
+       `4px` **làm khung**, KHÔNG phản hồi. Nó đánh dấu "khối nổi" của trang,
+       không phải thứ để bấm.
+    3. **Huy hiệu** (và mọi nhãn trạng thái) = **KHÔNG bóng**. Đây là cách giải
+       I/S6 ("Đang dùng" trông như nút).
+  - Bản đầu viết gọn "có bóng = bấm được" là sai với chính thiết kế (card cũng
+    có bóng mà không bấm được) — đã thay bằng ba quy tắc trên.
   - Nút: rê → dịch `2px,2px` + bóng `2px`; nhấn → dịch `4px,4px` + bóng `0`.
   - Thẻ khung ngoài (card, header): bóng `4px`. **Bên trong** bảng/lịch/danh sách:
     chỉ kẻ `1px line`, không viền dày, không bóng.
@@ -102,7 +111,7 @@ Mỗi component một file, API tiếng Việt như phần còn lại của repo
 | `the.tsx` → `The`, `TheDau` | thẻ khung ngoài 2px + bóng; đầu thẻ có tiêu đề + chỗ đặt nút | |
 | `dau-trang.tsx` → `DauTrang` | tiêu đề trang 28/800 + mô tả + nút chính bên phải (X6, X7) | |
 | `tab-khu.tsx` → `TabKhu` | thanh tab khu (link), thay 4 `Tab*` chép nhau (X10) | Giữ `aria-current="page"` như cũ (kịch bản kiểm chứng dựa vào) |
-| `huy-hieu.tsx` → `HuyHieu` | tông `trung` / `ok` / `wait` / `bad` / `info`; **không bóng** | |
+| `huy-hieu.tsx` → `HuyHieu` | tông `trung` / `ok` / `wait` / `bad` / `info`; **không bóng**; chữ 12px | |
 | `bang.tsx` → `Bang`, `Th`, `Td`, `Tr` | viền dày chỉ ở khung ngoài, kẻ 1px bên trong, đầu bảng `sunken` | |
 | `menu-hanh-dong.tsx` → `MenuHanhDong` | nút "⋯" + Radix DropdownMenu; mục `nguyHiem` luôn xếp **cuối**, cách bằng vạch | X5 |
 | `goi-y.tsx` → `GoiY` | Radix Tooltip | |
@@ -140,6 +149,17 @@ thái tải/rỗng/lỗi, đầu trang + tab khu.
    tương phản, focus thấy được (chụp trạng thái focus bằng bàn phím).
 4. Chụp thêm 2–3 màn hiện có để user thấy trạng thái "nửa cũ nửa mới" (không phải
    để duyệt màn, chỉ để không bất ngờ).
+
+## 6b. Quyết định sau duyệt Phần 1 (2026-09-27)
+
+- Không làm dark mode. Giữ `—` (`DAU_GACH`) cho ô chưa có số liệu.
+- Badge vai Admin: **"Quản trị viên"**.
+- Icon kênh: **logo thương hiệu thật** từ gói `simple-icons` (có cả Zalo). Màu
+  chính thức; riêng Telegram `#26A5E4` trượt 3:1 nên làm đậm `#1C8AC4`.
+- **Cỡ chữ tối thiểu 12px toàn app**, khoá bằng `lib/co-chu-toi-thieu.test.ts`.
+- Quy tắc bóng viết lại (§3.2).
+- Từ Phần 2a: **không dùng taste-skill**; frontend-design nếu cần; đặc tả
+  Neo-Brutalism vẫn là chuẩn.
 
 ## 7. Chỗ taste-skill ngược đặc tả (theo đặc tả, báo user)
 
