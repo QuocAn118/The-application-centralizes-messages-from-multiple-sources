@@ -112,6 +112,17 @@ class SqlAlchemyConversationRepository:
         )
         return [ConversationModel.customer_id.in_(khach)]
 
+    @staticmethod
+    def _dieu_kien_nguoi_phu_trach(
+        assigned_to: UUID | None, unassigned: bool
+    ) -> list[ColumnElement[bool]]:
+        """Lọc "Của tôi" / "Chưa ai nhận" (BE-3). Chồng lên phạm vi, không nới rộng."""
+        if unassigned:
+            return [ConversationModel.assigned_user_id.is_(None)]
+        if assigned_to is not None:
+            return [ConversationModel.assigned_user_id == assigned_to]
+        return []
+
     async def list_for_scope(
         self,
         department_ids: list[UUID] | None,
@@ -120,10 +131,13 @@ class SqlAlchemyConversationRepository:
         limit: int = 50,
         offset: int = 0,
         q: str | None = None,
+        assigned_to: UUID | None = None,
+        unassigned: bool = False,
     ) -> list[Conversation]:
         cau = select(ConversationModel).where(
             *self._dieu_kien_pham_vi(department_ids, include_awaiting, status),
             *self._dieu_kien_tim_kiem(q),
+            *self._dieu_kien_nguoi_phu_trach(assigned_to, unassigned),
         )
         cau = cau.order_by(ConversationModel.last_message_at.desc()).limit(limit).offset(offset)
         ket_qua = await self._session.execute(cau)
@@ -135,6 +149,8 @@ class SqlAlchemyConversationRepository:
         include_awaiting: bool,
         status: ConversationStatus | None = None,
         q: str | None = None,
+        assigned_to: UUID | None = None,
+        unassigned: bool = False,
     ) -> int:
         cau = (
             select(func.count())
@@ -142,6 +158,7 @@ class SqlAlchemyConversationRepository:
             .where(
                 *self._dieu_kien_pham_vi(department_ids, include_awaiting, status),
                 *self._dieu_kien_tim_kiem(q),
+                *self._dieu_kien_nguoi_phu_trach(assigned_to, unassigned),
             )
         )
         ket_qua = await self._session.execute(cau)

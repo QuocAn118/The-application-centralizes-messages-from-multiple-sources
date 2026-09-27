@@ -269,3 +269,66 @@ class TestGetConversation:
 
         with pytest.raises(NotFoundError):
             await kho.get_uc().execute(admin, new_id())
+
+
+class TestListLocNguoiPhuTrach:
+    """BE-3 (redesign Phần 2a): lọc "Của tôi" / "Chưa ai nhận".
+
+    Lọc CHỒNG lên phạm vi theo vai — không bao giờ nới rộng. Ca dễ sót nhất:
+    hội thoại phòng khác vẫn đang gán cho người này (vd. họ vừa chuyển phòng).
+    """
+
+    async def test_cua_toi_chi_tra_hoi_thoai_gan_cho_minh(self) -> None:
+        kho = _KhoDuLieu()
+        staff = InboxActor(user_id=new_id(), role=ActorRole.STAFF, department_id=PHONG_A)
+        ht_cua_toi = kho._them(PHONG_A)
+        ht_cua_toi.assign_to_agent(staff.user_id, BAY_GIO)
+        ht_nguoi_khac = kho._them(PHONG_A)
+        ht_nguoi_khac.assign_to_agent(new_id(), BAY_GIO)
+
+        page = await kho.list_uc().execute(staff, assignee="me")
+
+        assert {i.conversation_id for i in page.items} == {ht_cua_toi.id}
+        assert page.total == 1
+
+    async def test_chua_ai_nhan_chi_tra_hoi_thoai_trong(self) -> None:
+        kho = _KhoDuLieu()
+        manager = InboxActor(user_id=new_id(), role=ActorRole.MANAGER, department_id=PHONG_A)
+        ht_da_nhan = kho._them(PHONG_A)
+        ht_da_nhan.assign_to_agent(new_id(), BAY_GIO)
+
+        page = await kho.list_uc().execute(manager, assignee="none")
+
+        ids = {i.conversation_id for i in page.items}
+        # ht_a (chưa ai nhận) + ht_cho (chờ phân, chưa ai nhận) — KHÔNG có ht_da_nhan.
+        assert ids == {kho.ht_a.id, kho.ht_cho.id}
+        assert page.total == 2
+
+    async def test_cua_toi_khong_noi_rong_pham_vi(self) -> None:
+        """Hội thoại phòng B vẫn gán cho staff (đã chuyển sang phòng A) — không lộ."""
+        kho = _KhoDuLieu()
+        staff = InboxActor(user_id=new_id(), role=ActorRole.STAFF, department_id=PHONG_A)
+        ht_phong_cu = kho._them(PHONG_B)
+        ht_phong_cu.assign_to_agent(staff.user_id, BAY_GIO)
+
+        page = await kho.list_uc().execute(staff, assignee="me")
+
+        assert ht_phong_cu.id not in {i.conversation_id for i in page.items}
+        assert page.total == 0
+
+    async def test_ket_hop_voi_trang_thai(self) -> None:
+        kho = _KhoDuLieu()
+        admin = InboxActor(user_id=new_id(), role=ActorRole.ADMIN, department_id=None)
+
+        page = await kho.list_uc().execute(admin, assignee="none", status=kho.ht_cho.status)
+
+        assert {i.conversation_id for i in page.items} == {kho.ht_cho.id}
+
+    async def test_khong_truyen_thi_nhu_cu(self) -> None:
+        kho = _KhoDuLieu()
+        admin = InboxActor(user_id=new_id(), role=ActorRole.ADMIN, department_id=None)
+        kho.ht_a.assign_to_agent(new_id(), BAY_GIO)
+
+        page = await kho.list_uc().execute(admin)
+
+        assert page.total == 3
