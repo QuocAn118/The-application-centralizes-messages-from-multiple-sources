@@ -205,7 +205,7 @@ export function OSoanTin({
 
       <div className="mt-1.5 flex justify-between text-xs text-ink-2">
         <span id="goi-y-phim-soan">
-          <kbd className="font-bold">Enter</kbd> để gửi · <kbd className="font-bold">Shift+Enter</kbd> xuống dòng
+          <kbd className="font-sans font-bold">Enter</kbd> để gửi · <kbd className="font-sans font-bold">Shift+Enter</kbd> xuống dòng
         </span>
         {noiDung.length > DAI_TOI_DA - 500 && (
           <span>
