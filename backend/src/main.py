@@ -227,6 +227,7 @@ def create_app() -> FastAPI:
     # #3 (tự gán) để #3 thấy phòng #2 vừa gán.
     app.state.post_ingest_hooks = []
     app.state.post_close_hooks = []
+    app.state.post_assign_hooks = []
     app.state.post_reply_hooks = []
 
     _wire_inbox(app, settings)
@@ -528,6 +529,9 @@ def _wire_assignment(app: FastAPI, settings: Settings) -> None:
     from src.modules.assignment.application.use_cases.pull_department_queue import (
         PullDepartmentQueue,
     )
+    from src.modules.assignment.infrastructure.inbox_bridge.post_assign_hook import (
+        make_post_assign_hook,
+    )
     from src.modules.assignment.infrastructure.inbox_bridge.post_close_hook import (
         make_post_close_hook,
     )
@@ -579,6 +583,8 @@ def _wire_assignment(app: FastAPI, settings: Settings) -> None:
     app.state.post_close_hooks.append(
         make_post_close_hook(lambda: app.state.session_factory, pull_queue_factory)
     )
+    # Giao việc tay (BE-2) → ghi assignment_log cho người mới.
+    app.state.post_assign_hooks.append(make_post_assign_hook(lambda: app.state.session_factory))
 
     app.include_router(assignment_router, prefix="/api/v1")
 

@@ -111,11 +111,33 @@ export interface InboxItem {
   last_message_at: string;
   /** Trích ngắn tin cuối; `null` khi chưa có tin hoặc tin cuối chỉ có ảnh. */
   last_message_preview?: string | null;
+  /** Số tin khách chưa đọc — của NGƯỜI ĐANG GỌI (BE-1). `DA_DONG` luôn 0. */
+  unread_count: number;
+  /** Tin khách đầu tiên chưa được trả lời (BE-9); `null` = không ai đang chờ. */
+  waiting_since: string | null;
+  /** Tên người phụ trách do backend tra (Staff không gọi được `/users`). */
+  assigned_user_name: string | null;
+}
+
+/** Loại dòng hệ thống trong khung chat (BE-2, bảng `conversation_events`). */
+export type EventKind = "TAKEN" | "AUTO_ASSIGNED" | "ASSIGNED" | "REASSIGNED" | "UNASSIGNED";
+
+/** Một dòng hệ thống. Tên `null` = hệ thống / không tra được. */
+export interface ConversationEvent {
+  id: string;
+  kind: EventKind;
+  created_at: string;
+  actor_name: string | null;
+  from_name: string | null;
+  to_name: string | null;
 }
 
 /** Chi tiết hội thoại — như `InboxItem` nhưng kèm danh sách tin. */
 export interface Conversation extends InboxItem {
   messages: Message[];
+  /** Id của khách trên nền tảng (panel khách). */
+  customer_external_id: string;
+  events: ConversationEvent[];
 }
 
 /** Một trang kết quả. */
@@ -140,7 +162,12 @@ export interface Department {
 // Realtime (RB-2: WS chỉ đẩy TÍN HIỆU, không đẩy nội dung)
 // ---------------------------------------------------------------------------
 
-export type InboxChange = "new_message" | "status_changed";
+export type InboxChange =
+  | "new_message"
+  | "status_changed"
+  // Gửi RIÊNG cho người được giao / người bị gỡ (BE-2).
+  | "assigned_to_you"
+  | "unassigned_from_you";
 
 /**
  * Tín hiệu từ `/ws/inbox`.

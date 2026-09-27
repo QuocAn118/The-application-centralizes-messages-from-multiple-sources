@@ -13,6 +13,7 @@ import type {
   Message,
   PageResponse,
   ConversationStatus,
+  UserResponse,
 } from "./types";
 
 /** Số hội thoại mỗi trang. Backend chặn trần ở 100. */
@@ -25,7 +26,11 @@ export interface ThamSoInbox {
   offset: number;
   /** Tìm theo tên khách; backend bỏ dấu nên gõ không dấu vẫn khớp. */
   q?: string;
+  /** "me" = của tôi, "none" = chưa ai nhận; `undefined` = tất cả (BE-3). */
+  assignee?: LocNguoiPhuTrach;
 }
+
+export type LocNguoiPhuTrach = "me" | "none";
 
 /**
  * Khoá cache của React Query.
@@ -35,8 +40,11 @@ export interface ThamSoInbox {
  */
 export const khoaInbox = {
   all: ["inbox"] as const,
-  list: (thamSo: ThamSoInbox) => ["inbox", "list", thamSo] as const,
+  list: (thamSo: Omit<ThamSoInbox, "offset" | "limit">) => ["inbox", "list", thamSo] as const,
   detail: (id: string) => ["inbox", "detail", id] as const,
+  /** Huy hiệu nav — nằm dưới `inbox` nên mọi lần vô hiệu hoá `all` cũng làm mới nó. */
+  chuaDoc: ["inbox", "chua-doc"] as const,
+  nguoiPhong: (departmentId: string) => ["inbox", "nguoi-phong", departmentId] as const,
 };
 
 /** Danh sách hội thoại. Server đã sắp theo `last_message_at` giảm dần. */
@@ -51,6 +59,7 @@ export function layDanhSachInbox(
       limit: thamSo.limit,
       offset: thamSo.offset,
       q: thamSo.q,
+      assignee: thamSo.assignee,
     },
     signal,
   );
@@ -126,6 +135,39 @@ export function phanPhong(id: string, departmentId: string): Promise<Conversatio
   return api.post<Conversation>(`/inbox/${id}/assign`, {
     department_id: departmentId,
   });
+}
+
+/**
+ * Giao / đổi / gỡ (`userId = null`) người phụ trách (BE-2). Chỉ Manager (phòng
+ * mình) / Admin; người được giao phải đang hoạt động và cùng phòng hội thoại.
+ */
+export function giaoNguoiPhuTrach(id: string, userId: string | null): Promise<Conversation> {
+  return api.post<Conversation>(`/inbox/${id}/assign-user`, { user_id: userId });
+}
+
+/** Đánh dấu đã đọc tới bây giờ (BE-1). 204. */
+export function danhDauDaDoc(id: string): Promise<void> {
+  return api.post<void>(`/inbox/${id}/read`);
+}
+
+/** Số hội thoại có tin chưa đọc trong phạm vi người gọi — huy hiệu nav. */
+export function layDemChuaDoc(signal?: AbortSignal): Promise<{ conversations: number }> {
+  return api.get<{ conversations: number }>("/inbox/unread-count", undefined, signal);
+}
+
+/**
+ * Người đang hoạt động của một phòng — cho ô chọn người phụ trách. Chỉ Manager/
+ * Admin gọi (Staff bị 403 ở `/users`, và cũng không có ô chọn).
+ */
+export function layNguoiCuaPhong(
+  departmentId: string,
+  signal?: AbortSignal,
+): Promise<PageResponse<UserResponse>> {
+  return api.get<PageResponse<UserResponse>>(
+    "/users",
+    { department_id: departmentId, is_active: "true", limit: 100 },
+    signal,
+  );
 }
 
 /** Danh sách phòng ban đang hoạt động, cho dialog phân phòng. */

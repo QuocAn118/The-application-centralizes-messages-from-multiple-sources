@@ -7,19 +7,29 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import FileResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.inbox.application.use_cases.assign_conversation_to_department import (
     AssignConversationToDepartment,
 )
+from src.modules.inbox.application.use_cases.change_assignee import ChangeAssignee
 from src.modules.inbox.application.use_cases.close_conversation import CloseConversation
 from src.modules.inbox.application.use_cases.get_conversation import GetConversation
-from src.modules.inbox.application.use_cases.list_inbox import ListInbox
+from src.modules.inbox.application.use_cases.list_inbox import ListInbox, LocNguoiPhuTrach
+from src.modules.inbox.application.use_cases.read_state import (
+    CountUnreadConversations,
+    MarkConversationRead,
+)
 from src.modules.inbox.application.use_cases.reply_to_conversation import (
     ReplyToConversation,
 )
 from src.modules.inbox.application.use_cases.take_conversation import TakeConversation
 from src.modules.inbox.domain.entities.conversation import ConversationStatus
-from src.modules.inbox.domain.ports import ClosedConversation
+from src.modules.inbox.domain.ports import (
+    AssigneeChanged,
+    ClosedConversation,
+    IWorkforceDirectory,
+)
 from src.modules.inbox.domain.value_objects.message_content import (
     AttachmentKind,
     AttachmentRef,
@@ -32,6 +42,9 @@ from src.modules.inbox.infrastructure.attachments.signed_url import (
 from src.modules.inbox.infrastructure.repositories.channel_repository import (
     SqlAlchemyChannelRepository,
 )
+from src.modules.inbox.infrastructure.repositories.conversation_event_repository import (
+    SqlAlchemyConversationEventRepository,
+)
 from src.modules.inbox.infrastructure.repositories.conversation_repository import (
     SqlAlchemyConversationRepository,
 )
@@ -40,6 +53,9 @@ from src.modules.inbox.infrastructure.repositories.customer_repository import (
 )
 from src.modules.inbox.infrastructure.repositories.message_repository import (
     SqlAlchemyMessageRepository,
+)
+from src.modules.inbox.infrastructure.repositories.read_repository import (
+    SqlAlchemyReadRepository,
 )
 from src.modules.inbox.presentation.dependencies import (
     Actor,
@@ -56,11 +72,13 @@ from src.modules.inbox.presentation.dependencies import (
 from src.modules.inbox.presentation.schemas.common import PageResponse
 from src.modules.inbox.presentation.schemas.inbox_schemas import (
     AssignRequest,
+    AssignUserRequest,
     ConversationResponse,
     InboxItemResponse,
     KyUrl,
     MessageResponse,
     ReplyRequest,
+    UnreadCountResponse,
 )
 from src.shared.application.exceptions import (
     ApplicationError,
@@ -83,17 +101,23 @@ GIOI_HAN_TIN_MAC_DINH = 100
 async def liet_ke_inbox(
     actor: Actor,
     session: DbSession,
+    directory: Directory,
     status: ConversationStatus | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     q: Annotated[str | None, Query(max_length=200, description="Tìm theo tên khách")] = None,
+    assignee: Annotated[
+        LocNguoiPhuTrach | None,
+        Query(description='"me" = của tôi, "none" = chưa ai nhận (BE-3)'),
+    ] = None,
 ) -> PageResponse[InboxItemResponse]:
     trang = await ListInbox(
         SqlAlchemyConversationRepository(session),
         SqlAlchemyCustomerRepository(session),
         SqlAlchemyChannelRepository(session),
         SqlAlchemyMessageRepository(session),
-    ).execute(actor=actor, status=status, limit=limit, offset=offset, q=q)
+        directory=directory,
+    ).execute(actor=actor, status=status, limit=limit, offset=offset, q=q, assignee=assignee)
     return PageResponse(
         items=[InboxItemResponse.from_dto(i) for i in trang.items],
         total=trang.total,
@@ -185,21 +209,40 @@ async def _doc_noi_dung_tra_loi(
     return text, tep
 
 
+@router.get("/inbox/unread-count", response_model=UnreadCountResponse)
+async def dem_chua_doc(actor: Actor, session: DbSession) -> UnreadCountResponse:
+    """Số hội thoại có tin chưa đọc (BE-1) — cho huy hiệu trên thanh điều hướng.
+
+    Khai báo TRƯỚC ``/inbox/{conversation_id}``: ngược lại "unread-count" bị hiểu là
+    một mã hội thoại và trả 422 (không phải UUID).
+    """
+    so = await CountUnreadConversations(SqlAlchemyConversationRepository(session)).execute(actor)
+    return UnreadCountResponse(conversations=so)
+
+
+@router.post("/inbox/{conversation_id}/read", status_code=204)
+async def danh_dau_da_doc(
+    conversation_id: UUID, actor: Actor, session: DbSession, clock: Clock
+) -> None:
+    """Đánh dấu người gọi đã đọc hội thoại tới bây giờ (BE-1). Trả 204."""
+    await MarkConversationRead(
+        SqlAlchemyConversationRepository(session), SqlAlchemyReadRepository(session), clock
+    ).execute(actor, conversation_id)
+
+
 @router.get("/inbox/{conversation_id}", response_model=ConversationResponse)
 async def xem_hoi_thoai(
     conversation_id: UUID,
     actor: Actor,
     session: DbSession,
     signer: UrlSigner,
+    directory: Directory,
     limit: Annotated[int, Query(ge=1, le=200)] = GIOI_HAN_TIN_MAC_DINH,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> ConversationResponse:
-    view = await GetConversation(
-        SqlAlchemyConversationRepository(session),
-        SqlAlchemyMessageRepository(session),
-        SqlAlchemyChannelRepository(session),
-        SqlAlchemyCustomerRepository(session),
-    ).execute(actor=actor, conversation_id=conversation_id, limit=limit, offset=offset)
+    view = await _uc_xem(session, directory).execute(
+        actor=actor, conversation_id=conversation_id, limit=limit, offset=offset
+    )
     return ConversationResponse.from_dto(view, _bo_ky_url(signer))
 
 
@@ -299,6 +342,7 @@ async def tra_loi(
         notifier=notifier,
         clock=clock,
         public_url=_bo_url_cong_khai(signer, settings),
+        read_repo=SqlAlchemyReadRepository(session),
     )
     view = await use_case.execute(
         actor=actor,
@@ -331,11 +375,26 @@ async def tra_loi(
     return MessageResponse.from_dto(view, _bo_ky_url(signer), conversation_id)
 
 
+def _uc_xem(session: AsyncSession, directory: IWorkforceDirectory) -> GetConversation:
+    """MỘT chỗ dựng use case xem hội thoại — cho GET chi tiết VÀ phản hồi sau hành
+    động. Hai chỗ tự dựng riêng thì sớm muộn lệch nhau (thiếu timeline/tên ở một bên).
+    """
+    return GetConversation(
+        SqlAlchemyConversationRepository(session),
+        SqlAlchemyMessageRepository(session),
+        SqlAlchemyChannelRepository(session),
+        SqlAlchemyCustomerRepository(session),
+        event_repo=SqlAlchemyConversationEventRepository(session),
+        directory=directory,
+    )
+
+
 async def _tra_ve_hoi_thoai(
     conversation_id: UUID,
     actor: Actor,
     session: DbSession,
     signer: AttachmentUrlSigner,
+    directory: IWorkforceDirectory,
 ) -> ConversationResponse:
     """Đọc lại hội thoại để trả về sau một hành động (take/close/assign).
 
@@ -346,12 +405,7 @@ async def _tra_ve_hoi_thoai(
       mặc định 50 của use case sẽ cắt mất tin của hội thoại dài, mà ``messages``
       là trường bắt buộc nên client không có cách nào phát hiện thiếu.
     """
-    view = await GetConversation(
-        SqlAlchemyConversationRepository(session),
-        SqlAlchemyMessageRepository(session),
-        SqlAlchemyChannelRepository(session),
-        SqlAlchemyCustomerRepository(session),
-    ).execute(
+    view = await _uc_xem(session, directory).execute(
         actor=actor,
         conversation_id=conversation_id,
         limit=GIOI_HAN_TIN_MAC_DINH,
@@ -376,7 +430,49 @@ async def phan_phong(
         notifier=notifier,
         clock=clock,
     ).execute(actor=actor, conversation_id=conversation_id, department_id=du_lieu.department_id)
-    return await _tra_ve_hoi_thoai(conversation_id, actor, session, signer)
+    return await _tra_ve_hoi_thoai(conversation_id, actor, session, signer, directory)
+
+
+@router.post("/inbox/{conversation_id}/assign-user", response_model=ConversationResponse)
+async def giao_nguoi_phu_trach(
+    conversation_id: UUID,
+    du_lieu: AssignUserRequest,
+    actor: Actor,
+    session: DbSession,
+    directory: Directory,
+    notifier: Notifier,
+    clock: Clock,
+    request: Request,
+    signer: UrlSigner,
+) -> ConversationResponse:
+    """BE-2: Manager (phòng mình) / Admin giao, đổi hoặc gỡ (``user_id: null``)."""
+    conversation, su_kien = await ChangeAssignee(
+        conversation_repo=SqlAlchemyConversationRepository(session),
+        event_repo=SqlAlchemyConversationEventRepository(session),
+        directory=directory,
+        notifier=notifier,
+        clock=clock,
+    ).execute(actor=actor, conversation_id=conversation_id, user_id=du_lieu.user_id)
+    phan_hoi = await _tra_ve_hoi_thoai(conversation_id, actor, session, signer, directory)
+    # Commit TRƯỚC hook (hook chạy session riêng) — cùng lý do như post-close.
+    await session.commit()
+    doi = AssigneeChanged(
+        conversation_id=conversation.id,
+        department_id=conversation.department_id,
+        kind=su_kien.kind.value,
+        from_user_id=su_kien.from_user_id,
+        to_user_id=su_kien.to_user_id,
+        at=su_kien.created_at,
+    )
+    for hook in getattr(request.app.state, "post_assign_hooks", ()):
+        try:
+            await hook(doi)
+        except Exception:
+            logger.exception(
+                "Hook post-assign lỗi — bỏ qua, giao việc vẫn đã lưu",
+                extra={"conversation_id": str(conversation_id)},
+            )
+    return phan_hoi
 
 
 @router.post("/inbox/{conversation_id}/take", response_model=ConversationResponse)
@@ -384,6 +480,7 @@ async def nhan_hoi_thoai(
     conversation_id: UUID,
     actor: Actor,
     session: DbSession,
+    directory: Directory,
     notifier: Notifier,
     clock: Clock,
     signer: UrlSigner,
@@ -392,8 +489,9 @@ async def nhan_hoi_thoai(
         conversation_repo=SqlAlchemyConversationRepository(session),
         notifier=notifier,
         clock=clock,
+        event_repo=SqlAlchemyConversationEventRepository(session),
     ).execute(actor=actor, conversation_id=conversation_id)
-    return await _tra_ve_hoi_thoai(conversation_id, actor, session, signer)
+    return await _tra_ve_hoi_thoai(conversation_id, actor, session, signer, directory)
 
 
 @router.post("/inbox/{conversation_id}/close", response_model=ConversationResponse)
@@ -401,6 +499,7 @@ async def dong_hoi_thoai(
     conversation_id: UUID,
     actor: Actor,
     session: DbSession,
+    directory: Directory,
     notifier: Notifier,
     clock: Clock,
     request: Request,
@@ -411,7 +510,7 @@ async def dong_hoi_thoai(
         notifier=notifier,
         clock=clock,
     ).execute(actor=actor, conversation_id=conversation_id)
-    phan_hoi = await _tra_ve_hoi_thoai(conversation_id, actor, session, signer)
+    phan_hoi = await _tra_ve_hoi_thoai(conversation_id, actor, session, signer, directory)
 
     # Nhân viên vừa rảnh ra → các hook hạ nguồn (assignment #3 kéo hàng đợi;
     # analytics #5 cộng rollup). Composition root đăng ký callable vào app.state;

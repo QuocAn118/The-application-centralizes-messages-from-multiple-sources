@@ -1,5 +1,6 @@
 """Interface repository cho Conversation."""
 
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -33,6 +34,8 @@ class IConversationRepository(Protocol):
         limit: int = 50,
         offset: int = 0,
         q: str | None = None,
+        assigned_to: UUID | None = None,
+        unassigned: bool = False,
     ) -> list[Conversation]:
         """Liệt kê hội thoại trong phạm vi phòng ban cho phép.
 
@@ -42,10 +45,31 @@ class IConversationRepository(Protocol):
         """
         ...
 
+    async def doi_nguoi_phu_trach_neu_chua_doi(
+        self,
+        conversation_id: UUID,
+        nguoi_cu: UUID | None,
+        nguoi_moi: UUID | None,
+        now: datetime,
+    ) -> bool:
+        """So-và-đổi người phụ trách; ``False`` nếu đã có người đổi trước (BE-2)."""
+        ...
+
+    async def count_unread_for_scope(
+        self, department_ids: list[UUID] | None, include_awaiting: bool, user_id: UUID
+    ) -> int:
+        """Số hội thoại trong phạm vi có tin vào chưa đọc với người này (BE-1, nav).
+
+        Bỏ hội thoại ``DA_DONG``.
+        """
+        ...
+
     async def count_for_scope(
         self,
         department_ids: list[UUID] | None,
         include_awaiting: bool,
         status: ConversationStatus | None = None,
         q: str | None = None,
+        assigned_to: UUID | None = None,
+        unassigned: bool = False,
     ) -> int: ...

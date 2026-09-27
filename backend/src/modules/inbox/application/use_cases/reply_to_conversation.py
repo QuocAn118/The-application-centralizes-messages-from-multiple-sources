@@ -30,6 +30,7 @@ from src.modules.inbox.domain.repositories.customer_repository import (
     ICustomerRepository,
 )
 from src.modules.inbox.domain.repositories.message_repository import IMessageRepository
+from src.modules.inbox.domain.repositories.read_repository import IReadRepository
 from src.modules.inbox.domain.value_objects.message_content import AttachmentRef, MessageContent
 from src.shared.application.exceptions import ConflictError, NotFoundError
 from src.shared.application.ports import IClock
@@ -65,6 +66,7 @@ class ReplyToConversation:
         notifier: IRealtimeNotifier,
         clock: IClock,
         public_url: Callable[[UUID, UUID], str] | None = None,
+        read_repo: IReadRepository | None = None,
     ) -> None:
         self._conversation_repo = conversation_repo
         self._channel_repo = channel_repo
@@ -79,6 +81,9 @@ class ReplyToConversation:
         # → URL. Nền tảng tự tải ảnh từ đó. ``None`` = không gửi kèm ảnh được
         # (giữ tương thích với nơi gọi cũ chỉ dùng text).
         self._public_url = public_url
+        # BE-1: người vừa trả lời coi như đã đọc tới lúc gửi. Tuỳ chọn để nơi gọi
+        # cũ (test, script) không phải truyền.
+        self._read_repo = read_repo
 
     async def execute(
         self,
@@ -155,6 +160,8 @@ class ReplyToConversation:
         conversation.updated_at = now
         conversation.last_message_at = now
         await self._conversation_repo.update(conversation)
+        if self._read_repo is not None:
+            await self._read_repo.mark_read(actor.user_id, conversation.id, now)
 
         await self._notifier.notify_conversation_changed(
             conversation.id, conversation.department_id, CHANGE_NEW_MESSAGE

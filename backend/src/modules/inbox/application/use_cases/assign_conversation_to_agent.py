@@ -10,7 +10,19 @@ from uuid import UUID
 
 from src.modules.inbox.application.actor import ActorRole, InboxActor
 from src.modules.inbox.domain.entities.conversation import Conversation
-from src.modules.inbox.domain.ports import CHANGE_STATUS, IRealtimeNotifier, IWorkforceDirectory
+from src.modules.inbox.domain.entities.conversation_event import (
+    ConversationEvent,
+    ConversationEventKind,
+)
+from src.modules.inbox.domain.ports import (
+    CHANGE_ASSIGNED_TO_YOU,
+    CHANGE_STATUS,
+    IRealtimeNotifier,
+    IWorkforceDirectory,
+)
+from src.modules.inbox.domain.repositories.conversation_event_repository import (
+    IConversationEventRepository,
+)
 from src.modules.inbox.domain.repositories.conversation_repository import (
     IConversationRepository,
 )
@@ -27,11 +39,14 @@ class AssignConversationToAgent:
         directory: IWorkforceDirectory,
         notifier: IRealtimeNotifier,
         clock: IClock,
+        event_repo: IConversationEventRepository | None = None,
     ) -> None:
         self._conversation_repo = conversation_repo
         self._directory = directory
         self._notifier = notifier
         self._clock = clock
+        # BE-2: ghi "Hệ thống tự giao cho B". Tuỳ chọn cho nơi gọi cũ.
+        self._event_repo = event_repo
 
     async def execute(
         self, actor: InboxActor, conversation_id: UUID, user_id: UUID
@@ -67,8 +82,16 @@ class AssignConversationToAgent:
         now = self._clock.now()
         conversation.assign_to_agent(user_id, now)
         await self._conversation_repo.update(conversation)
+        if self._event_repo is not None:
+            # Đường này chỉ #3 dùng (actor hệ thống) — người giao ghi là None.
+            await self._event_repo.add(
+                ConversationEvent.ghi(
+                    conversation.id, ConversationEventKind.AUTO_ASSIGNED, now, to_user_id=user_id
+                )
+            )
 
         await self._notifier.notify_conversation_changed(
             conversation.id, conversation.department_id, CHANGE_STATUS
         )
+        await self._notifier.notify_user(user_id, conversation.id, CHANGE_ASSIGNED_TO_YOU)
         return conversation

@@ -45,7 +45,7 @@ const VI = {
 
   // Danh sách inbox
   "inbox.tieuDe": "Hộp thư",
-  "inbox.timKiem": "Tìm theo tên khách…",
+  "inbox.timKiem": "Tìm khách…",
   "inbox.timKiemNhan": "Tìm theo tên khách",
   "inbox.xoaTimKiem": "Xoá tìm kiếm",
   "inbox.locTatCa": "Tất cả",

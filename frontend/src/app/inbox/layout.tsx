@@ -23,7 +23,7 @@ export default function InboxLayout({
       <div className="flex h-screen overflow-hidden">
         <NavRail />
         {/* `useSearchParams` cần Suspense bao ngoài khi build tĩnh. */}
-        <Suspense fallback={<div className="w-[360px] border-r border-border-subtle bg-white" />}>
+        <Suspense fallback={<div className="w-[360px] border-r-2 border-ink bg-card" />}>
           <DanhSachInbox />
         </Suspense>
         <div className="flex min-w-0 flex-1">{children}</div>

@@ -14,6 +14,7 @@ from src.modules.inbox.domain.entities.conversation import (
     Conversation,
     ConversationStatus,
 )
+from src.modules.inbox.domain.entities.conversation_event import ConversationEvent
 from src.modules.inbox.domain.entities.customer import Customer
 from src.modules.inbox.domain.entities.message import Message
 from src.modules.inbox.domain.ports import (
@@ -98,6 +99,13 @@ class FakeConversationRepository:
         # Tên khách để mô phỏng lọc theo ``q``; ở bản thật tên nằm ở bảng
         # ``customers`` và repository lọc bằng subquery.
         self.ten_khach: dict[UUID, str | None] = {}
+        # BE-1: số trả về + tham số lần gọi gần nhất của count_unread_for_scope.
+        self.so_chua_doc = 0
+        self.hoi_dem_chua_doc: tuple[list[UUID] | None, bool, UUID] | None = None
+        # BE-2: bật để giả lập "người khác vừa đổi người phụ trách" (so-và-đổi thua).
+        # Fake giữ CÙNG đối tượng use case đang sửa nên không so được thật — phép so
+        # thật kiểm ở tests/integration/test_inbox_nguoi_phu_trach.py.
+        self.ep_xung_dot = False
 
     async def get_by_id(self, conversation_id: UUID) -> Conversation | None:
         return self._conversations.get(conversation_id)
@@ -128,6 +136,8 @@ class FakeConversationRepository:
         include_awaiting: bool,
         status: ConversationStatus | None,
         q: str | None = None,
+        assigned_to: UUID | None = None,
+        unassigned: bool = False,
     ) -> list[Conversation]:
         tu_khoa = q.strip().lower() if q and q.strip() else None
         ket_qua = []
@@ -145,7 +155,14 @@ class FakeConversationRepository:
                 ten = self.ten_khach.get(c.customer_id)
                 khop_tim_kiem = ten is not None and tu_khoa in ten.lower()
 
-            if trong_pham_vi and khop_trang_thai and khop_tim_kiem:
+            if unassigned:
+                khop_nguoi = c.assigned_user_id is None
+            elif assigned_to is not None:
+                khop_nguoi = c.assigned_user_id == assigned_to
+            else:
+                khop_nguoi = True
+
+            if trong_pham_vi and khop_trang_thai and khop_tim_kiem and khop_nguoi:
                 ket_qua.append(c)
         return sorted(ket_qua, key=lambda c: c.last_message_at, reverse=True)
 
@@ -157,8 +174,29 @@ class FakeConversationRepository:
         limit: int = 50,
         offset: int = 0,
         q: str | None = None,
+        assigned_to: UUID | None = None,
+        unassigned: bool = False,
     ) -> list[Conversation]:
-        return self._loc(department_ids, include_awaiting, status, q)[offset : offset + limit]
+        loc = self._loc(department_ids, include_awaiting, status, q, assigned_to, unassigned)
+        return loc[offset : offset + limit]
+
+    async def doi_nguoi_phu_trach_neu_chua_doi(
+        self,
+        conversation_id: UUID,
+        nguoi_cu: UUID | None,
+        nguoi_moi: UUID | None,
+        now: datetime,
+    ) -> bool:
+        if self.ep_xung_dot:
+            return False
+        self._conversations[conversation_id].assigned_user_id = nguoi_moi
+        return True
+
+    async def count_unread_for_scope(
+        self, department_ids: list[UUID] | None, include_awaiting: bool, user_id: UUID
+    ) -> int:
+        self.hoi_dem_chua_doc = (department_ids, include_awaiting, user_id)
+        return self.so_chua_doc
 
     async def count_for_scope(
         self,
@@ -166,14 +204,51 @@ class FakeConversationRepository:
         include_awaiting: bool,
         status: ConversationStatus | None = None,
         q: str | None = None,
+        assigned_to: UUID | None = None,
+        unassigned: bool = False,
     ) -> int:
-        return len(self._loc(department_ids, include_awaiting, status, q))
+        return len(self._loc(department_ids, include_awaiting, status, q, assigned_to, unassigned))
+
+
+class FakeConversationEventRepository:
+    def __init__(self) -> None:
+        self.events: list[ConversationEvent] = []
+
+    async def add(self, event: ConversationEvent) -> None:
+        self.events.append(event)
+
+    async def list_for_conversation(self, conversation_id: UUID) -> list[ConversationEvent]:
+        return sorted(
+            (e for e in self.events if e.conversation_id == conversation_id),
+            key=lambda e: e.created_at,
+        )
+
+
+class FakeReadRepository:
+    """Ghi lại mọi lần đánh dấu đã đọc: (user_id, conversation_id, at)."""
+
+    def __init__(self) -> None:
+        self.da_doc: list[tuple[UUID, UUID, datetime]] = []
+
+    async def mark_read(self, user_id: UUID, conversation_id: UUID, at: datetime) -> None:
+        self.da_doc.append((user_id, conversation_id, at))
 
 
 class FakeMessageRepository:
     def __init__(self) -> None:
         self.messages: list[Message] = []
         self._attachments: dict[UUID, list[Attachment]] = {}
+        # BE-1/BE-9: đặt sẵn kết quả; SQL thật được kiểm ở test tích hợp.
+        self.chua_doc: dict[UUID, int] = {}
+        self.cho_tu: dict[UUID, datetime] = {}
+        self.hoi_chua_doc_cua: UUID | None = None
+
+    async def unread_counts(self, user_id: UUID, conversation_ids: list[UUID]) -> dict[UUID, int]:
+        self.hoi_chua_doc_cua = user_id
+        return {i: n for i, n in self.chua_doc.items() if i in conversation_ids and n > 0}
+
+    async def waiting_since(self, conversation_ids: list[UUID]) -> dict[UUID, datetime]:
+        return {i: t for i, t in self.cho_tu.items() if i in conversation_ids}
 
     async def add(self, message: Message, attachments: list[Attachment]) -> None:
         self.messages.append(message)
@@ -302,12 +377,19 @@ class FakeWorkforceDirectory:
     async def department_exists_active(self, department_id: UUID) -> bool:
         return department_id in self.active_departments
 
+    async def get_names(self, user_ids: list[UUID]) -> dict[UUID, str]:
+        return {u: self._agents[u].full_name for u in user_ids if u in self._agents}
+
 
 class FakeRealtimeNotifier:
     def __init__(self) -> None:
         self.signals: list[tuple[UUID, UUID | None, str]] = []
+        self.rieng: list[tuple[UUID, UUID, str]] = []  # (user_id, conversation_id, change)
 
     async def notify_conversation_changed(
         self, conversation_id: UUID, department_id: UUID | None, change: str
     ) -> None:
         self.signals.append((conversation_id, department_id, change))
+
+    async def notify_user(self, user_id: UUID, conversation_id: UUID, change: str) -> None:
+        self.rieng.append((user_id, conversation_id, change))
