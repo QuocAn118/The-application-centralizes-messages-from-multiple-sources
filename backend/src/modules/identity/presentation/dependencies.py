@@ -67,7 +67,7 @@ def get_token_service(
 
 async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_session, scope="function")],
     token_service: Annotated[JwtTokenService, Depends(get_token_service)],
 ) -> User:
     """Xác định người gọi từ access token.
@@ -91,7 +91,7 @@ async def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
-DbSession = Annotated[AsyncSession, Depends(get_session)]
+DbSession = Annotated[AsyncSession, Depends(get_session, scope="function")]
 
 
 def require_role(*roles: Role) -> Callable[[User], User]:
