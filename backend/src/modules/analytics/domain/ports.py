@@ -103,6 +103,31 @@ class IRollupRepository(Protocol):
     ) -> tuple[DailyAgentMetric, ...]: ...
 
 
+@dataclass(frozen=True)
+class ResponseRateCounts:
+    """Hai số đếm của tỉ lệ phản hồi (BE-8, chốt §10.1 câu 2 (a)).
+
+    ``co_tin_vao``: số hội thoại có ≥1 tin khách (INBOUND) trong kỳ.
+    ``da_tra_loi``: trong số đó, số hội thoại có ≥1 tin trả lời (OUTBOUND) cũng
+    trong kỳ. Đếm HỘI THOẠI phân biệt — rollup chỉ đếm tin nên không tính được.
+    """
+
+    co_tin_vao: int
+    da_tra_loi: int
+
+
+class IResponseRateSource(Protocol):
+    """Đếm hội thoại cho tỉ lệ phản hồi — đọc thẳng #1 (không có trong rollup).
+
+    Cùng quy tắc với backfill: ngày = ngày địa phương của từng TIN; phòng = phòng
+    HIỆN TẠI của hội thoại. ``department_ids=None`` = mọi phòng (kể cả chưa phân).
+    """
+
+    async def dem_phan_hoi(
+        self, khoang: DateRange, department_ids: tuple[UUID, ...] | None
+    ) -> ResponseRateCounts: ...
+
+
 class IConversationStatsSource(Protocol):
     """Quét bảng nguồn #1 để dựng lại rollup một ngày (backfill).
 
