@@ -1,5 +1,6 @@
 """Interface repository cho Message và Attachment."""
 
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -37,4 +38,12 @@ class IMessageRepository(Protocol):
 
     async def last_texts_for_conversations(self, conversation_ids: list[UUID]) -> dict[UUID, str]:
         """Nội dung chữ của tin cuối mỗi hội thoại — một truy vấn cho cả trang."""
+        ...
+
+    async def unread_counts(self, user_id: UUID, conversation_ids: list[UUID]) -> dict[UUID, int]:
+        """Số tin vào chưa đọc của một người, cho cả trang; chỉ khoá > 0 (BE-1)."""
+        ...
+
+    async def waiting_since(self, conversation_ids: list[UUID]) -> dict[UUID, datetime]:
+        """Tin vào đầu tiên sau tin ra cuối — khách chờ từ lúc đó (BE-9)."""
         ...

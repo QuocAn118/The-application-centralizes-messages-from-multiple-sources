@@ -40,6 +40,10 @@ class InboxItem:
     # Trích ngắn nội dung tin cuối để hiện dưới tên khách. ``None`` khi hội thoại
     # chưa có tin, hoặc tin cuối chỉ có tệp đính kèm (không có phần chữ).
     last_message_preview: str | None = None
+    # BE-1: số tin VÀO người gọi chưa đọc (DA_DONG luôn 0).
+    unread_count: int = 0
+    # BE-9: khách chờ từ lúc nào — tin vào đầu tiên sau tin ra cuối (DA_DONG: None).
+    waiting_since: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -79,3 +83,5 @@ class ConversationView:
     assigned_user_id: UUID | None
     last_message_at: datetime
     messages: tuple[MessageView, ...] = field(default_factory=tuple)
+    # BE-9 (xem InboxItem).
+    waiting_since: datetime | None = None
