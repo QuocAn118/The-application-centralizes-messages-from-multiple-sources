@@ -38,6 +38,9 @@ import { vaoDuocKhuQuanTri } from "@/lib/quyen-quan-tri";
 import { vaoDuocKhuBaoCao } from "@/lib/quyen-bao-cao";
 import { NHAN_VAI } from "@/lib/hien-thi";
 import type { Role } from "@/lib/types";
+import { useQuery } from "@tanstack/react-query";
+import { khoaInbox, layDemChuaDoc } from "@/lib/inbox-api";
+import { hienSoChuaDoc } from "@/lib/hop-thu";
 import { GoiY } from "./ui/goi-y";
 
 interface MucNav {
@@ -58,6 +61,32 @@ const MUC: MucNav[] = [
   { khu: "/bao-cao", href: "/bao-cao/hoi-thoai", nhan: "nav.baoCao", icon: ChartColumn, choPhep: vaoDuocKhuBaoCao },
   { khu: "/quan-tri", href: "/quan-tri/nguoi-dung", nhan: "nav.cauHinh", icon: Settings, choPhep: vaoDuocKhuQuanTri },
 ];
+
+/**
+ * Số hội thoại có tin chưa đọc (BE-1). Khoá nằm dưới `inbox` nên tín hiệu
+ * realtime / đánh dấu đã đọc làm mới nó; ngoài Hộp thư thì làm mới khi quay lại tab.
+ */
+function HuyHieuChuaDoc() {
+  const { user } = useAuth();
+  const { data } = useQuery({
+    queryKey: khoaInbox.chuaDoc,
+    queryFn: ({ signal }) => layDemChuaDoc(signal),
+    enabled: Boolean(user),
+  });
+  const so = hienSoChuaDoc(data?.conversations ?? 0);
+  if (!so) return null;
+  return (
+    <>
+      <span
+        aria-hidden
+        className="absolute -right-3.5 -top-2 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-ink bg-bad px-1 text-xs font-extrabold leading-none text-white"
+      >
+        {so}
+      </span>
+      <span className="sr-only"> ({so} hội thoại chưa đọc)</span>
+    </>
+  );
+}
 
 const LOP_MUC =
   "flex w-16 flex-col items-center gap-1 rounded-nb border-2 py-2 text-xs font-bold leading-tight";
@@ -105,7 +134,10 @@ export function NavRail() {
                 : "border-transparent text-ink-2 hover:border-ink hover:text-ink hover:shadow-nb-sm"
             }`}
           >
-            <Icon aria-hidden className="size-5" strokeWidth={dangO ? 2.5 : 2} />
+            <span className="relative">
+              <Icon aria-hidden className="size-5" strokeWidth={dangO ? 2.5 : 2} />
+              {muc.khu === "/inbox" && <HuyHieuChuaDoc />}
+            </span>
             {t(muc.nhan)}
           </Link>
         );
