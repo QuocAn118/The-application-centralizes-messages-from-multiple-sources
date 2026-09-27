@@ -5,6 +5,7 @@ from uuid import UUID
 
 from src.modules.analytics.domain.ports import (
     RequestRow,
+    ResponseRateCounts,
     WorkforceRow,
 )
 from src.modules.analytics.domain.value_objects.metrics import (
@@ -148,3 +149,17 @@ class FakeRequestStatsSource:
             return self._rows
         keep = set(department_ids)
         return tuple(r for r in self._rows if r.department_id in keep)
+
+
+class FakeResponseRateSource:
+    """``IResponseRateSource`` giả: trả số đếm cố định, ghi lại phạm vi được hỏi."""
+
+    def __init__(self, co_tin_vao: int = 0, da_tra_loi: int = 0) -> None:
+        self.counts = ResponseRateCounts(co_tin_vao=co_tin_vao, da_tra_loi=da_tra_loi)
+        self.pham_vi_da_hoi: list[tuple[UUID, ...] | None] = []
+
+    async def dem_phan_hoi(
+        self, khoang: DateRange, department_ids: tuple[UUID, ...] | None
+    ) -> ResponseRateCounts:
+        self.pham_vi_da_hoi.append(department_ids)
+        return self.counts

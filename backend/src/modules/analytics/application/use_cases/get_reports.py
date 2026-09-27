@@ -9,6 +9,7 @@ Mọi báo cáo: ``bao_dam_xem_bao_cao`` (Manager/Admin) rồi ``pham_vi_phong_b
 """
 
 from dataclasses import dataclass
+from datetime import date, timedelta
 from uuid import UUID
 
 from src.modules.analytics.application.actor import AnalyticsActor
@@ -18,6 +19,7 @@ from src.modules.analytics.application.authorization import (
 )
 from src.modules.analytics.domain.ports import (
     IRequestStatsSource,
+    IResponseRateSource,
     IRollupRepository,
     IWorkforceStatsSource,
     RequestRow,
@@ -26,6 +28,7 @@ from src.modules.analytics.domain.ports import (
 from src.modules.analytics.domain.services.aggregation import (
     gop_hieu_suat_nhan_vien,
     gop_khoi_luong,
+    trung_binh,
 )
 from src.modules.analytics.domain.value_objects.metrics import (
     AgentPerformance,
@@ -90,6 +93,75 @@ class GetAgentReport:
         pham_vi = pham_vi_phong_bao_cao(actor, department_id)
         rows = await self._rollup_repo.doc_agent(khoang, pham_vi)
         return gop_hieu_suat_nhan_vien(rows)
+
+
+@dataclass(frozen=True)
+class DailyVolume:
+    """Khối lượng một ngày (mọi phòng/kênh trong phạm vi đã cộng lại)."""
+
+    work_date: date
+    volume: ConversationVolume
+
+
+@dataclass(frozen=True)
+class OverviewReport:
+    """Tổng quan báo cáo hội thoại (BE-8): 4 thẻ KPI + xu hướng theo ngày.
+
+    ``avg_first_response_seconds`` là trung bình **có trọng số** (tổng giây / tổng
+    mẫu của cả khoảng) — không lấy trung bình của các trung bình ngày.
+    ``response_rate`` ∈ [0, 1]; ``None`` khi kỳ không có hội thoại nào có tin vào
+    (không phải 0%: không có gì để trả lời thì chưa đo được).
+    ``daily`` có ĐỦ mọi ngày trong khoảng, ngày trống = 0 — biểu đồ không nhảy cóc.
+    """
+
+    totals: ConversationVolume
+    avg_first_response_seconds: float | None
+    first_response_samples: int
+    response_rate: float | None
+    conversations_with_inbound: int
+    conversations_replied: int
+    daily: tuple[DailyVolume, ...]
+
+
+class GetOverview:
+    """Tổng quan cho tab Hội thoại: rollup (#5) + đếm hội thoại thẳng từ #1."""
+
+    def __init__(
+        self, rollup_repo: IRollupRepository, response_source: IResponseRateSource
+    ) -> None:
+        self._rollup_repo = rollup_repo
+        self._response_source = response_source
+
+    async def execute(
+        self, actor: AnalyticsActor, khoang: DateRange, department_id: UUID | None
+    ) -> OverviewReport:
+        bao_dam_xem_bao_cao(actor)
+        pham_vi = pham_vi_phong_bao_cao(actor, department_id)
+
+        rows = await self._rollup_repo.doc_conversation(khoang, pham_vi)
+        agent_rows = await self._rollup_repo.doc_agent(khoang, pham_vi)
+        dem = await self._response_source.dem_phan_hoi(khoang, pham_vi)
+
+        theo_ngay: dict[date, list[DailyConversationMetric]] = {}
+        for r in rows:
+            theo_ngay.setdefault(r.work_date, []).append(r)
+        so_ngay = (khoang.to_date - khoang.from_date).days + 1
+        daily = tuple(
+            DailyVolume(work_date=d, volume=gop_khoi_luong(theo_ngay.get(d, ())))
+            for d in (khoang.from_date + timedelta(days=i) for i in range(so_ngay))
+        )
+
+        fr_tong = sum(a.sum_first_response_seconds for a in agent_rows)
+        fr_mau = sum(a.first_response_samples for a in agent_rows)
+        return OverviewReport(
+            totals=gop_khoi_luong(rows),
+            avg_first_response_seconds=trung_binh(fr_tong, fr_mau),
+            first_response_samples=fr_mau,
+            response_rate=(dem.da_tra_loi / dem.co_tin_vao) if dem.co_tin_vao else None,
+            conversations_with_inbound=dem.co_tin_vao,
+            conversations_replied=dem.da_tra_loi,
+            daily=daily,
+        )
 
 
 class GetWorkforceReport:

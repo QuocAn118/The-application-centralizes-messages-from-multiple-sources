@@ -45,9 +45,11 @@ from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
+from src.modules.analytics.domain.ports import ResponseRateCounts
 from src.modules.analytics.domain.value_objects.metrics import (
     DailyAgentMetric,
     DailyConversationMetric,
+    DateRange,
 )
 from src.modules.assignment.infrastructure.persistence.assignment_log_model import (
     AssignmentLogModel,
@@ -79,6 +81,30 @@ class InboxStatsSource:
         """Mốc đóng chính xác của hội thoại = ``closed_at``, fallback ``updated_at``
         cho dòng cũ (đã backfill = updated_at). Dùng cho closed/handled/resolution."""
         return func.coalesce(ConversationModel.closed_at, ConversationModel.updated_at)
+
+    async def dem_phan_hoi(
+        self, khoang: DateRange, department_ids: tuple[UUID, ...] | None
+    ) -> ResponseRateCounts:
+        """``IResponseRateSource`` — hội thoại có tin vào / có trả lời trong kỳ."""
+        trong_ky = self._ngay_local(MessageModel.created_at).between(
+            khoang.from_date, khoang.to_date
+        )
+
+        def co_tin(huong: str) -> Any:
+            return (
+                select(MessageModel.conversation_id)
+                .where(MessageModel.direction == huong, trong_ky)
+                .distinct()
+            )
+
+        cau = select(
+            func.count(),
+            func.count().filter(ConversationModel.id.in_(co_tin("OUTBOUND"))),
+        ).where(ConversationModel.id.in_(co_tin("INBOUND")))
+        if department_ids is not None:
+            cau = cau.where(ConversationModel.department_id.in_(department_ids))
+        vao, tra_loi = (await self._session.execute(cau)).one()
+        return ResponseRateCounts(co_tin_vao=int(vao), da_tra_loi=int(tra_loi))
 
     async def conversation_metrics_cho_ngay(
         self, work_date: date

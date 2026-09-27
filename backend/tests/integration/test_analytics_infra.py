@@ -392,6 +392,64 @@ class TestInboxStatsSource:
 # ----- HrmStatsSource (đọc thẳng #4) -----
 
 
+class TestResponseRateSource:
+    """BE-8: đếm HỘI THOẠI (không phải tin) có tin vào / có trả lời trong kỳ."""
+
+    async def _hoi_thoai(self, session: AsyncSession, dept: UUID | None) -> UUID:
+        ch = await _channel(session, "ZALO", dept)
+        t0 = datetime(2026, 7, 1, 3, 0, tzinfo=UTC)
+        return await _conversation(
+            session,
+            ch,
+            await _customer(session, ch),
+            dept=dept,
+            status="DANG_MO",
+            assigned=None,
+            created_at=t0,
+            updated_at=t0,
+        )
+
+    async def test_dem_hoi_thoai_theo_ky_va_phong(self, session: AsyncSession) -> None:
+        # Ngày 2/7 (giờ VN) là kỳ báo cáo.
+        trong = datetime(2026, 7, 2, 3, 0, tzinfo=UTC)  # 10:00 ngày 2 VN
+        # 17:30 UTC ngày 1 = 00:30 ngày 2 VN -> VẪN trong kỳ (quy đổi múi giờ).
+        dau_ngay = datetime(2026, 7, 1, 17, 30, tzinfo=UTC)
+        ngoai = datetime(2026, 7, 3, 3, 0, tzinfo=UTC)
+
+        da_tra = await self._hoi_thoai(session, D1)  # 2 tin vào + 1 trả lời -> đếm 1 lần
+        await _message(session, da_tra, "INBOUND", dau_ngay)
+        await _message(session, da_tra, "INBOUND", trong)
+        await _message(session, da_tra, "OUTBOUND", trong, sender=U1)
+
+        chua_tra = await self._hoi_thoai(session, D1)  # vào trong kỳ, trả lời NGOÀI kỳ
+        await _message(session, chua_tra, "INBOUND", trong)
+        await _message(session, chua_tra, "OUTBOUND", ngoai, sender=U1)
+
+        chi_ra = await self._hoi_thoai(session, D1)  # chỉ tin ra -> không vào mẫu số
+        await _message(session, chi_ra, "OUTBOUND", trong, sender=U1)
+
+        phong_khac = await self._hoi_thoai(session, D2)
+        await _message(session, phong_khac, "INBOUND", trong)
+
+        cho_phan = await self._hoi_thoai(session, None)
+        await _message(session, cho_phan, "INBOUND", trong)
+        await session.flush()
+
+        nguon = InboxStatsSource(session, TZ)
+        ky = DateRange(from_date=date(2026, 7, 2), to_date=date(2026, 7, 2))
+
+        d1 = await nguon.dem_phan_hoi(ky, (D1,))
+        assert (d1.co_tin_vao, d1.da_tra_loi) == (2, 1)
+
+        tat_ca = await nguon.dem_phan_hoi(ky, None)  # Admin: mọi phòng + chưa phân
+        assert (tat_ca.co_tin_vao, tat_ca.da_tra_loi) == (4, 1)
+
+        rong = await nguon.dem_phan_hoi(
+            DateRange(from_date=date(2026, 6, 1), to_date=date(2026, 6, 30)), None
+        )
+        assert (rong.co_tin_vao, rong.da_tra_loi) == (0, 0)
+
+
 async def _shift_assignment(
     session: AsyncSession, user_id: UUID, dept: UUID, work_date: date, start: time, end: time
 ) -> None:
