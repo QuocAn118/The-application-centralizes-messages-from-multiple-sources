@@ -13,7 +13,7 @@ from src.modules.inbox.application.use_cases.assign_conversation_to_department i
 )
 from src.modules.inbox.application.use_cases.close_conversation import CloseConversation
 from src.modules.inbox.application.use_cases.get_conversation import GetConversation
-from src.modules.inbox.application.use_cases.list_inbox import ListInbox
+from src.modules.inbox.application.use_cases.list_inbox import ListInbox, LocNguoiPhuTrach
 from src.modules.inbox.application.use_cases.reply_to_conversation import (
     ReplyToConversation,
 )
@@ -87,13 +87,17 @@ async def liet_ke_inbox(
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     q: Annotated[str | None, Query(max_length=200, description="Tìm theo tên khách")] = None,
+    assignee: Annotated[
+        LocNguoiPhuTrach | None,
+        Query(description='"me" = của tôi, "none" = chưa ai nhận (BE-3)'),
+    ] = None,
 ) -> PageResponse[InboxItemResponse]:
     trang = await ListInbox(
         SqlAlchemyConversationRepository(session),
         SqlAlchemyCustomerRepository(session),
         SqlAlchemyChannelRepository(session),
         SqlAlchemyMessageRepository(session),
-    ).execute(actor=actor, status=status, limit=limit, offset=offset, q=q)
+    ).execute(actor=actor, status=status, limit=limit, offset=offset, q=q, assignee=assignee)
     return PageResponse(
         items=[InboxItemResponse.from_dto(i) for i in trang.items],
         total=trang.total,

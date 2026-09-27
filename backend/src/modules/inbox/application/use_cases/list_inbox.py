@@ -8,6 +8,7 @@ Bộ lọc phạm vi được ép ở đây, người gọi không tự nới r�
 """
 
 from dataclasses import dataclass
+from typing import Literal
 from uuid import UUID
 
 from src.modules.inbox.application.actor import ActorRole, InboxActor
@@ -23,6 +24,9 @@ from src.modules.inbox.domain.repositories.customer_repository import (
 from src.modules.inbox.domain.repositories.message_repository import IMessageRepository
 
 GIOI_HAN_TOI_DA = 100
+
+# Lọc theo người phụ trách (BE-3): "me" = của tôi, "none" = chưa ai nhận.
+LocNguoiPhuTrach = Literal["me", "none"]
 
 # Dòng preview chỉ hiện một dòng trên giao diện; cắt ở đây để không đẩy cả tin
 # 8000 ký tự qua mạng cho mỗi dòng danh sách.
@@ -80,14 +84,20 @@ class ListInbox:
         limit: int = 50,
         offset: int = 0,
         q: str | None = None,
+        assignee: LocNguoiPhuTrach | None = None,
     ) -> Page[InboxItem]:
-        """``q`` lọc thêm theo tên khách hiển thị; phạm vi quyền vẫn được ép trước."""
+        """``q`` lọc theo tên khách; ``assignee`` lọc theo người phụ trách (BE-3).
+
+        Cả hai CHỒNG lên phạm vi quyền đã ép trước — không nới rộng được.
+        """
         pv = pham_vi_cua(actor)
         gioi_han = min(max(limit, 1), GIOI_HAN_TOI_DA)
         vi_tri = max(offset, 0)
         # Chuỗi rỗng/toàn khoảng trắng coi như không tìm kiếm, để ô tìm kiếm bị
         # xoá trắng không biến thành bộ lọc không khớp gì.
         tu_khoa = q.strip() if q and q.strip() else None
+        giao_cho = actor.user_id if assignee == "me" else None
+        chua_ai_nhan = assignee == "none"
 
         conversations = await self._conversation_repo.list_for_scope(
             department_ids=pv.department_ids,
@@ -96,12 +106,16 @@ class ListInbox:
             limit=gioi_han,
             offset=vi_tri,
             q=tu_khoa,
+            assigned_to=giao_cho,
+            unassigned=chua_ai_nhan,
         )
         tong = await self._conversation_repo.count_for_scope(
             department_ids=pv.department_ids,
             include_awaiting=pv.include_awaiting,
             status=status,
             q=tu_khoa,
+            assigned_to=giao_cho,
+            unassigned=chua_ai_nhan,
         )
         # Một truy vấn lấy preview cho cả trang, trước khi dựng từng dòng —
         # hỏi trong vòng lặp sẽ thành N+1 truy vấn.

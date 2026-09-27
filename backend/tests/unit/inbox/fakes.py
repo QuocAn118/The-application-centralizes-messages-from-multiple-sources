@@ -128,6 +128,8 @@ class FakeConversationRepository:
         include_awaiting: bool,
         status: ConversationStatus | None,
         q: str | None = None,
+        assigned_to: UUID | None = None,
+        unassigned: bool = False,
     ) -> list[Conversation]:
         tu_khoa = q.strip().lower() if q and q.strip() else None
         ket_qua = []
@@ -145,7 +147,14 @@ class FakeConversationRepository:
                 ten = self.ten_khach.get(c.customer_id)
                 khop_tim_kiem = ten is not None and tu_khoa in ten.lower()
 
-            if trong_pham_vi and khop_trang_thai and khop_tim_kiem:
+            if unassigned:
+                khop_nguoi = c.assigned_user_id is None
+            elif assigned_to is not None:
+                khop_nguoi = c.assigned_user_id == assigned_to
+            else:
+                khop_nguoi = True
+
+            if trong_pham_vi and khop_trang_thai and khop_tim_kiem and khop_nguoi:
                 ket_qua.append(c)
         return sorted(ket_qua, key=lambda c: c.last_message_at, reverse=True)
 
@@ -157,8 +166,11 @@ class FakeConversationRepository:
         limit: int = 50,
         offset: int = 0,
         q: str | None = None,
+        assigned_to: UUID | None = None,
+        unassigned: bool = False,
     ) -> list[Conversation]:
-        return self._loc(department_ids, include_awaiting, status, q)[offset : offset + limit]
+        loc = self._loc(department_ids, include_awaiting, status, q, assigned_to, unassigned)
+        return loc[offset : offset + limit]
 
     async def count_for_scope(
         self,
@@ -166,8 +178,10 @@ class FakeConversationRepository:
         include_awaiting: bool,
         status: ConversationStatus | None = None,
         q: str | None = None,
+        assigned_to: UUID | None = None,
+        unassigned: bool = False,
     ) -> int:
-        return len(self._loc(department_ids, include_awaiting, status, q))
+        return len(self._loc(department_ids, include_awaiting, status, q, assigned_to, unassigned))
 
 
 class FakeMessageRepository:
