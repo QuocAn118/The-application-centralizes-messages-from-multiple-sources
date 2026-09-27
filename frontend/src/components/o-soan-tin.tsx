@@ -223,7 +223,7 @@ export function OSoanTin({
       </div>
 
       {noiDung.length > DAI_TOI_DA - 500 && (
-        <p className="mt-1 text-right text-[11px] text-muted-soft">
+        <p className="mt-1 text-right text-xs text-muted-soft">
           {noiDung.length}/{DAI_TOI_DA}
         </p>
       )}

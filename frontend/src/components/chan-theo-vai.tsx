@@ -12,6 +12,7 @@
  */
 
 import Link from "next/link";
+import { Lock, MessagesSquare } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-context";
 import { chiAdmin, vaoDuocKhuQuanTri } from "@/lib/quyen-quan-tri";
@@ -40,12 +41,16 @@ export function ChanTheoVai({
     // page (cha là khối cuộn thường, `flex-1` vô tác dụng và nội dung sẽ dính
     // sát mép trên). Chiều cao tối thiểu giữ cho cả hai trường hợp cùng căn giữa.
     return (
-      <div className="flex min-h-[60vh] min-w-0 flex-1 flex-col items-center justify-center gap-3 bg-surface px-6 text-center">
-        <p className="text-sm text-muted">{t("quanTri.khongCoQuyen")}</p>
+      <div className="flex min-h-[60vh] min-w-0 flex-1 flex-col items-center justify-center gap-4 bg-paper px-6 text-center">
+        <span className="inline-flex size-14 items-center justify-center rounded-nb border-2 border-ink bg-sunken">
+          <Lock aria-hidden className="size-7 text-ink" strokeWidth={2.25} />
+        </span>
+        <p className="max-w-[44ch] text-base font-bold text-ink">{t("quanTri.khongCoQuyen")}</p>
         <Link
           href="/inbox"
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+          className="inline-flex h-10 items-center gap-2 rounded-nb border-[3px] border-ink bg-accent px-4 text-sm font-semibold text-ink shadow-nb transition-[transform,box-shadow] duration-100 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-nb-sm"
         >
+          <MessagesSquare aria-hidden className="size-4" strokeWidth={2.25} />
           {t("quanTri.veHopThu")}
         </Link>
       </div>

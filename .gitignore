@@ -1,3 +1,5 @@
 
 # Ảnh chụp redesign UI — không commit (quyết định GĐ0)
 docs/ui-redesign/
+# Log/snapshot cua Playwright MCP
+.playwright-mcp/

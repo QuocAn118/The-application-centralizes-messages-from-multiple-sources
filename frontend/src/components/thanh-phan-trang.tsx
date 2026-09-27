@@ -9,6 +9,7 @@
  */
 
 import { t } from "@/lib/i18n";
+import { Nut } from "./ui/nut";
 
 export function ThanhPhanTrang({
   offset,
@@ -31,27 +32,17 @@ export function ThanhPhanTrang({
   const coSau = den < total;
 
   return (
-    <div className="flex items-center justify-between border-t border-border-subtle px-4 py-3">
-      <p className="text-xs text-muted">
+    <div className="flex items-center justify-between border-t border-line px-4 py-3">
+      <p className="text-xs font-semibold tabular-nums text-ink-2">
         {t("quanTri.hienThi", { tu, den, tong: total })}
       </p>
       <div className="flex gap-2">
-        <button
-          type="button"
-          disabled={!coTruoc || dangTai}
-          onClick={() => doiOffset(Math.max(0, offset - limit))}
-          className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-foreground transition enabled:hover:bg-surface disabled:cursor-not-allowed disabled:text-muted-soft"
-        >
+        <Nut bienThe="phu" co="sm" disabled={!coTruoc || dangTai} onClick={() => doiOffset(Math.max(0, offset - limit))}>
           {t("quanTri.truoc")}
-        </button>
-        <button
-          type="button"
-          disabled={!coSau || dangTai}
-          onClick={() => doiOffset(offset + limit)}
-          className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-foreground transition enabled:hover:bg-surface disabled:cursor-not-allowed disabled:text-muted-soft"
-        >
+        </Nut>
+        <Nut bienThe="phu" co="sm" disabled={!coSau || dangTai} onClick={() => doiOffset(offset + limit)}>
           {t("quanTri.sau")}
-        </button>
+        </Nut>
       </div>
     </div>
   );

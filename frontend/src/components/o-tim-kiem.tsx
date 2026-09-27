@@ -9,7 +9,9 @@
  */
 
 import { useEffect, useState } from "react";
+import { Search } from "lucide-react";
 import { useDebounce } from "@/lib/use-debounce";
+import { ONhap } from "./ui/o-nhap";
 
 export function OTimKiem({
   giaTriDau = "",
@@ -31,13 +33,20 @@ export function OTimKiem({
   }, [daHoan]);
 
   return (
-    <input
-      type="search"
-      value={chu}
-      onChange={(e) => setChu(e.target.value)}
-      placeholder={nhanGoiY}
-      aria-label={nhanGoiY}
-      className="w-64 rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted-soft focus:border-primary"
-    />
+    <div className="relative w-64">
+      <Search
+        aria-hidden
+        strokeWidth={2.25}
+        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-2"
+      />
+      <ONhap
+        type="search"
+        value={chu}
+        onChange={(e) => setChu(e.target.value)}
+        placeholder={nhanGoiY}
+        aria-label={nhanGoiY}
+        className="pl-9"
+      />
+    </div>
   );
 }

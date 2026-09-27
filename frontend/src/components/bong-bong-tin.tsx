@@ -56,7 +56,7 @@ export function BongBongTin({ message }: { message: Message }) {
       <time
         dateTime={message.created_at}
         title={mocDayDu(message.created_at)}
-        className="mt-1 px-1 text-[11px] text-muted-soft"
+        className="mt-1 px-1 text-xs text-muted-soft"
       >
         {mocNgan(message.created_at)}
       </time>
