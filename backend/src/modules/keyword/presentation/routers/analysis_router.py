@@ -74,16 +74,15 @@ async def kich_hoat_phan_tich_lai(
     điều kiện phân tích (không CHO_PHAN / không có tin); ngược lại trả bản ghi
     phân tích mới.
 
-    Nợ N5 ĐÃ TRẢ: trước đây chỉ kiểm vai, không kiểm phòng, nên Manager
-    **GET** bị 403 mà **POST** lại được 200 trên cùng một hội thoại của phòng
-    khác. Nay hai đường dùng chung một quy tắc.
+    Nợ N5: trước đây chỉ kiểm vai, không kiểm phòng. Nay xét theo phòng hiện tại
+    của hội thoại (chờ phân = Manager nào cũng được).
     """
     from src.modules.keyword.application.authorization import bao_dam_quan_ly_hoac_admin
 
     bao_dam_quan_ly_hoac_admin(actor)
-    await BaoDamKichHoatPhanTichDuoc(SqlAlchemyAnalysisRepository(session)).execute(
-        actor, conversation_id
-    )
+    await BaoDamKichHoatPhanTichDuoc(
+        request.app.state.keyword_conversation_directory_factory(session)
+    ).execute(actor, conversation_id)
     use_case = build_analyze_conversation(request, session)
     view = await use_case.execute(conversation_id, force=True)
     return AnalysisResponse.from_view(view) if view is not None else None
