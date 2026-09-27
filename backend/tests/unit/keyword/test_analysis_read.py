@@ -63,7 +63,6 @@ class TestList:
         assert page.items[0].suggested_department_id == PHONG_A
 
 
-
 class TestListBe10:
     """BE-10: Manager thấy thêm hàng chờ phân; lọc outcome trên toàn bộ dữ liệu."""
 
@@ -81,7 +80,10 @@ class TestListBe10:
         # Từng mơ hồ nhưng giờ đã thuộc phòng B -> KHÔNG còn trong hàng chờ.
         await repo.add(
             ConversationAnalysis.ambiguous(
-                conversation_id=da_thuoc_b, extracted_terms=(), confidence=Decimal("0.1"), now=BAY_GIO
+                conversation_id=da_thuoc_b,
+                extracted_terms=(),
+                confidence=Decimal("0.1"),
+                now=BAY_GIO,
             )
         )
         await repo.add(_phan_tich(new_id(), PHONG_A))

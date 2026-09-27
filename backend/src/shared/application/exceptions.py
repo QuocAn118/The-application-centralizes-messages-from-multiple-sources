@@ -1,13 +1,20 @@
 """Lỗi thuộc tầng application."""
 
+from typing import Any
+
 
 class ApplicationError(Exception):
-    """Lỗi gốc của tầng application."""
+    """Lỗi gốc của tầng application.
 
-    def __init__(self, message: str, code: str) -> None:
+    ``details`` (tuỳ chọn) đi thẳng ra ``error.details`` của phản hồi — chỉ đặt
+    dữ liệu người gọi ĐƯỢC PHÉP thấy.
+    """
+
+    def __init__(self, message: str, code: str, details: dict[str, Any] | None = None) -> None:
         super().__init__(message)
         self.message = message
         self.code = code
+        self.details = details
 
 
 class NotFoundError(ApplicationError):
