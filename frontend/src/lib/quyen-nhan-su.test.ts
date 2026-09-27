@@ -9,6 +9,7 @@
 import { describe, expect, it } from "vitest";
 import {
   datDuocMucTieuKpi,
+  demDonCanDuyet,
   hienDuyet,
   hienGuiDon,
   hienThuHoi,
@@ -194,5 +195,25 @@ describe("KPI", () => {
     expect(xemDuocKpiPhong("STAFF")).toBe(false);
     expect(xemDuocKpiPhong("MANAGER")).toBe(true);
     expect(xemDuocKpiPhong("ADMIN")).toBe(true);
+  });
+});
+
+describe("demDonCanDuyet (huy hiệu Nhân sự)", () => {
+  const don = (p: Partial<LeaveRequest>) => ({ status: "CHO_DUYET", department_id: "A", requester_id: "x", ...p }) as LeaveRequest;
+  const ds = [
+    don({ requester_id: "nv1" }),
+    don({ requester_id: "mgrA" }), // đơn của chính Manager A
+    don({ requester_id: "nv2", department_id: "B" }),
+    don({ requester_id: "nv3", status: "DA_DUYET" }),
+  ];
+
+  it("Manager: chỉ đơn chờ trong phòng mình, trừ đơn của chính mình", () => {
+    expect(demDonCanDuyet({ id: "mgrA", role: "MANAGER", department_id: "A" }, ds)).toBe(1);
+  });
+  it("Admin: mọi đơn chờ", () => {
+    expect(demDonCanDuyet({ id: "ad", role: "ADMIN", department_id: null }, ds)).toBe(3);
+  });
+  it("Staff: không bao giờ có", () => {
+    expect(demDonCanDuyet({ id: "nv1", role: "STAFF", department_id: "A" }, ds)).toBe(0);
   });
 });

@@ -14,23 +14,24 @@
  */
 
 import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Plus, Target } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-context";
-import { NHAN_DOI_TUONG_KPI, kyKpi } from "@/lib/hien-thi";
+import { NHAN_DOI_TUONG_KPI, doiKy, kyKpi } from "@/lib/hien-thi";
 import { khoaNhanSu, layMucTieuKpi, layTienDoKpiTheoKy } from "@/lib/nhan-su-api";
 import { khoaQuanTri, layDanhSachNguoiDung, layDanhSachPhongBan } from "@/lib/quan-tri-api";
 import { datDuocMucTieuKpi } from "@/lib/quyen-nhan-su";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { HangKpi } from "./hang-kpi";
 import { HopThoaiKpi } from "./hop-thoai-kpi";
+import { Bang, Th } from "@/components/ui/bang";
+import { DauTrang } from "@/components/ui/dau-trang";
+import { The } from "@/components/ui/the";
+import { Nut } from "@/components/ui/nut";
+import { NutIcon } from "@/components/ui/nut-icon";
+import { TrangThaiLoi, TrangThaiRong, TrangThaiTai } from "@/components/ui/trang-thai";
 import type { KpiProgress, KpiTarget } from "@/lib/types";
-
-const LOP_O_CHON =
-  "rounded-lg border border-border-subtle bg-white px-3 py-1.5 text-xs font-medium text-foreground outline-none transition focus:border-primary";
-
-/** Tháng 1–12. */
-const THANG = Array.from({ length: 12 }, (_, i) => i + 1);
 
 export function ManKpi() {
   const { user } = useAuth();
@@ -88,9 +89,13 @@ export function ManKpi() {
     (truyVanTienDo.data ?? []).map((p) => [`${p.subject_id}|${p.metric_type}`, p]),
   );
 
-  // Năm chọn được: quanh năm nay. Mục tiêu là thứ đặt cho kỳ sắp tới hoặc xem
-  // lại kỳ đã qua, không cần cả thế kỷ.
-  const cacNam = [homNay.getFullYear() - 1, homNay.getFullYear(), homNay.getFullYear() + 1];
+  // K3: ‹ Tháng 9/2026 ›. Luôn đổi CẶP năm+tháng cùng lúc (xem chú thích đầu tệp).
+  function sangKy(buoc: number) {
+    const moi = doiKy(nam, thang, buoc);
+    setNam(moi.nam);
+    setThang(moi.thang);
+  }
+  const laKyNay = nam === homNay.getFullYear() && thang === homNay.getMonth() + 1;
 
   function tenDoiTuong(mt: KpiTarget): string {
     if (mt.subject_type === "DEPARTMENT") {
@@ -118,110 +123,93 @@ export function ManKpi() {
       : phongBan.filter((p) => p.id === user.department_id);
 
   return (
-    <div className="px-6 py-6">
-      <section className="overflow-hidden rounded-lg border border-border-subtle bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-5 py-3">
-          <h2 className="text-base font-semibold text-foreground">{t("kpi.tieuDe")}</h2>
+    <div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-8 py-6">
+      <DauTrang
+        tieuDe={t("kpi.tieuDe")}
+        moTa={t("kpi.ghiChuThucDat")}
+        hanhDong={
+          datDuoc && (
+            <Nut bienThe="chinh" icon={Plus} onClick={() => setDangDat(true)}>
+              {t("kpi.datMucTieu")}
+            </Nut>
+          )
+        }
+      />
 
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-1.5">
-              <span className="text-xs text-muted">{t("kpi.chonThang")}</span>
-              <select
-                value={thang}
-                onChange={(e) => setThang(Number(e.target.value))}
-                className={LOP_O_CHON}
-              >
-                {THANG.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-1.5">
-              <span className="text-xs text-muted">{t("kpi.chonNam")}</span>
-              <select
-                value={nam}
-                onChange={(e) => setNam(Number(e.target.value))}
-                className={LOP_O_CHON}
-              >
-                {cacNam.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {datDuoc && (
-              <button
-                type="button"
-                onClick={() => setDangDat(true)}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95"
-              >
-                + {t("kpi.datMucTieu")}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {truyVan.isPending && (
-          <p className="px-5 py-8 text-center text-sm text-muted">{t("chung.dangTai")}</p>
+      <div role="group" aria-label={t("kpi.chonKy")} className="flex items-center gap-2">
+        <NutIcon icon={ChevronLeft} nhan="Tháng trước" onClick={() => sangKy(-1)} />
+        <span aria-live="polite" className="min-w-40 text-center text-lg font-extrabold text-ink">
+          {kyKpi(nam, thang)}
+        </span>
+        <NutIcon icon={ChevronRight} nhan="Tháng sau" onClick={() => sangKy(1)} />
+        {!laKyNay && (
+          <Nut
+            co="sm"
+            bienThe="trong"
+            onClick={() => {
+              setNam(homNay.getFullYear());
+              setThang(homNay.getMonth() + 1);
+            }}
+          >
+            Về tháng này
+          </Nut>
         )}
-        {truyVan.isError && (
-          <p className="px-5 py-8 text-center text-sm text-danger-fg">
-            {thongDiepLoi(truyVan.error)}
-          </p>
-        )}
-        {truyVan.data && danhSach.length === 0 && (
-          <p className="px-5 py-8 text-center text-sm text-muted">
-            {t("kpi.chuaCoMucTieu")}
-          </p>
-        )}
+      </div>
 
-        {danhSach.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="border-b border-border-subtle bg-surface/60 text-xs font-bold uppercase tracking-wider text-muted">
-                  <th scope="col" className="px-4 py-3">
-                    {t("kpi.cotDoiTuong")}
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    {t("kpi.cotChiSo")}
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-right">
-                    {t("kpi.cotMucTieu")}
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-right">
-                    {t("kpi.cotThucDat")}
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-right">
-                    {t("kpi.cotHoanThanh")}
-                  </th>
-                  <th scope="col" className="w-24 px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {danhSach.map((mt) => (
-                  <HangKpi
-                    key={mt.id}
-                    mucTieu={mt}
-                    tenDoiTuong={tenDoiTuong(mt)}
-                    tienDo={tienDoTheoKhoa.get(`${mt.subject_id}|${mt.metric_type}`)}
-                    dangTai={truyVanTienDo.isPending}
-                    onSua={datDuoc ? () => setDangSua(mt) : null}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {truyVan.isPending && (
+        <The>
+          <TrangThaiTai />
+        </The>
+      )}
+      {truyVan.isError && (
+        <The>
+          <TrangThaiLoi thongDiep={thongDiepLoi(truyVan.error)} onThuLai={() => void truyVan.refetch()} />
+        </The>
+      )}
+      {truyVan.data && danhSach.length === 0 && (
+        <The>
+          <TrangThaiRong
+            icon={Target}
+            tieuDe={t("kpi.chuaCoMucTieu")}
+            hanhDong={
+              datDuoc && (
+                <Nut icon={Plus} onClick={() => setDangDat(true)}>
+                  {t("kpi.datMucTieu")}
+                </Nut>
+              )
+            }
+          />
+        </The>
+      )}
 
-        <p className="border-t border-border-subtle bg-surface/40 px-5 py-2.5 text-xs text-muted">
-          {kyKpi(nam, thang)} · {t("kpi.ghiChuThucDat")}
-        </p>
-      </section>
+      {danhSach.length > 0 && (
+        <Bang aria-label={`${t("kpi.tieuDe")} ${kyKpi(nam, thang)}`}>
+          <thead>
+            <tr>
+              <Th>{t("kpi.cotDoiTuong")}</Th>
+              <Th>{t("kpi.cotChiSo")}</Th>
+              <Th className="text-right">{t("kpi.cotMucTieu")}</Th>
+              <Th className="text-right">{t("kpi.cotThucDat")}</Th>
+              <Th className="w-56 text-right">{t("kpi.cotHoanThanh")}</Th>
+              <Th className="w-16">
+                <span className="sr-only">{t("nguoiDung.thaoTac")}</span>
+              </Th>
+            </tr>
+          </thead>
+          <tbody>
+            {danhSach.map((mt) => (
+              <HangKpi
+                key={mt.id}
+                mucTieu={mt}
+                tenDoiTuong={tenDoiTuong(mt)}
+                tienDo={tienDoTheoKhoa.get(`${mt.subject_id}|${mt.metric_type}`)}
+                dangTai={truyVanTienDo.isPending}
+                onSua={datDuoc ? () => setDangSua(mt) : null}
+              />
+            ))}
+          </tbody>
+        </Bang>
+      )}
 
       {(dangDat || dangSua) && (
         <HopThoaiKpi
