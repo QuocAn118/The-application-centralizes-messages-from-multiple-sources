@@ -15,7 +15,15 @@
 
 import { useEffect, useRef } from "react";
 import { API_BASE_URL, getAccessToken, onAccessTokenChange } from "./api-client";
-import type { InboxSignal } from "./types";
+import type { InboxChange, InboxSignal } from "./types";
+
+/** Loại tín hiệu được nhận; loại lạ bị bỏ qua (không để chạy vào lớp cache). */
+const LOAI_TIN_HIEU: ReadonlySet<string> = new Set<InboxChange>([
+  "new_message",
+  "status_changed",
+  "assigned_to_you",
+  "unassigned_from_you",
+]);
 
 /** Chờ tối thiểu/tối đa giữa các lần thử lại. */
 const CHO_DAU_MS = 1_000;
@@ -126,7 +134,7 @@ export function useInboxSocket({ onSignal, enabled = true }: TuyChonSocket): voi
           if (
             tin_hieu &&
             typeof tin_hieu.conversation_id === "string" &&
-            (tin_hieu.change === "new_message" || tin_hieu.change === "status_changed")
+            LOAI_TIN_HIEU.has(tin_hieu.change)
           ) {
             onSignalRef.current(tin_hieu);
           }

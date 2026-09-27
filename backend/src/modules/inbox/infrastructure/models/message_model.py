@@ -49,4 +49,12 @@ class MessageModel(Base):
             postgresql_where=sql_text("external_message_id IS NOT NULL"),
         ),
         Index("ix_message_conversation_id", "conversation_id", "created_at"),
+        # Đếm chưa đọc (BE-1) và "khách đã chờ" (BE-9) chỉ quét tin VÀO theo thời
+        # gian — migration a7b8c9d0e1f2.
+        Index(
+            "ix_message_inbound_conv_created",
+            "conversation_id",
+            "created_at",
+            postgresql_where=sql_text("direction = 'INBOUND'"),
+        ),
     )

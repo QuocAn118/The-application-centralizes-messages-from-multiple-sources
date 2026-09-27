@@ -1,39 +1,60 @@
 "use client";
 
 /**
- * Khung chat của một hội thoại (spec §4.2 cột phải).
+ * Khung chat của một hội thoại (redesign 2a §4.2).
  *
- * Luồng trả lời theo §4.4: khoá ô → `POST reply` → dùng tin từ response cập
- * nhật cache → mở khoá. Lỗi thì GIỮ nội dung đã gõ (IT-5) và refetch để đồng
- * bộ trạng thái thật khi server báo xung đột (409/422).
+ * Luồng trả lời giữ nguyên: khoá ô → `POST reply` → dùng tin từ response cập
+ * nhật cache → mở khoá. Lỗi thì GIỮ nội dung đã gõ (IT-5) và refetch khi server
+ * báo xung đột (409/422).
+ *
+ * Mới ở 2a: ô chọn người phụ trách (BE-2), dòng hệ thống + vạch ngày + gom tin,
+ * "Đóng" vào menu "⋯" có xác nhận, đánh dấu đã đọc (BE-1).
  */
 
 import { useEffect, useRef, useState } from "react";
-import { t } from "@/lib/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CircleCheckBig, Clock, UserRound } from "lucide-react";
+import { t } from "@/lib/i18n";
 import { ApiError } from "@/lib/api-client";
 import {
+  danhDauDaDoc,
   dongHoiThoai,
+  giaoNguoiPhuTrach,
   khoaInbox,
+  khoaPhongBan,
   layChiTietHoiThoai,
+  layNguoiCuaPhong,
+  layPhongBanHoatDong,
   nhanViec,
-  SO_TIN_MOI_LAN,
   phanPhong,
+  SO_TIN_MOI_LAN,
   traLoiHoiThoai,
 } from "@/lib/inbox-api";
-import { chuCaiDau, tenKhach } from "@/lib/hien-thi";
+import { DAU_GACH, NHAN_KENH, tenKhach } from "@/lib/hien-thi";
+import { dungDongChat, gioPhut, laChoLau, nenDanhDauDaDoc, nhanCho, phutCho } from "@/lib/hop-thu";
 import { useAuth } from "@/lib/auth-context";
+import { useBayGio } from "@/lib/use-bay-gio";
 import {
+  hienDoiNguoiPhuTrach,
   hienDong,
   hienNhanViec,
   hienPhanPhong,
+  tuyChonNguoiPhuTrach,
   type Actor,
 } from "@/lib/quyen-hanh-dong";
-import type { Conversation, Message } from "@/lib/types";
-import { BadgeKenh, BadgeTrangThai } from "./badges";
+import type { Conversation, ConversationEvent, Message } from "@/lib/types";
 import { BongBongTin } from "./bong-bong-tin";
 import { DialogPhanPhong } from "./dialog-phan-phong";
+import { HopXacNhan } from "./hop-xac-nhan";
 import { OSoanTin } from "./o-soan-tin";
+import { PanelKhach } from "./panel-khach";
+import { Avatar } from "./ui/avatar";
+import { HuyHieu } from "./ui/huy-hieu";
+import { IconKenh } from "./ui/icon-kenh";
+import { MenuHanhDong } from "./ui/menu-hanh-dong";
+import { Nut } from "./ui/nut";
+import { OChon } from "./ui/o-nhap";
+import { TrangThaiLoi } from "./ui/trang-thai";
 
 export function KhungChat({ conversationId }: { conversationId: string }) {
   const queryClient = useQueryClient();
@@ -41,6 +62,7 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
   const [loiGui, setLoiGui] = useState<string | null>(null);
   const [loiHanhDong, setLoiHanhDong] = useState<string | null>(null);
   const [moDialogPhan, setMoDialogPhan] = useState(false);
+  const [moXacNhanDong, setMoXacNhanDong] = useState(false);
   const [hetTinCu, setHetTinCu] = useState(false);
 
   const { data, isPending, isError, error, refetch } = useQuery({
@@ -48,27 +70,61 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
     queryFn: ({ signal }) => layChiTietHoiThoai(conversationId, undefined, 0, signal),
   });
 
-  /**
-   * Cập nhật sau một hành động.
-   *
-   * Take/Close/Assign trả `Conversation` KHÔNG kèm `messages`, nên phải giữ lại
-   * mảng tin đang có — ghi đè thẳng response sẽ làm trắng khung chat.
-   */
+  // Tên phòng: danh sách phòng đang hoạt động (đã cache cho dialog phân phòng).
+  const { data: phong } = useQuery({
+    queryKey: khoaPhongBan,
+    queryFn: ({ signal }) => layPhongBanHoatDong(signal),
+  });
+  const tenPhong = data?.department_id
+    ? (phong?.items.find((p) => p.id === data.department_id)?.name ?? DAU_GACH)
+    : null;
+
+  // ---- Đánh dấu đã đọc (BE-1, GĐ1 §10.3) ----------------------------------
+  // Chỉ làm mới danh sách + huy hiệu nav, KHÔNG làm mới chi tiết (không đổi gì).
+  const danhDau = useMutation({
+    mutationFn: () => danhDauDaDoc(conversationId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["inbox", "list"] });
+      void queryClient.invalidateQueries({ queryKey: khoaInbox.chuaDoc });
+    },
+  });
+  const tinVaoCuoi = data?.messages.findLast((m) => m.direction === "INBOUND")?.id;
+  const tinVaoDaXetRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (!data) return;
+    const lanDau = tinVaoDaXetRef.current === undefined;
+    const coTinMoi = tinVaoDaXetRef.current !== (tinVaoCuoi ?? null);
+    tinVaoDaXetRef.current = tinVaoCuoi ?? null;
+    // Lần đầu = vừa mở hội thoại → luôn đánh dấu. Sau đó chỉ khi có tin mới VÀ
+    // cửa sổ đang có focus (tab ở nền mà đánh dấu thì người dùng không biết có tin).
+    if (lanDau || (coTinMoi && nenDanhDauDaDoc(true, document.hasFocus()))) danhDau.mutate();
+    // `danhDau` đổi mỗi render; chỉ phản ứng theo tin vào cuối.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Boolean(data), tinVaoCuoi]);
+  // Quay lại tab sau khi có tin lúc vắng mặt → giờ mới thật sự đọc.
+  useEffect(() => {
+    const khiFocus = () => {
+      if (data && data.unread_count > 0) danhDau.mutate();
+    };
+    window.addEventListener("focus", khiFocus);
+    return () => window.removeEventListener("focus", khiFocus);
+  });
+
+  // ---- Hành động -----------------------------------------------------------
+  /** Response hành động đã là hội thoại mới nhất; giữ mảng tin đang có nếu thiếu. */
   function apDungHoiThoaiMoi(moi: Conversation) {
     setLoiHanhDong(null);
-    queryClient.setQueryData<Conversation>(
-      khoaInbox.detail(conversationId),
-      (cu) => ({ ...moi, messages: moi.messages ?? cu?.messages ?? [] }),
-    );
-    void queryClient.invalidateQueries({ queryKey: khoaInbox.all });
+    queryClient.setQueryData<Conversation>(khoaInbox.detail(conversationId), (cu) => ({
+      ...moi,
+      messages: moi.messages ?? cu?.messages ?? [],
+    }));
+    void queryClient.invalidateQueries({ queryKey: ["inbox", "list"] });
   }
 
-  /** Lỗi chung của ba hành động: báo rõ rồi đọc lại để đồng bộ trạng thái thật. */
+  /** 409/422 = FE giữ trạng thái cũ; 403/404 = mất quyền — đọc lại cho nút đúng. */
   function xuLyLoiHanhDong(err: unknown) {
     if (err instanceof ApiError) {
       setLoiHanhDong(err.message);
-      // 409/422 = trạng thái FE đang giữ đã cũ; 403/404 = mất quyền hoặc đã đổi
-      // phòng. Cả hai đều cần đọc lại để nút hiển thị cho đúng.
       if (err.isConflict || err.isForbidden) void refetch();
     } else {
       setLoiHanhDong(t("hanhDong.loiChung"));
@@ -80,13 +136,14 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
     onSuccess: apDungHoiThoaiMoi,
     onError: xuLyLoiHanhDong,
   });
-
   const dangDong = useMutation({
     mutationFn: () => dongHoiThoai(conversationId),
-    onSuccess: apDungHoiThoaiMoi,
+    onSuccess: (moi) => {
+      apDungHoiThoaiMoi(moi);
+      setMoXacNhanDong(false);
+    },
     onError: xuLyLoiHanhDong,
   });
-
   const dangPhan = useMutation({
     mutationFn: (departmentId: string) => phanPhong(conversationId, departmentId),
     onSuccess: (moi) => {
@@ -95,44 +152,29 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
     },
     onError: xuLyLoiHanhDong,
   });
-
-  /**
-   * Tải thêm tin CŨ HƠN khi người dùng cuộn lên đầu.
-   *
-   * Backend trả `limit` tin mới nhất; `offset` đếm ngược từ mới về cũ, nên
-   * offset = số tin đang có sẽ lấy đúng trang liền trước.
-   */
-  const taiThem = useMutation({
-    mutationFn: () => {
-      const dangCo = queryClient.getQueryData<Conversation>(
-        khoaInbox.detail(conversationId),
-      );
-      return layChiTietHoiThoai(
-        conversationId,
-        SO_TIN_MOI_LAN,
-        dangCo?.messages.length ?? 0,
-      );
-    },
-    onSuccess: (trang) => {
-      if (trang.messages.length === 0) {
-        setHetTinCu(true);
-        return;
-      }
-      if (trang.messages.length < SO_TIN_MOI_LAN) setHetTinCu(true);
-      queryClient.setQueryData<Conversation>(
-        khoaInbox.detail(conversationId),
-        (cu) => {
-          if (!cu) return cu;
-          // Lọc trùng: tin mới có thể tới giữa hai lần tải và làm lệch offset.
-          const daCo = new Set(cu.messages.map((m) => m.id));
-          const themVao = trang.messages.filter((m) => !daCo.has(m.id));
-          return { ...cu, messages: [...themVao, ...cu.messages] };
-        },
-      );
-    },
+  const dangDoiNguoi = useMutation({
+    mutationFn: (userId: string | null) => giaoNguoiPhuTrach(conversationId, userId),
+    onSuccess: apDungHoiThoaiMoi,
+    onError: xuLyLoiHanhDong,
   });
 
-  // Đủ một trang đầy nghĩa là có thể còn tin cũ hơn.
+  /** Tải tin CŨ HƠN: `offset` đếm từ mới về cũ, nên offset = số tin đang có. */
+  const taiThem = useMutation({
+    mutationFn: () => {
+      const dangCo = queryClient.getQueryData<Conversation>(khoaInbox.detail(conversationId));
+      return layChiTietHoiThoai(conversationId, SO_TIN_MOI_LAN, dangCo?.messages.length ?? 0);
+    },
+    onSuccess: (trang) => {
+      if (trang.messages.length < SO_TIN_MOI_LAN) setHetTinCu(true);
+      if (trang.messages.length === 0) return;
+      queryClient.setQueryData<Conversation>(khoaInbox.detail(conversationId), (cu) => {
+        if (!cu) return cu;
+        // Lọc trùng: tin mới có thể tới giữa hai lần tải và làm lệch offset.
+        const daCo = new Set(cu.messages.map((m) => m.id));
+        return { ...cu, messages: [...trang.messages.filter((m) => !daCo.has(m.id)), ...cu.messages] };
+      });
+    },
+  });
   const conCuHon = !hetTinCu && (data?.messages.length ?? 0) >= SO_TIN_MOI_LAN;
 
   const guiTraLoi = useMutation({
@@ -140,21 +182,16 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
       traLoiHoiThoai(conversationId, text, tep),
     onSuccess: (tinMoi: Message) => {
       setLoiGui(null);
-      // Dùng thẳng tin từ response thay vì gọi lại API (RB-6): response đã là
-      // trạng thái mới nhất của server.
-      queryClient.setQueryData<Conversation>(
-        khoaInbox.detail(conversationId),
-        (cu) =>
-          cu ? { ...cu, messages: [...cu.messages, tinMoi] } : cu,
+      // RB-6: response đã là trạng thái mới nhất — không gọi lại API.
+      queryClient.setQueryData<Conversation>(khoaInbox.detail(conversationId), (cu) =>
+        cu ? { ...cu, messages: [...cu.messages, tinMoi], waiting_since: null } : cu,
       );
-      // Dòng bên trái phải nhảy lên đầu và đổi mốc thời gian.
-      void queryClient.invalidateQueries({ queryKey: khoaInbox.all });
+      void queryClient.invalidateQueries({ queryKey: ["inbox", "list"] });
+      void queryClient.invalidateQueries({ queryKey: khoaInbox.chuaDoc });
     },
     onError: (err: unknown) => {
       if (err instanceof ApiError) {
         setLoiGui(err.message);
-        // 409/422 nghĩa là trạng thái FE đang giữ đã cũ (ai đó vừa đóng hội
-        // thoại chẳng hạn) — đọc lại để ô soạn khoá/mở cho đúng.
         if (err.isConflict || err.isForbidden) void refetch();
       } else {
         setLoiGui(t("soan.loiGuiChung"));
@@ -164,91 +201,76 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
 
   if (isPending) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-surface">
-        <p className="text-sm text-muted">{t("chat.dangTaiHoiThoai")}</p>
+      <div className="flex flex-1 items-center justify-center bg-paper">
+        <p className="text-sm text-ink-2">{t("chat.dangTaiHoiThoai")}</p>
       </div>
     );
   }
 
   if (isError) {
-    const la404 = error instanceof ApiError && error.isForbidden;
+    const khongCoQuyen = error instanceof ApiError && error.isForbidden;
     return (
-      <div className="flex flex-1 items-center justify-center bg-surface px-6">
-        <div className="max-w-sm text-center">
-          <p className="text-sm font-medium text-foreground">
-            {la404 ? t("chat.khongCoQuyen") : t("chat.loiTai")}
-          </p>
-          <p className="mt-1 text-xs text-muted">
-            {error instanceof ApiError
-              ? error.message
-              : t("chung.loiKetNoi")}
-          </p>
-          {!la404 && (
-            <button
-              type="button"
-              onClick={() => void refetch()}
-              className="mt-4 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-95"
-            >
-              {t("chung.thuLai")}
-            </button>
-          )}
-        </div>
+      <div className="flex flex-1 items-center justify-center bg-paper">
+        <TrangThaiLoi
+          thongDiep={
+            khongCoQuyen
+              ? t("chat.khongCoQuyen")
+              : error instanceof ApiError
+                ? error.message
+                : t("chung.loiKetNoi")
+          }
+          onThuLai={khongCoQuyen ? undefined : () => void refetch()}
+        />
       </div>
     );
   }
 
-  const actor: Actor | null = user
-    ? { role: user.role, department_id: user.department_id }
-    : null;
+  const actor: Actor | null = user ? { role: user.role, department_id: user.department_id } : null;
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col bg-surface">
-      <HeaderHoiThoai
-        hoiThoai={data}
-        actor={actor}
-        dangNhanViec={dangNhanViec.isPending}
-        dangDong={dangDong.isPending}
-        onNhanViec={() => dangNhanViec.mutate()}
-        onDong={() => dangDong.mutate()}
-        onMoPhanPhong={() => {
-          setLoiHanhDong(null);
-          setMoDialogPhan(true);
-        }}
-      />
+    <div className="flex min-w-0 flex-1">
+      <section aria-label="Khung chat" className="flex min-w-0 flex-1 flex-col bg-paper">
+        <HeaderHoiThoai
+          hoiThoai={data}
+          actor={actor}
+          tenPhong={tenPhong}
+          dangNhanViec={dangNhanViec.isPending}
+          dangDoiNguoi={dangDoiNguoi.isPending}
+          onNhanViec={() => dangNhanViec.mutate()}
+          onDoiNguoi={(id) => dangDoiNguoi.mutate(id)}
+          onMoXacNhanDong={() => {
+            setLoiHanhDong(null);
+            setMoXacNhanDong(true);
+          }}
+          onMoPhanPhong={() => {
+            setLoiHanhDong(null);
+            setMoDialogPhan(true);
+          }}
+        />
 
-      {loiHanhDong && (
-        <p
-          role="alert"
-          className="mx-4 mt-2 rounded-lg border border-danger-border bg-danger-bg px-3.5 py-2 text-xs text-danger-fg"
-        >
-          {loiHanhDong}
-        </p>
-      )}
+        {loiHanhDong && !moDialogPhan && !moXacNhanDong && <ThongBaoLoi>{loiHanhDong}</ThongBaoLoi>}
 
-      <DanhSachTin
-        messages={data.messages}
-        conCuHon={conCuHon}
-        dangTaiThem={taiThem.isPending}
-        onTaiThem={() => taiThem.mutate()}
-      />
+        <DanhSachTin
+          messages={data.messages}
+          events={data.events ?? []}
+          conCuHon={conCuHon}
+          dangTaiThem={taiThem.isPending}
+          onTaiThem={() => taiThem.mutate()}
+        />
 
-      {loiGui && (
-        <p
-          role="alert"
-          className="mx-4 mb-2 rounded-lg border border-danger-border bg-danger-bg px-3.5 py-2 text-xs text-danger-fg"
-        >
-          {loiGui}
-        </p>
-      )}
+        {loiGui && <ThongBaoLoi>{loiGui}</ThongBaoLoi>}
 
-      <OSoanTin
-        status={data.status}
-        dangGui={guiTraLoi.isPending}
-        onGui={async (text, tep) => {
-          // `mutateAsync` ném lại lỗi → OSoanTin giữ nguyên chữ và ảnh (IT-5).
-          await guiTraLoi.mutateAsync({ text, tep });
-        }}
-      />
+        <OSoanTin
+          status={data.status}
+          dangGui={guiTraLoi.isPending}
+          onGui={async (text, tep) => {
+            // `mutateAsync` ném lại lỗi → OSoanTin giữ nguyên chữ và ảnh (IT-5).
+            await guiTraLoi.mutateAsync({ text, tep });
+          }}
+        />
+      </section>
+
+      <PanelKhach hoiThoai={data} tenPhong={tenPhong} />
 
       {moDialogPhan && actor && (
         <DialogPhanPhong
@@ -260,28 +282,53 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
           onXacNhan={(departmentId) => dangPhan.mutate(departmentId)}
         />
       )}
-    </section>
+
+      {moXacNhanDong && (
+        <HopXacNhan
+          tieuDe="Đóng hội thoại?"
+          moTa={`Hội thoại với ${tenKhach(data.customer_display_name)} sẽ chuyển sang Đã đóng và không gửi thêm tin được. Khách nhắn lại sẽ mở hội thoại mới.`}
+          nhanXacNhan={t("hanhDong.dong")}
+          dangChay={dangDong.isPending}
+          loi={loiHanhDong}
+          onDong={() => setMoXacNhanDong(false)}
+          onXacNhan={() => dangDong.mutate()}
+        />
+      )}
+    </div>
+  );
+}
+
+function ThongBaoLoi({ children }: { children: React.ReactNode }) {
+  return (
+    <p role="alert" className="mx-4 mt-2 rounded-nb border-2 border-bad bg-bad-bg px-3.5 py-2 text-sm font-semibold text-bad">
+      {children}
+    </p>
   );
 }
 
 function HeaderHoiThoai({
   hoiThoai,
   actor,
+  tenPhong,
   dangNhanViec,
-  dangDong,
+  dangDoiNguoi,
   onNhanViec,
-  onDong,
+  onDoiNguoi,
+  onMoXacNhanDong,
   onMoPhanPhong,
 }: {
   hoiThoai: Conversation;
   actor: Actor | null;
+  tenPhong: string | null;
   dangNhanViec: boolean;
-  dangDong: boolean;
+  dangDoiNguoi: boolean;
   onNhanViec: () => void;
-  onDong: () => void;
+  onDoiNguoi: (userId: string | null) => void;
+  onMoXacNhanDong: () => void;
   onMoPhanPhong: () => void;
 }) {
-  const ten = tenKhach(hoiThoai.customer_display_name);
+  const bayGio = useBayGio();
+  const cho = phutCho(hoiThoai.waiting_since, bayGio);
 
   // Ẩn/hiện chỉ để UX gọn; server vẫn là trọng tài cuối (RB-3).
   const coNhanViec = actor ? hienNhanViec(actor, hoiThoai) : false;
@@ -289,72 +336,131 @@ function HeaderHoiThoai({
   const coPhanPhong = actor ? hienPhanPhong(actor, hoiThoai) : false;
 
   return (
-    <header className="flex items-center gap-3 border-b border-border-subtle bg-white px-4 py-3">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface text-sm font-semibold text-muted">
-        {chuCaiDau(hoiThoai.customer_display_name)}
-      </div>
+    <header className="flex items-center gap-3 border-b-2 border-ink bg-card px-5 py-3">
+      <Avatar id={hoiThoai.customer_id} ten={hoiThoai.customer_display_name} />
 
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="truncate text-sm font-semibold text-foreground">{ten}</h2>
-          <BadgeKenh platform={hoiThoai.platform} />
-          <BadgeTrangThai status={hoiThoai.status} />
+        <div className="flex items-center gap-2">
+          <h2 className="truncate text-lg font-extrabold text-ink">
+            {tenKhach(hoiThoai.customer_display_name)}
+          </h2>
+          {cho !== null && (
+            <HuyHieu tong={laChoLau(cho) ? "bad" : "trung"}>
+              <Clock aria-hidden className="size-3" strokeWidth={2.5} />
+              {nhanCho(cho)}
+            </HuyHieu>
+          )}
+          {hoiThoai.status === "DA_DONG" && <HuyHieu>Đã đóng</HuyHieu>}
         </div>
-        <p className="mt-0.5 text-xs text-muted">
-          {hoiThoai.department_id ? t("chat.daPhanPhong") : t("chat.chuaPhanPhong")}
-          {" · "}
-          {hoiThoai.assigned_user_id ? t("chat.dangXuLy") : t("chat.chuaCoNguoiXuLy")}
+        <p className="mt-0.5 flex items-center gap-1.5 text-sm text-ink-2">
+          <IconKenh kenh={hoiThoai.platform} co={14} />
+          {NHAN_KENH[hoiThoai.platform]}
+          <span aria-hidden>·</span>
+          {tenPhong ?? <span className="font-semibold text-wait">Chờ phân phòng</span>}
         </p>
       </div>
 
-      <div className="flex shrink-0 gap-2">
-        {coPhanPhong && (
-          <button
-            type="button"
-            onClick={onMoPhanPhong}
-            className="rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-white transition hover:brightness-95"
-          >
-            {t("hanhDong.phanPhong")}
-          </button>
-        )}
+      <ONguoiPhuTrach
+        hoiThoai={hoiThoai}
+        choDoi={actor ? hienDoiNguoiPhuTrach(actor, hoiThoai) : false}
+        dangDoi={dangDoiNguoi}
+        onDoi={onDoiNguoi}
+      />
 
-        {coNhanViec && (
-          <button
-            type="button"
-            onClick={onNhanViec}
-            disabled={dangNhanViec}
-            className="rounded-lg border border-border-subtle px-3.5 py-2 text-sm font-medium text-foreground transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {dangNhanViec ? t("hanhDong.dangNhan") : t("hanhDong.nhanViec")}
-          </button>
-        )}
-
-        {coDong && (
-          <button
-            type="button"
-            onClick={onDong}
-            disabled={dangDong}
-            className="rounded-lg border border-border-subtle px-3.5 py-2 text-sm font-medium text-foreground transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {dangDong ? t("hanhDong.dangDong") : t("hanhDong.dong")}
-          </button>
-        )}
-      </div>
+      {coPhanPhong && <Nut onClick={onMoPhanPhong}>{t("hanhDong.phanPhong")}</Nut>}
+      {coNhanViec && (
+        <Nut onClick={onNhanViec} dangChay={dangNhanViec}>
+          {dangNhanViec ? t("hanhDong.dangNhan") : t("hanhDong.nhanViec")}
+        </Nut>
+      )}
+      <MenuHanhDong
+        nhan="Thao tác khác"
+        muc={[{ nhan: t("hanhDong.dong"), icon: CircleCheckBig, nguyHiem: true, an: !coDong, onChon: onMoXacNhanDong }]}
+      />
     </header>
+  );
+}
+
+/**
+ * Người phụ trách: Manager (phòng mình) / Admin có ô chọn đổi/gỡ; người khác chỉ
+ * thấy chữ. Danh sách người lấy từ `/users` — chỉ gọi khi có ô chọn (Staff bị 403).
+ */
+function ONguoiPhuTrach({
+  hoiThoai,
+  choDoi,
+  dangDoi,
+  onDoi,
+}: {
+  hoiThoai: Conversation;
+  choDoi: boolean;
+  dangDoi: boolean;
+  onDoi: (userId: string | null) => void;
+}) {
+  const phongId = hoiThoai.department_id;
+  const { data } = useQuery({
+    queryKey: khoaInbox.nguoiPhong(phongId ?? ""),
+    queryFn: ({ signal }) => layNguoiCuaPhong(phongId!, signal),
+    enabled: choDoi && phongId !== null,
+    staleTime: 60_000,
+  });
+
+  const hienTai = hoiThoai.assigned_user_id
+    ? { id: hoiThoai.assigned_user_id, ten: hoiThoai.assigned_user_name ?? DAU_GACH }
+    : null;
+
+  if (!choDoi) {
+    if (hoiThoai.status === "CHO_PHAN") return null;
+    return (
+      <p className="flex shrink-0 items-center gap-1.5 text-sm text-ink-2">
+        <UserRound aria-hidden className="size-4" />
+        Phụ trách:
+        <span className="font-bold text-ink">{hienTai?.ten ?? "Chưa ai nhận"}</span>
+      </p>
+    );
+  }
+
+  const tuyChon = tuyChonNguoiPhuTrach(
+    (data?.items ?? []).map((u) => ({ id: u.id, ten: u.full_name })),
+    hienTai,
+  );
+
+  return (
+    <label className="flex shrink-0 items-center gap-2 text-sm font-semibold text-ink-2">
+      Phụ trách
+      <OChon
+        value={hienTai?.id ?? ""}
+        disabled={dangDoi}
+        onChange={(e) => {
+          const moi = e.target.value || null;
+          if (moi !== (hienTai?.id ?? null)) onDoi(moi);
+        }}
+        className="w-52"
+      >
+        <option value="">{hienTai ? "— Gỡ người phụ trách —" : "— Chưa ai nhận —"}</option>
+        {tuyChon.map((n) => (
+          <option key={n.id} value={n.id}>
+            {n.ten}
+          </option>
+        ))}
+      </OChon>
+    </label>
   );
 }
 
 function DanhSachTin({
   messages,
+  events,
   conCuHon,
   dangTaiThem,
   onTaiThem,
 }: {
   messages: Message[];
+  events: ConversationEvent[];
   conCuHon: boolean;
   dangTaiThem: boolean;
   onTaiThem: () => void;
 }) {
+  const bayGio = useBayGio();
   const cuoiRef = useRef<HTMLDivElement>(null);
   const khungRef = useRef<HTMLDivElement>(null);
   // Chiều cao nội dung trước khi chèn tin cũ, để bù lại vị trí cuộn.
@@ -364,55 +470,79 @@ function DanhSachTin({
   useEffect(() => {
     const khung = khungRef.current;
     if (!khung) return;
-
     if (caoTruocRef.current !== null) {
-      // Vừa chèn tin CŨ vào đầu: dịch vị trí cuộn xuống đúng phần vừa thêm, để
-      // nội dung người dùng đang đọc đứng yên thay vì nhảy vọt lên.
+      // Vừa chèn tin CŨ vào đầu: giữ nguyên chỗ người dùng đang đọc.
       khung.scrollTop += khung.scrollHeight - caoTruocRef.current;
       caoTruocRef.current = null;
       return;
     }
-
-    // Tin MỚI ở cuối (hoặc lần mở đầu) → trôi xuống đáy.
-    const idCuoi = messages[messages.length - 1]?.id ?? null;
+    // Tin/dòng MỚI ở cuối (hoặc lần mở đầu) → trôi xuống đáy.
+    const idCuoi = `${messages[messages.length - 1]?.id}:${events.length}`;
     if (idCuoi !== idCuoiRef.current) {
       idCuoiRef.current = idCuoi;
       cuoiRef.current?.scrollIntoView({ block: "end" });
     }
-  }, [messages]);
+  }, [messages, events]);
 
-  function taiThem() {
-    // Ghi lại chiều cao TRƯỚC khi dữ liệu đổi; effect ở trên dùng nó để bù.
-    caoTruocRef.current = khungRef.current?.scrollHeight ?? null;
-    onTaiThem();
-  }
-
-  if (messages.length === 0) {
+  if (messages.length === 0 && events.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center px-6">
-        <p className="text-xs text-muted">{t("chat.chuaCoTin")}</p>
+        <p className="text-sm text-ink-2">{t("chat.chuaCoTin")}</p>
       </div>
     );
   }
 
+  // Tin cũ chưa tải hết thì dòng hệ thống cũ hơn tin cũ nhất cũng chưa nên hiện
+  // (sẽ lơ lửng trước khoảng trống). Lọc theo mốc tin cũ nhất đang có.
+  const mocCuNhat = conCuHon && messages[0] ? Date.parse(messages[0].created_at) : -Infinity;
+  const dong = dungDongChat(
+    messages,
+    events.filter((e) => Date.parse(e.created_at) >= mocCuNhat),
+    bayGio,
+  );
+
   return (
-    <div ref={khungRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
+    <div ref={khungRef} className="min-h-0 flex-1 overflow-y-auto px-5 pb-4 pt-2">
       {conCuHon && (
-        <div className="flex justify-center pb-1">
-          <button
-            type="button"
-            onClick={taiThem}
-            disabled={dangTaiThem}
-            className="rounded-full border border-border-subtle bg-white px-3 py-1 text-xs font-medium text-muted transition hover:bg-surface disabled:opacity-60"
+        <div className="flex justify-center pt-2">
+          <Nut
+            bienThe="phu"
+            co="sm"
+            dangChay={dangTaiThem}
+            onClick={() => {
+              caoTruocRef.current = khungRef.current?.scrollHeight ?? null;
+              onTaiThem();
+            }}
           >
             {dangTaiThem ? t("chung.dangTai") : t("chat.xemTinCu")}
-          </button>
+          </Nut>
         </div>
       )}
 
-      {messages.map((m) => (
-        <BongBongTin key={m.id} message={m} />
-      ))}
+      {dong.map((d) => {
+        if (d.loai === "ngay") {
+          return (
+            <div key={d.khoa} role="separator" className="mt-5 mb-1 flex items-center gap-3 text-xs font-bold text-ink-2">
+              <span className="h-0.5 flex-1 bg-line" />
+              {d.nhan}
+              <span className="h-0.5 flex-1 bg-line" />
+            </div>
+          );
+        }
+        if (d.loai === "su-kien") {
+          return (
+            <p key={d.khoa} className="mt-3 flex items-center justify-center gap-1.5 text-xs text-ink-2">
+              <UserRound aria-hidden className="size-3.5" />
+              <span className="font-semibold text-ink">{d.noiDung}</span>
+              <span aria-hidden>·</span>
+              <time dateTime={d.luc}>
+                {gioPhut(d.luc)}
+              </time>
+            </p>
+          );
+        }
+        return <BongBongTin key={d.khoa} message={d.tin} dauNhom={d.dauNhom} cuoiNhom={d.cuoiNhom} />;
+      })}
       <div ref={cuoiRef} />
     </div>
   );

@@ -331,3 +331,31 @@ class TestGuiKemAnh:
             )
 
         assert bc.adapter.sent == []
+
+
+class TestTraLoiDanhDauDaDoc:
+    """BE-1: người vừa trả lời coi như đã đọc — backend tự ghi, không trông vào FE."""
+
+    async def test_tra_loi_xong_nguoi_tra_loi_da_doc_toi_luc_gui(self) -> None:
+        from tests.unit.inbox.fakes import FakeReadRepository
+
+        bc = _BoiCanh()
+        await bc.seed()
+        doc = FakeReadRepository()
+        uc = ReplyToConversation(
+            conversation_repo=bc.conversation_repo,
+            channel_repo=bc.channel_repo,
+            customer_repo=bc.customer_repo,
+            message_repo=bc.message_repo,
+            adapters=FakeChannelAdapterRegistry([bc.adapter]),
+            cipher=FakeCredentialCipher(),
+            attachment_store=bc.store,
+            notifier=bc.notifier,
+            clock=bc.clock,
+            read_repo=doc,
+        )
+        nv = _nhan_vien()
+
+        await uc.execute(nv, bc.conversation.id, MessageContent(text="da xu ly"))
+
+        assert doc.da_doc == [(nv.user_id, bc.conversation.id, BAY_GIO)]

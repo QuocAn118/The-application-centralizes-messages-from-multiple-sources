@@ -641,3 +641,77 @@ async def test_hai_khach_cung_message_id_khong_bi_coi_la_trung(
     items = inbox.json()["items"]
     # Hai khách → hai hội thoại riêng, không bị idempotency gộp.
     assert len(items) == 2
+
+
+async def test_giao_doi_go_nguoi_phu_trach(client_inbox: AsyncClient, engine: AsyncEngine) -> None:
+    """BE-2 qua HTTP: giao → đổi → gỡ; timeline + tên người; assignment_log chỉ
+    ghi cho giao/đổi; Staff bị 403; đổi sang chính người đang phụ trách bị từ chối."""
+    await _tao_admin(engine)
+    admin = await _dang_nhap_admin(client_inbox)
+    phong = (
+        await client_inbox.post(
+            "/api/v1/departments",
+            json={"name": "Phong G", "description": None},
+            headers=_bearer(admin),
+        )
+    ).json()["id"]
+    manager = await _tao_nhan_vien(client_inbox, admin, "mg@congty.vn", "MANAGER", phong)
+    tok_a = await _tao_nhan_vien(client_inbox, admin, "a@congty.vn", "STAFF", phong)
+    tok_b = await _tao_nhan_vien(client_inbox, admin, "b@congty.vn", "STAFF", phong)
+    id_a = (await client_inbox.get("/api/v1/auth/me", headers=_bearer(tok_a))).json()["id"]
+    id_b = (await client_inbox.get("/api/v1/auth/me", headers=_bearer(tok_b))).json()["id"]
+
+    await client_inbox.post(
+        "/api/v1/channels",
+        json={
+            "platform": "ZALO",
+            "external_channel_id": "oa_700",
+            "name": "OA",
+            "credential": "t",
+            "department_id": phong,
+        },
+        headers=_bearer(admin),
+    )
+    raw = _webhook_zalo("oa_700", "k1", "m1", "hi")
+    await client_inbox.post(
+        "/api/v1/webhooks/ZALO", content=raw, headers={"X-ZEvent-Signature": _ky_zalo(raw)}
+    )
+    conv = (await client_inbox.get("/api/v1/inbox", headers=_bearer(manager))).json()["items"][0]
+    url = f"/api/v1/inbox/{conv['conversation_id']}/assign-user"
+    # Hội thoại có thể đã được #3 tự giao (có người trong ca) — gỡ trước cho chắc.
+    if conv["assigned_user_id"] is not None:
+        await client_inbox.post(url, json={"user_id": None}, headers=_bearer(manager))
+
+    async def so_log() -> int:
+        async with engine.connect() as c:
+            return (
+                await c.execute(
+                    text("SELECT count(*) FROM assignment_log WHERE conversation_id = :c"),
+                    {"c": conv["conversation_id"]},
+                )
+            ).scalar_one()
+
+    log_truoc = await so_log()
+
+    assert (
+        await client_inbox.post(url, json={"user_id": id_a}, headers=_bearer(tok_a))
+    ).status_code == 403
+
+    giao = await client_inbox.post(url, json={"user_id": id_a}, headers=_bearer(manager))
+    assert giao.status_code == 200, giao.text
+    assert giao.json()["assigned_user_id"] == id_a
+    assert giao.json()["assigned_user_name"] == "NV"
+
+    trung = await client_inbox.post(url, json={"user_id": id_a}, headers=_bearer(manager))
+    assert trung.status_code in (409, 422)
+
+    doi = await client_inbox.post(url, json={"user_id": id_b}, headers=_bearer(admin))
+    assert doi.json()["assigned_user_id"] == id_b
+
+    go = await client_inbox.post(url, json={"user_id": None}, headers=_bearer(manager))
+    assert go.json()["assigned_user_id"] is None
+    kinds = [e["kind"] for e in go.json()["events"]]
+    assert kinds[-3:] == ["ASSIGNED", "REASSIGNED", "UNASSIGNED"]
+    assert go.json()["events"][-1]["from_name"] == "NV"
+
+    assert await so_log() == log_truoc + 2  # giao + đổi; gỡ không ghi

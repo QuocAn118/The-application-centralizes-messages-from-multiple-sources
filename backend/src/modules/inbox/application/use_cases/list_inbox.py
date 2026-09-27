@@ -8,11 +8,14 @@ Bộ lọc phạm vi được ép ở đây, người gọi không tự nới r�
 """
 
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from src.modules.inbox.application.actor import ActorRole, InboxActor
 from src.modules.inbox.application.dto.inbox_dto import InboxItem, Page
 from src.modules.inbox.domain.entities.conversation import Conversation, ConversationStatus
+from src.modules.inbox.domain.ports import IWorkforceDirectory
 from src.modules.inbox.domain.repositories.channel_repository import IChannelRepository
 from src.modules.inbox.domain.repositories.conversation_repository import (
     IConversationRepository,
@@ -23,6 +26,9 @@ from src.modules.inbox.domain.repositories.customer_repository import (
 from src.modules.inbox.domain.repositories.message_repository import IMessageRepository
 
 GIOI_HAN_TOI_DA = 100
+
+# Lọc theo người phụ trách (BE-3): "me" = của tôi, "none" = chưa ai nhận.
+LocNguoiPhuTrach = Literal["me", "none"]
 
 # Dòng preview chỉ hiện một dòng trên giao diện; cắt ở đây để không đẩy cả tin
 # 8000 ký tự qua mạng cho mỗi dòng danh sách.
@@ -66,10 +72,13 @@ class ListInbox:
         customer_repo: ICustomerRepository,
         channel_repo: IChannelRepository,
         message_repo: IMessageRepository | None = None,
+        directory: IWorkforceDirectory | None = None,
     ) -> None:
         self._conversation_repo = conversation_repo
         self._customer_repo = customer_repo
         self._channel_repo = channel_repo
+        # BE-2: tra tên người phụ trách theo lô. Tuỳ chọn cho nơi gọi cũ.
+        self._directory = directory
         # Tuỳ chọn: không có thì danh sách vẫn chạy, chỉ thiếu dòng preview.
         self._message_repo = message_repo
 
@@ -80,14 +89,20 @@ class ListInbox:
         limit: int = 50,
         offset: int = 0,
         q: str | None = None,
+        assignee: LocNguoiPhuTrach | None = None,
     ) -> Page[InboxItem]:
-        """``q`` lọc thêm theo tên khách hiển thị; phạm vi quyền vẫn được ép trước."""
+        """``q`` lọc theo tên khách; ``assignee`` lọc theo người phụ trách (BE-3).
+
+        Cả hai CHỒNG lên phạm vi quyền đã ép trước — không nới rộng được.
+        """
         pv = pham_vi_cua(actor)
         gioi_han = min(max(limit, 1), GIOI_HAN_TOI_DA)
         vi_tri = max(offset, 0)
         # Chuỗi rỗng/toàn khoảng trắng coi như không tìm kiếm, để ô tìm kiếm bị
         # xoá trắng không biến thành bộ lọc không khớp gì.
         tu_khoa = q.strip() if q and q.strip() else None
+        giao_cho = actor.user_id if assignee == "me" else None
+        chua_ai_nhan = assignee == "none"
 
         conversations = await self._conversation_repo.list_for_scope(
             department_ids=pv.department_ids,
@@ -96,12 +111,16 @@ class ListInbox:
             limit=gioi_han,
             offset=vi_tri,
             q=tu_khoa,
+            assigned_to=giao_cho,
+            unassigned=chua_ai_nhan,
         )
         tong = await self._conversation_repo.count_for_scope(
             department_ids=pv.department_ids,
             include_awaiting=pv.include_awaiting,
             status=status,
             q=tu_khoa,
+            assigned_to=giao_cho,
+            unassigned=chua_ai_nhan,
         )
         # Một truy vấn lấy preview cho cả trang, trước khi dựng từng dòng —
         # hỏi trong vòng lặp sẽ thành N+1 truy vấn.
@@ -111,10 +130,40 @@ class ListInbox:
                 [c.id for c in conversations]
             )
 
-        items = [await self._to_item(c, preview.get(c.id)) for c in conversations]
+        # BE-1/BE-9: cũng một truy vấn cho cả trang mỗi loại. Hội thoại đã đóng
+        # không bao giờ "chưa đọc" hay "đang chờ" — đã xử lý xong, không làm nhiễu.
+        chua_doc: dict[UUID, int] = {}
+        cho_tu: dict[UUID, datetime] = {}
+        con_mo = [c.id for c in conversations if c.status is not ConversationStatus.DA_DONG]
+        if self._message_repo is not None and con_mo:
+            chua_doc = await self._message_repo.unread_counts(actor.user_id, con_mo)
+            cho_tu = await self._message_repo.waiting_since(con_mo)
+
+        ten: dict[UUID, str] = {}
+        nguoi = [c.assigned_user_id for c in conversations if c.assigned_user_id is not None]
+        if self._directory is not None and nguoi:
+            ten = await self._directory.get_names(nguoi)
+
+        items = [
+            await self._to_item(
+                c,
+                preview.get(c.id),
+                chua_doc.get(c.id, 0),
+                cho_tu.get(c.id),
+                ten.get(c.assigned_user_id) if c.assigned_user_id else None,
+            )
+            for c in conversations
+        ]
         return Page(items=items, total=tong, limit=gioi_han, offset=vi_tri)
 
-    async def _to_item(self, conversation: Conversation, preview: str | None = None) -> InboxItem:
+    async def _to_item(
+        self,
+        conversation: Conversation,
+        preview: str | None = None,
+        unread_count: int = 0,
+        waiting_since: datetime | None = None,
+        assigned_user_name: str | None = None,
+    ) -> InboxItem:
         channel = await self._channel_repo.get_by_id(conversation.channel_id)
         customer = await self._customer_repo.get_by_id(conversation.customer_id)
         if channel is None or customer is None:  # pragma: no cover - dữ liệu luôn nhất quán
@@ -130,4 +179,7 @@ class ListInbox:
             assigned_user_id=conversation.assigned_user_id,
             last_message_at=conversation.last_message_at,
             last_message_preview=_rut_gon(preview),
+            unread_count=unread_count,
+            waiting_since=waiting_since,
+            assigned_user_name=assigned_user_name,
         )

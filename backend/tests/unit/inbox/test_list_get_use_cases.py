@@ -269,3 +269,153 @@ class TestGetConversation:
 
         with pytest.raises(NotFoundError):
             await kho.get_uc().execute(admin, new_id())
+
+
+class TestListLocNguoiPhuTrach:
+    """BE-3 (redesign Phần 2a): lọc "Của tôi" / "Chưa ai nhận".
+
+    Lọc CHỒNG lên phạm vi theo vai — không bao giờ nới rộng. Ca dễ sót nhất:
+    hội thoại phòng khác vẫn đang gán cho người này (vd. họ vừa chuyển phòng).
+    """
+
+    async def test_cua_toi_chi_tra_hoi_thoai_gan_cho_minh(self) -> None:
+        kho = _KhoDuLieu()
+        staff = InboxActor(user_id=new_id(), role=ActorRole.STAFF, department_id=PHONG_A)
+        ht_cua_toi = kho._them(PHONG_A)
+        ht_cua_toi.assign_to_agent(staff.user_id, BAY_GIO)
+        ht_nguoi_khac = kho._them(PHONG_A)
+        ht_nguoi_khac.assign_to_agent(new_id(), BAY_GIO)
+
+        page = await kho.list_uc().execute(staff, assignee="me")
+
+        assert {i.conversation_id for i in page.items} == {ht_cua_toi.id}
+        assert page.total == 1
+
+    async def test_chua_ai_nhan_chi_tra_hoi_thoai_trong(self) -> None:
+        kho = _KhoDuLieu()
+        manager = InboxActor(user_id=new_id(), role=ActorRole.MANAGER, department_id=PHONG_A)
+        ht_da_nhan = kho._them(PHONG_A)
+        ht_da_nhan.assign_to_agent(new_id(), BAY_GIO)
+
+        page = await kho.list_uc().execute(manager, assignee="none")
+
+        ids = {i.conversation_id for i in page.items}
+        # ht_a (chưa ai nhận) + ht_cho (chờ phân, chưa ai nhận) — KHÔNG có ht_da_nhan.
+        assert ids == {kho.ht_a.id, kho.ht_cho.id}
+        assert page.total == 2
+
+    async def test_cua_toi_khong_noi_rong_pham_vi(self) -> None:
+        """Hội thoại phòng B vẫn gán cho staff (đã chuyển sang phòng A) — không lộ."""
+        kho = _KhoDuLieu()
+        staff = InboxActor(user_id=new_id(), role=ActorRole.STAFF, department_id=PHONG_A)
+        ht_phong_cu = kho._them(PHONG_B)
+        ht_phong_cu.assign_to_agent(staff.user_id, BAY_GIO)
+
+        page = await kho.list_uc().execute(staff, assignee="me")
+
+        assert ht_phong_cu.id not in {i.conversation_id for i in page.items}
+        assert page.total == 0
+
+    async def test_ket_hop_voi_trang_thai(self) -> None:
+        kho = _KhoDuLieu()
+        admin = InboxActor(user_id=new_id(), role=ActorRole.ADMIN, department_id=None)
+
+        page = await kho.list_uc().execute(admin, assignee="none", status=kho.ht_cho.status)
+
+        assert {i.conversation_id for i in page.items} == {kho.ht_cho.id}
+
+    async def test_khong_truyen_thi_nhu_cu(self) -> None:
+        kho = _KhoDuLieu()
+        admin = InboxActor(user_id=new_id(), role=ActorRole.ADMIN, department_id=None)
+        kho.ht_a.assign_to_agent(new_id(), BAY_GIO)
+
+        page = await kho.list_uc().execute(admin)
+
+        assert page.total == 3
+
+
+class TestTenNguoiVaTimeline:
+    """BE-2: tên người do backend trả (Staff bị 403 ở /users) + dòng hệ thống."""
+
+    async def test_danh_sach_co_ten_nguoi_phu_trach(self) -> None:
+        from src.modules.inbox.domain.ports import AgentInfo
+        from tests.unit.inbox.fakes import FakeWorkforceDirectory
+
+        kho = _KhoDuLieu()
+        b = new_id()
+        kho.ht_a.assign_to_agent(b, BAY_GIO)
+        thu_muc = FakeWorkforceDirectory(
+            [
+                AgentInfo(
+                    user_id=b,
+                    department_id=PHONG_A,
+                    role="STAFF",
+                    is_active=True,
+                    full_name="Trần Thị Bích",
+                ),
+            ]
+        )
+        uc = ListInbox(
+            kho.conversation_repo,
+            kho.customer_repo,
+            kho.channel_repo,
+            kho.message_repo,
+            directory=thu_muc,
+        )
+        staff = InboxActor(user_id=new_id(), role=ActorRole.STAFF, department_id=PHONG_A)
+
+        page = await uc.execute(staff)
+
+        assert page.items[0].assigned_user_name == "Trần Thị Bích"
+
+    async def test_chi_tiet_co_timeline_ten_va_id_nen_tang(self) -> None:
+        from src.modules.inbox.domain.entities.conversation_event import (
+            ConversationEvent,
+            ConversationEventKind,
+        )
+        from src.modules.inbox.domain.ports import AgentInfo
+        from tests.unit.inbox.fakes import (
+            FakeConversationEventRepository,
+            FakeWorkforceDirectory,
+        )
+
+        kho = _KhoDuLieu()
+        a, b = new_id(), new_id()
+        kho.ht_a.assign_to_agent(b, BAY_GIO)
+        su_kien = FakeConversationEventRepository()
+        await su_kien.add(
+            ConversationEvent.ghi(
+                kho.ht_a.id,
+                ConversationEventKind.REASSIGNED,
+                BAY_GIO,
+                actor_user_id=None,
+                from_user_id=a,
+                to_user_id=b,
+            )
+        )
+        thu_muc = FakeWorkforceDirectory(
+            [
+                AgentInfo(
+                    user_id=a, department_id=PHONG_A, role="STAFF", is_active=True, full_name="An"
+                ),
+                AgentInfo(
+                    user_id=b, department_id=PHONG_A, role="STAFF", is_active=True, full_name="Bình"
+                ),
+            ]
+        )
+        uc = GetConversation(
+            kho.conversation_repo,
+            kho.message_repo,
+            kho.channel_repo,
+            kho.customer_repo,
+            event_repo=su_kien,
+            directory=thu_muc,
+        )
+        staff = InboxActor(user_id=new_id(), role=ActorRole.STAFF, department_id=PHONG_A)
+
+        v = await uc.execute(staff, kho.ht_a.id)
+
+        assert v.assigned_user_name == "Bình"
+        assert v.customer_external_id.startswith("c_")
+        (e,) = v.events
+        assert (e.kind, e.actor_name, e.from_name, e.to_name) == ("REASSIGNED", None, "An", "Bình")

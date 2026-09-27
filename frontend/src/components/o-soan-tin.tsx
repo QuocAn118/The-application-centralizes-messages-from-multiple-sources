@@ -12,7 +12,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { t } from "@/lib/i18n";
+import { Info, Paperclip, SendHorizontal, X } from "lucide-react";
 import type { ConversationStatus } from "@/lib/types";
+import { Nut } from "./ui/nut";
+import { NutIcon } from "./ui/nut-icon";
 
 /** Giới hạn của `ReplyRequest` phía backend. */
 export const DAI_TOI_DA = 8000;
@@ -125,29 +128,17 @@ export function OSoanTin({
 
   if (khoa) {
     return (
-      <div className="border-t border-border-subtle bg-white px-4 py-3">
-        <p className="mb-2 flex items-center gap-1.5 text-xs text-muted">
-          <IconThongTin />
+      <div className="border-t-2 border-ink bg-card px-4 py-3">
+        <p className="flex items-center gap-2 rounded-nb border-2 border-dashed border-ink-2 bg-sunken px-3.5 py-3 text-sm font-semibold text-ink-2">
+          <Info aria-hidden className="size-4 shrink-0" strokeWidth={2.5} />
           {khoa}
         </p>
-        <div className="flex gap-2">
-          <div className="flex-1 cursor-not-allowed rounded-lg bg-da-dong-bg px-3.5 py-2.5 text-sm text-muted-soft">
-            {t("soan.khongTheNhap")}
-          </div>
-          <button
-            type="button"
-            disabled
-            className="cursor-not-allowed rounded-lg bg-da-dong-bg px-4 text-sm font-semibold text-muted-soft"
-          >
-            {t("soan.gui")}
-          </button>
-        </div>
       </div>
     );
   }
 
   return (
-    <div className="border-t border-border-subtle bg-white px-4 py-3">
+    <div className="border-t-2 border-ink bg-card px-4 pb-2 pt-3">
       {anh.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2">
           {anh.map((a) => (
@@ -156,17 +147,15 @@ export function OSoanTin({
               <img
                 src={a.xemTruoc}
                 alt={a.file.name}
-                className="h-16 w-16 rounded-md border border-border-subtle object-cover"
+                className="size-16 rounded-nb border-2 border-ink object-cover"
               />
               <button
                 type="button"
                 onClick={() => boAnh(a.xemTruoc)}
                 aria-label={`Bỏ ảnh ${a.file.name}`}
-                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-white transition hover:brightness-125"
+                className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full border-2 border-ink bg-card text-ink hover:bg-bad hover:text-white"
               >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden>
-                  <path d="M18 6 6 18M6 6l12 12" />
-                </svg>
+                <X aria-hidden className="size-3.5" strokeWidth={3} />
               </button>
             </div>
           ))}
@@ -174,7 +163,7 @@ export function OSoanTin({
       )}
 
       {loiTep && (
-        <p role="alert" className="mb-2 text-xs text-danger-fg">
+        <p role="alert" className="mb-2 text-xs font-semibold text-bad">
           {loiTep}
         </p>
       )}
@@ -188,16 +177,12 @@ export function OSoanTin({
           hidden
           onChange={(e) => chonAnh(e.target.files)}
         />
-        <button
-          type="button"
+        <NutIcon
+          icon={Paperclip}
+          nhan={t("soan.dinhKemAnh")}
           onClick={() => oTepRef.current?.click()}
           disabled={dangGui}
-          aria-label={t("soan.dinhKemAnh")}
-          title={t("soan.dinhKemAnh")}
-          className="mb-1.5 text-muted-soft transition hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <IconGhim />
-        </button>
+        />
 
         <textarea
           ref={oRef}
@@ -209,41 +194,25 @@ export function OSoanTin({
           onKeyDown={xuLyPhim}
           placeholder={t("soan.nhapNoiDung")}
           aria-label={t("soan.nhan")}
-          className="flex-1 resize-none rounded-lg border border-border-subtle px-3.5 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-surface"
+          aria-describedby="goi-y-phim-soan"
+          className="min-h-10 flex-1 resize-none rounded-nb border-2 border-ink bg-card px-3.5 py-2 text-sm text-ink placeholder:text-ink-2 disabled:bg-sunken"
         />
 
-        <button
-          type="button"
-          onClick={() => void gui()}
-          disabled={trong || dangGui}
-          className="mb-0.5 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        <Nut icon={SendHorizontal} onClick={() => void gui()} disabled={trong || dangGui}>
           {dangGui ? t("soan.dangGui") : t("soan.gui")}
-        </button>
+        </Nut>
       </div>
 
-      {noiDung.length > DAI_TOI_DA - 500 && (
-        <p className="mt-1 text-right text-xs text-muted-soft">
-          {noiDung.length}/{DAI_TOI_DA}
-        </p>
-      )}
+      <div className="mt-1.5 flex justify-between text-xs text-ink-2">
+        <span id="goi-y-phim-soan">
+          <kbd className="font-sans font-bold">Enter</kbd> để gửi · <kbd className="font-sans font-bold">Shift+Enter</kbd> xuống dòng
+        </span>
+        {noiDung.length > DAI_TOI_DA - 500 && (
+          <span>
+            {noiDung.length}/{DAI_TOI_DA}
+          </span>
+        )}
+      </div>
     </div>
-  );
-}
-
-function IconThongTin() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 16v-4M12 8h.01" />
-    </svg>
-  );
-}
-
-function IconGhim() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-    </svg>
   );
 }

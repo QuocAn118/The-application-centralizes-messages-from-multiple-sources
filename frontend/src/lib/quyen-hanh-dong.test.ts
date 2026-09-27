@@ -8,11 +8,13 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  hienDoiNguoiPhuTrach,
   hienDong,
   hienNhanViec,
   hienPhanPhong,
   phongCoTheChon,
   trongPhamVi,
+  tuyChonNguoiPhuTrach,
   type Actor,
 } from "./quyen-hanh-dong";
 import type { Conversation } from "./types";
@@ -37,6 +39,11 @@ function hoiThoai(ghiDe: Partial<Conversation> = {}): Conversation {
     assigned_user_id: null,
     last_message_at: "2026-08-05T10:00:00Z",
     messages: [],
+    unread_count: 0,
+    waiting_since: null,
+    assigned_user_name: null,
+    customer_external_id: "ext1",
+    events: [],
     ...ghiDe,
   };
 }
@@ -131,5 +138,34 @@ describe("phongCoTheChon", () => {
 
   it("Staff không chọn được phòng nào", () => {
     expect(phongCoTheChon(staff, phongBan)).toHaveLength(0);
+  });
+});
+
+describe("hienDoiNguoiPhuTrach", () => {
+  it("Staff không có ô chọn", () => {
+    expect(hienDoiNguoiPhuTrach(staff, hoiThoai())).toBe(false);
+  });
+  it("Manager phòng mình có, phòng khác không", () => {
+    expect(hienDoiNguoiPhuTrach(manager, hoiThoai())).toBe(true);
+    expect(hienDoiNguoiPhuTrach(manager, hoiThoai({ department_id: PHONG_B }))).toBe(false);
+  });
+  it("Admin có, trừ khi hội thoại không DANG_MO", () => {
+    expect(hienDoiNguoiPhuTrach(admin, hoiThoai({ department_id: PHONG_B }))).toBe(true);
+    expect(hienDoiNguoiPhuTrach(admin, hoiThoai({ status: "DA_DONG" }))).toBe(false);
+  });
+});
+
+describe("tuyChonNguoiPhuTrach (Review Focus #4)", () => {
+  const phong = [{ id: "a", ten: "An" }, { id: "b", ten: "Bình" }];
+  it("người hiện tại còn trong phòng → giữ nguyên danh sách", () => {
+    expect(tuyChonNguoiPhuTrach(phong, { id: "a", ten: "An" })).toEqual(phong);
+  });
+  it("người hiện tại đã nghỉ / chuyển phòng → vẫn có trong ô chọn", () => {
+    const ra = tuyChonNguoiPhuTrach(phong, { id: AI_DO, ten: "Cường" });
+    expect(ra[0]).toEqual({ id: AI_DO, ten: "Cường (không còn trong phòng)" });
+    expect(ra).toHaveLength(3);
+  });
+  it("chưa ai phụ trách → danh sách phòng", () => {
+    expect(tuyChonNguoiPhuTrach(phong, null)).toEqual(phong);
   });
 });

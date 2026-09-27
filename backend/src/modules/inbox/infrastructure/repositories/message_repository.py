@@ -1,5 +1,6 @@
 """Repository tin nhắn và tệp đính kèm dùng SQLAlchemy."""
 
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -13,6 +14,9 @@ from src.modules.inbox.infrastructure.mappers.message_mapper import (
     MessageMapper,
 )
 from src.modules.inbox.infrastructure.models.attachment_model import AttachmentModel
+from src.modules.inbox.infrastructure.models.conversation_read_model import (
+    ConversationReadModel,
+)
 from src.modules.inbox.infrastructure.models.message_model import MessageModel
 
 
@@ -117,6 +121,68 @@ class SqlAlchemyMessageRepository:
         )
         ket_qua = await self._session.execute(cau)
         return {hang.conversation_id: hang.text for hang in ket_qua}
+
+    async def unread_counts(self, user_id: UUID, conversation_ids: list[UUID]) -> dict[UUID, int]:
+        """Số tin VÀO chưa đọc của MỘT người cho cả trang (BE-1). Chỉ trả khoá > 0.
+
+        Chưa đọc = tin vào có ``created_at > last_read_at`` của người đó; chưa có
+        dòng đọc nào = mọi tin vào đều chưa đọc. Một truy vấn cho cả trang, dùng
+        partial index ``ix_message_inbound_conv_created``.
+        """
+        if not conversation_ids:
+            return {}
+        doc = aliased(ConversationReadModel)
+        cau = (
+            select(MessageModel.conversation_id, func.count().label("so"))
+            .outerjoin(
+                doc,
+                (doc.conversation_id == MessageModel.conversation_id) & (doc.user_id == user_id),
+            )
+            .where(
+                MessageModel.conversation_id.in_(conversation_ids),
+                MessageModel.direction == "INBOUND",
+                (doc.last_read_at.is_(None)) | (MessageModel.created_at > doc.last_read_at),
+            )
+            .group_by(MessageModel.conversation_id)
+        )
+        ket_qua = await self._session.execute(cau)
+        return {hang.conversation_id: int(hang.so) for hang in ket_qua}
+
+    async def waiting_since(self, conversation_ids: list[UUID]) -> dict[UUID, datetime]:
+        """Khách đã chờ từ lúc nào (BE-9): tin VÀO ĐẦU TIÊN sau tin RA cuối cùng.
+
+        Không có khoá = không chờ (tin cuối là tin ra, hoặc chưa có tin vào). Khách
+        nhắn 3 tin liên tiếp thì tính từ tin thứ nhất — đó là lúc họ bắt đầu chờ.
+        """
+        if not conversation_ids:
+            return {}
+        ra_cuoi = (
+            select(
+                MessageModel.conversation_id.label("cid"),
+                func.max(MessageModel.created_at).label("luc"),
+            )
+            .where(
+                MessageModel.conversation_id.in_(conversation_ids),
+                MessageModel.direction == "OUTBOUND",
+            )
+            .group_by(MessageModel.conversation_id)
+            .subquery()
+        )
+        cau = (
+            select(
+                MessageModel.conversation_id,
+                func.min(MessageModel.created_at).label("tu_luc"),
+            )
+            .outerjoin(ra_cuoi, ra_cuoi.c.cid == MessageModel.conversation_id)
+            .where(
+                MessageModel.conversation_id.in_(conversation_ids),
+                MessageModel.direction == "INBOUND",
+                (ra_cuoi.c.luc.is_(None)) | (MessageModel.created_at > ra_cuoi.c.luc),
+            )
+            .group_by(MessageModel.conversation_id)
+        )
+        ket_qua = await self._session.execute(cau)
+        return {hang.conversation_id: hang.tu_luc for hang in ket_qua}
 
     async def get_attachment_with_conversation(
         self, attachment_id: UUID

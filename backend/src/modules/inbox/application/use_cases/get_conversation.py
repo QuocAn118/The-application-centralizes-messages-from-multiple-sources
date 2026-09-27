@@ -7,10 +7,16 @@ from src.modules.inbox.application.authorization import bao_dam_thao_tac
 from src.modules.inbox.application.dto.inbox_dto import (
     AttachmentView,
     ConversationView,
+    EventView,
     MessageView,
 )
+from src.modules.inbox.domain.entities.conversation import ConversationStatus
 from src.modules.inbox.domain.entities.message import Message
+from src.modules.inbox.domain.ports import IWorkforceDirectory
 from src.modules.inbox.domain.repositories.channel_repository import IChannelRepository
+from src.modules.inbox.domain.repositories.conversation_event_repository import (
+    IConversationEventRepository,
+)
 from src.modules.inbox.domain.repositories.conversation_repository import (
     IConversationRepository,
 )
@@ -32,11 +38,16 @@ class GetConversation:
         message_repo: IMessageRepository,
         channel_repo: IChannelRepository,
         customer_repo: ICustomerRepository,
+        event_repo: IConversationEventRepository | None = None,
+        directory: IWorkforceDirectory | None = None,
     ) -> None:
         self._conversation_repo = conversation_repo
         self._message_repo = message_repo
         self._channel_repo = channel_repo
         self._customer_repo = customer_repo
+        # BE-2: timeline dòng hệ thống + tên người. Tuỳ chọn cho nơi gọi cũ.
+        self._event_repo = event_repo
+        self._directory = directory
 
     async def execute(
         self,
@@ -64,6 +75,28 @@ class GetConversation:
             conversation.id, limit=gioi_han, offset=vi_tri, newest=newest
         )
         message_views = [await self._to_message_view(m) for m in messages]
+        cho_tu = None
+        if conversation.status is not ConversationStatus.DA_DONG:
+            cho_tu = (await self._message_repo.waiting_since([conversation.id])).get(
+                conversation.id
+            )
+
+        su_kien = (
+            await self._event_repo.list_for_conversation(conversation.id)
+            if self._event_repo is not None
+            else []
+        )
+        # Một lần tra tên cho người phụ trách + mọi người xuất hiện trong timeline.
+        can_ten = {conversation.assigned_user_id} | {
+            u for e in su_kien for u in (e.actor_user_id, e.from_user_id, e.to_user_id)
+        }
+        can_ten.discard(None)
+        ten: dict[UUID, str] = {}
+        if self._directory is not None and can_ten:
+            ten = await self._directory.get_names([u for u in can_ten if u is not None])
+
+        def _ten(u: UUID | None) -> str | None:
+            return ten.get(u) if u is not None else None
 
         return ConversationView(
             conversation_id=conversation.id,
@@ -76,6 +109,20 @@ class GetConversation:
             assigned_user_id=conversation.assigned_user_id,
             last_message_at=conversation.last_message_at,
             messages=tuple(message_views),
+            waiting_since=cho_tu,
+            assigned_user_name=_ten(conversation.assigned_user_id),
+            customer_external_id=customer.external_id,
+            events=tuple(
+                EventView(
+                    id=e.id,
+                    kind=e.kind.value,
+                    created_at=e.created_at,
+                    actor_name=_ten(e.actor_user_id),
+                    from_name=_ten(e.from_user_id),
+                    to_name=_ten(e.to_user_id),
+                )
+                for e in su_kien
+            ),
         )
 
     async def _to_message_view(self, message: Message) -> MessageView:

@@ -252,6 +252,50 @@ class TestScopeFiltering:
         assert ds[0].id == ht_cho.id
 
 
+class TestLocNguoiPhuTrach:
+    """BE-3 trên SQL thật: `assigned_to` / `unassigned` chồng lên phạm vi phòng."""
+
+    async def test_cua_toi_va_chua_ai_nhan(self, db_session: AsyncSession) -> None:
+        repo = SqlAlchemyConversationRepository(db_session)
+        phong = new_id()
+        toi, nguoi_khac = new_id(), new_id()
+        ch = await _kenh(db_session)
+        ht: dict[str, Conversation] = {}
+        for ten, nguoi in (("cua_toi", toi), ("khac", nguoi_khac), ("trong", None)):
+            cu = await _khach(db_session, ch.id)
+            cv = Conversation.start(
+                channel_id=ch.id, customer_id=cu.id, department_id=phong, now=BAY_GIO
+            )
+            if nguoi is not None:
+                cv.assign_to_agent(nguoi, BAY_GIO)
+            await repo.add(cv)
+            ht[ten] = cv
+        await db_session.flush()
+
+        cua_toi = await repo.list_for_scope([phong], False, assigned_to=toi)
+        assert {c.id for c in cua_toi} == {ht["cua_toi"].id}
+        assert await repo.count_for_scope([phong], False, assigned_to=toi) == 1
+
+        trong = await repo.list_for_scope([phong], False, unassigned=True)
+        assert {c.id for c in trong} == {ht["trong"].id}
+        assert await repo.count_for_scope([phong], False, unassigned=True) == 1
+
+    async def test_cua_toi_khong_vuot_pham_vi_phong(self, db_session: AsyncSession) -> None:
+        repo = SqlAlchemyConversationRepository(db_session)
+        phong_a, phong_b, toi = new_id(), new_id(), new_id()
+        ch = await _kenh(db_session)
+        cu = await _khach(db_session, ch.id)
+        o_phong_b = Conversation.start(
+            channel_id=ch.id, customer_id=cu.id, department_id=phong_b, now=BAY_GIO
+        )
+        o_phong_b.assign_to_agent(toi, BAY_GIO)
+        await repo.add(o_phong_b)
+        await db_session.flush()
+
+        assert await repo.list_for_scope([phong_a], False, assigned_to=toi) == []
+        assert await repo.count_for_scope([phong_a], False, assigned_to=toi) == 0
+
+
 class TestMessageRoundTrip:
     async def test_luu_tin_voi_dinh_kem(self, db_session: AsyncSession) -> None:
         repo = SqlAlchemyMessageRepository(db_session)

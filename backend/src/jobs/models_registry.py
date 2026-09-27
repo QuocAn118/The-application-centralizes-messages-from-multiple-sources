@@ -47,8 +47,14 @@ from src.modules.inbox.infrastructure.models.attachment_model import (  # noqa: 
     AttachmentModel,
 )
 from src.modules.inbox.infrastructure.models.channel_model import ChannelModel  # noqa: F401
+from src.modules.inbox.infrastructure.models.conversation_event_model import (  # noqa: F401
+    ConversationEventModel,
+)
 from src.modules.inbox.infrastructure.models.conversation_model import (  # noqa: F401
     ConversationModel,
+)
+from src.modules.inbox.infrastructure.models.conversation_read_model import (  # noqa: F401
+    ConversationReadModel,
 )
 from src.modules.inbox.infrastructure.models.customer_model import (  # noqa: F401
     CustomerModel,

@@ -193,3 +193,24 @@ class TestDongHoiThoai:
 
         assert moi.status is ConversationStatus.DANG_MO
         assert moi.assigned_user_id == nguoi_xu_ly
+
+
+class TestTimelineNhanViec:
+    """BE-2: Nhận việc ghi sự kiện TAKEN ("B đã nhận việc")."""
+
+    async def test_nhan_viec_ghi_su_kien(self) -> None:
+        from src.modules.inbox.domain.entities.conversation_event import ConversationEventKind
+        from tests.unit.inbox.fakes import FakeConversationEventRepository
+
+        ht = _dang_mo()
+        repo = FakeConversationRepository()
+        await repo.add(ht)
+        su_kien = FakeConversationEventRepository()
+        uc = TakeConversation(repo, FakeRealtimeNotifier(), FakeClock(BAY_GIO), event_repo=su_kien)
+        nv = InboxActor(user_id=new_id(), role=ActorRole.STAFF, department_id=PHONG_A)
+
+        await uc.execute(nv, ht.id)
+
+        (e,) = su_kien.events
+        assert e.kind is ConversationEventKind.TAKEN
+        assert (e.actor_user_id, e.from_user_id, e.to_user_id) == (nv.user_id, None, nv.user_id)

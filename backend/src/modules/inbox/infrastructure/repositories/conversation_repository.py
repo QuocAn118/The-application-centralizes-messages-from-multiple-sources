@@ -1,9 +1,11 @@
 """Repository hội thoại dùng SQLAlchemy."""
 
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, func, or_, select
+from sqlalchemy import ColumnElement, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from src.modules.inbox.domain.entities.conversation import (
     Conversation,
@@ -13,7 +15,11 @@ from src.modules.inbox.infrastructure.mappers.conversation_mapper import (
     ConversationMapper,
 )
 from src.modules.inbox.infrastructure.models.conversation_model import ConversationModel
+from src.modules.inbox.infrastructure.models.conversation_read_model import (
+    ConversationReadModel,
+)
 from src.modules.inbox.infrastructure.models.customer_model import CustomerModel
+from src.modules.inbox.infrastructure.models.message_model import MessageModel
 
 
 class SqlAlchemyConversationRepository:
@@ -112,6 +118,17 @@ class SqlAlchemyConversationRepository:
         )
         return [ConversationModel.customer_id.in_(khach)]
 
+    @staticmethod
+    def _dieu_kien_nguoi_phu_trach(
+        assigned_to: UUID | None, unassigned: bool
+    ) -> list[ColumnElement[bool]]:
+        """Lọc "Của tôi" / "Chưa ai nhận" (BE-3). Chồng lên phạm vi, không nới rộng."""
+        if unassigned:
+            return [ConversationModel.assigned_user_id.is_(None)]
+        if assigned_to is not None:
+            return [ConversationModel.assigned_user_id == assigned_to]
+        return []
+
     async def list_for_scope(
         self,
         department_ids: list[UUID] | None,
@@ -120,14 +137,83 @@ class SqlAlchemyConversationRepository:
         limit: int = 50,
         offset: int = 0,
         q: str | None = None,
+        assigned_to: UUID | None = None,
+        unassigned: bool = False,
     ) -> list[Conversation]:
         cau = select(ConversationModel).where(
             *self._dieu_kien_pham_vi(department_ids, include_awaiting, status),
             *self._dieu_kien_tim_kiem(q),
+            *self._dieu_kien_nguoi_phu_trach(assigned_to, unassigned),
         )
         cau = cau.order_by(ConversationModel.last_message_at.desc()).limit(limit).offset(offset)
         ket_qua = await self._session.execute(cau)
         return [ConversationMapper.to_domain(m) for m in ket_qua.scalars()]
+
+    async def doi_nguoi_phu_trach_neu_chua_doi(
+        self,
+        conversation_id: UUID,
+        nguoi_cu: UUID | None,
+        nguoi_moi: UUID | None,
+        now: datetime,
+    ) -> bool:
+        """Đổi người phụ trách CHỈ KHI người hiện tại vẫn là ``nguoi_cu`` (so-và-đổi).
+
+        Hai người đổi cùng lúc (Manager đổi sang B, Admin gỡ): cả hai đọc cùng
+        trạng thái, nhưng câu UPDATE có điều kiện chỉ cho MỘT bên thắng; bên còn lại
+        nhận ``False`` và báo xung đột — ``assigned_user_id`` không bao giờ lệch với
+        timeline. ``IS NOT DISTINCT FROM`` để so được cả NULL.
+        """
+        cau = (
+            update(ConversationModel)
+            .where(
+                ConversationModel.id == conversation_id,
+                ConversationModel.status == ConversationStatus.DANG_MO.value,
+                ConversationModel.assigned_user_id.is_not_distinct_from(nguoi_cu),
+            )
+            .values(assigned_user_id=nguoi_moi, updated_at=now)
+            .returning(ConversationModel.id)
+        )
+        ket_qua = await self._session.execute(cau)
+        return ket_qua.scalar_one_or_none() is not None
+
+    async def count_unread_for_scope(
+        self, department_ids: list[UUID] | None, include_awaiting: bool, user_id: UUID
+    ) -> int:
+        """Số hội thoại TRONG PHẠM VI có tin vào chưa đọc với người này (huy hiệu nav).
+
+        Cùng phạm vi với ``GET /inbox`` không lọc; bỏ hội thoại ``DA_DONG`` (đã xử
+        lý xong, không làm nhiễu). ``EXISTS`` dừng ở tin chưa đọc đầu tiên.
+        """
+        # Nối bảng đọc vào CHÍNH hội thoại của tin trong EXISTS. Bản đầu dùng một
+        # scalar subquery lồng hai tầng tham chiếu `conversations` — SQLAlchemy không
+        # correlate được qua tầng EXISTS và sinh `FROM conversation_reads,
+        # conversations` (tích chéo): so với mốc đọc của hội thoại KHÁC. Test tích
+        # hợp bắt được (đếm ra 0 thay vì 1).
+        doc = aliased(ConversationReadModel)
+        co_chua_doc = (
+            select(MessageModel.id)
+            .outerjoin(
+                doc,
+                (doc.conversation_id == MessageModel.conversation_id) & (doc.user_id == user_id),
+            )
+            .where(
+                MessageModel.conversation_id == ConversationModel.id,
+                MessageModel.direction == "INBOUND",
+                (doc.last_read_at.is_(None)) | (MessageModel.created_at > doc.last_read_at),
+            )
+            .exists()
+        )
+        cau = (
+            select(func.count())
+            .select_from(ConversationModel)
+            .where(
+                *self._dieu_kien_pham_vi(department_ids, include_awaiting, None),
+                ConversationModel.status != ConversationStatus.DA_DONG.value,
+                co_chua_doc,
+            )
+        )
+        ket_qua = await self._session.execute(cau)
+        return int(ket_qua.scalar_one())
 
     async def count_for_scope(
         self,
@@ -135,6 +221,8 @@ class SqlAlchemyConversationRepository:
         include_awaiting: bool,
         status: ConversationStatus | None = None,
         q: str | None = None,
+        assigned_to: UUID | None = None,
+        unassigned: bool = False,
     ) -> int:
         cau = (
             select(func.count())
@@ -142,6 +230,7 @@ class SqlAlchemyConversationRepository:
             .where(
                 *self._dieu_kien_pham_vi(department_ids, include_awaiting, status),
                 *self._dieu_kien_tim_kiem(q),
+                *self._dieu_kien_nguoi_phu_trach(assigned_to, unassigned),
             )
         )
         ket_qua = await self._session.execute(cau)

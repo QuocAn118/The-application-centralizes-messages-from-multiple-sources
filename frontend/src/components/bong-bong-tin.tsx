@@ -3,14 +3,16 @@
 /**
  * Một bong bóng tin trong khung chat (mockup Stitch).
  *
- * INBOUND (khách) canh trái, nền trắng viền xám; OUTBOUND (nhân viên) canh
- * phải, nền xanh chữ trắng.
+ * INBOUND (khách) canh trái, nền ngà viền mực; OUTBOUND (nhân viên) canh phải,
+ * nền xanh chữ trắng. Không bóng — bong bóng không phải thứ để bấm.
  */
 
 import { useState } from "react";
 import { t } from "@/lib/i18n";
 import { API_BASE_URL } from "@/lib/api-client";
-import { mocDayDu, mocNgan } from "@/lib/hien-thi";
+import { ImageIcon } from "lucide-react";
+import { mocDayDu } from "@/lib/hien-thi";
+import { gioPhut } from "@/lib/hop-thu";
 import type { Attachment, Message } from "@/lib/types";
 
 /**
@@ -26,16 +28,24 @@ function urlDayDu(url: string): string {
   return `${API_BASE_URL}${url}`;
 }
 
-export function BongBongTin({ message }: { message: Message }) {
+export function BongBongTin({
+  message,
+  dauNhom = true,
+  cuoiNhom = true,
+}: {
+  message: Message;
+  /** Tin đầu nhóm có khoảng cách trên rộng hơn; trong nhóm các tin sát nhau. */
+  dauNhom?: boolean;
+  /** Chỉ tin cuối nhóm hiện giờ (GĐ1 I8). */
+  cuoiNhom?: boolean;
+}) {
   const laKhach = message.direction === "INBOUND";
 
   return (
-    <div className={`flex flex-col ${laKhach ? "items-start" : "items-end"}`}>
+    <div className={`flex flex-col ${laKhach ? "items-start" : "items-end"} ${dauNhom ? "mt-3" : "mt-1"}`}>
       <div
-        className={`max-w-[min(560px,75%)] rounded-lg px-3.5 py-2.5 text-sm ${
-          laKhach
-            ? "border border-border-subtle bg-white text-foreground"
-            : "bg-primary text-white"
+        className={`max-w-[min(560px,75%)] rounded-nb border-2 border-ink px-3.5 py-2.5 text-sm ${
+          laKhach ? "bg-card text-ink" : "bg-accent-2 text-white"
         }`}
       >
         {message.text && (
@@ -49,17 +59,19 @@ export function BongBongTin({ message }: { message: Message }) {
         {/* Tin không có cả text lẫn đính kèm gần như không xảy ra, nhưng nếu
             có thì phải hiện gì đó — bong bóng rỗng trông như lỗi giao diện. */}
         {!message.text && message.attachments.length === 0 && (
-          <p className="italic opacity-70">{t("chat.tinKhongCoNoiDung")}</p>
+          <p className="italic opacity-80">{t("chat.tinKhongCoNoiDung")}</p>
         )}
       </div>
 
-      <time
-        dateTime={message.created_at}
-        title={mocDayDu(message.created_at)}
-        className="mt-1 px-1 text-xs text-muted-soft"
-      >
-        {mocNgan(message.created_at)}
-      </time>
+      {cuoiNhom && (
+        <time
+          dateTime={message.created_at}
+          title={mocDayDu(message.created_at)}
+          className="mt-1 px-1 text-xs text-ink-2"
+        >
+          {gioPhut(message.created_at)}
+        </time>
+      )}
     </div>
   );
 }
@@ -95,7 +107,7 @@ function DinhKem({
           alt={t("chat.anhDinhKem")}
           loading="lazy"
           onError={() => setLoiTai(true)}
-          className="max-h-64 max-w-full rounded-md object-contain"
+          className="max-h-64 max-w-full rounded-[4px] object-contain"
         />
       </a>
     );
@@ -104,22 +116,10 @@ function DinhKem({
   return (
     <div
       className={`mt-2 flex items-center gap-2 rounded-md px-3 py-2 text-xs ${
-        laKhach ? "bg-surface text-muted" : "bg-white/15 text-white/90"
+        laKhach ? "bg-sunken text-ink-2" : "bg-white/15 text-white"
       }`}
     >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        aria-hidden
-      >
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-        <circle cx="8.5" cy="8.5" r="1.5" />
-        <path d="m21 15-5-5L5 21" />
-      </svg>
+      <ImageIcon aria-hidden className="size-4 shrink-0" />
       {loiTai ? t("chat.loiTaiTep") : t("chat.tepDinhKem")}
     </div>
   );

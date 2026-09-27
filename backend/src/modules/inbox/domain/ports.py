@@ -41,6 +41,28 @@ class SentMessageRef:
     external_message_id: str | None = None
 
 
+# Tín hiệu realtime riêng từng người (BE-2).
+CHANGE_ASSIGNED_TO_YOU = "assigned_to_you"
+CHANGE_UNASSIGNED_FROM_YOU = "unassigned_from_you"
+
+
+@dataclass(frozen=True)
+class AssigneeChanged:
+    """Payload phát cho các hook ``post_assign`` sau khi Manager/Admin giao/đổi/gỡ.
+
+    ``kind`` là giá trị ``ConversationEventKind`` (ASSIGNED / REASSIGNED /
+    UNASSIGNED). Module Assignment (#3) dùng để ghi ``assignment_log`` cho người MỚI
+    — không import lẫn nhau, chỉ cùng phụ thuộc kiểu này của inbox.
+    """
+
+    conversation_id: UUID
+    department_id: UUID | None
+    kind: str
+    from_user_id: UUID | None
+    to_user_id: UUID | None
+    at: datetime
+
+
 @dataclass(frozen=True)
 class ClosedConversation:
     """Payload phát cho các hook ``post_close`` khi một hội thoại vừa đóng.
@@ -146,6 +168,8 @@ class AgentInfo:
     department_id: UUID | None
     role: str
     is_active: bool
+    # BE-2: tên hiển thị (trả kèm hội thoại vì Staff không được gọi /users).
+    full_name: str = ""
 
 
 class IWorkforceDirectory(Protocol):
@@ -158,6 +182,10 @@ class IWorkforceDirectory(Protocol):
     async def get_agent(self, user_id: UUID) -> AgentInfo | None: ...
 
     async def department_exists_active(self, department_id: UUID) -> bool: ...
+
+    async def get_names(self, user_ids: list[UUID]) -> dict[UUID, str]:
+        """Tên hiển thị theo lô (BE-2). Người không tồn tại thì không có khoá."""
+        ...
 
 
 class IRealtimeNotifier(Protocol):
@@ -173,6 +201,10 @@ class IRealtimeNotifier(Protocol):
         department_id: UUID | None,
         change: str,
     ) -> None: ...
+
+    async def notify_user(self, user_id: UUID, conversation_id: UUID, change: str) -> None:
+        """Tín hiệu riêng cho MỘT người (BE-2: được giao / bị gỡ khỏi hội thoại)."""
+        ...
 
 
 # Loại thay đổi realtime, để router và notifier dùng chung một tên.
