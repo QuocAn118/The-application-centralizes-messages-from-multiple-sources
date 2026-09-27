@@ -138,6 +138,7 @@ class FakeConversationRepository:
         q: str | None = None,
         assigned_to: UUID | None = None,
         unassigned: bool = False,
+        customer_id: UUID | None = None,
     ) -> list[Conversation]:
         tu_khoa = q.strip().lower() if q and q.strip() else None
         ket_qua = []
@@ -162,7 +163,8 @@ class FakeConversationRepository:
             else:
                 khop_nguoi = True
 
-            if trong_pham_vi and khop_trang_thai and khop_tim_kiem and khop_nguoi:
+            khop_khach = customer_id is None or c.customer_id == customer_id
+            if trong_pham_vi and khop_trang_thai and khop_tim_kiem and khop_nguoi and khop_khach:
                 ket_qua.append(c)
         return sorted(ket_qua, key=lambda c: c.last_message_at, reverse=True)
 
@@ -176,8 +178,11 @@ class FakeConversationRepository:
         q: str | None = None,
         assigned_to: UUID | None = None,
         unassigned: bool = False,
+        customer_id: UUID | None = None,
     ) -> list[Conversation]:
-        loc = self._loc(department_ids, include_awaiting, status, q, assigned_to, unassigned)
+        loc = self._loc(
+            department_ids, include_awaiting, status, q, assigned_to, unassigned, customer_id
+        )
         return loc[offset : offset + limit]
 
     async def doi_nguoi_phu_trach_neu_chua_doi(
@@ -206,8 +211,13 @@ class FakeConversationRepository:
         q: str | None = None,
         assigned_to: UUID | None = None,
         unassigned: bool = False,
+        customer_id: UUID | None = None,
     ) -> int:
-        return len(self._loc(department_ids, include_awaiting, status, q, assigned_to, unassigned))
+        return len(
+            self._loc(
+                department_ids, include_awaiting, status, q, assigned_to, unassigned, customer_id
+            )
+        )
 
 
 class FakeConversationEventRepository:
