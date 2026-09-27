@@ -45,6 +45,12 @@ export function mocTuongDoi(iso: string, now: Date): string {
   return `${hai(t.getDate())}/${hai(t.getMonth() + 1)}`;
 }
 
+/** "14:32" theo giờ máy — cho giờ tin / dòng hệ thống (ngày đã có ở vạch ngày). */
+export function gioPhut(iso: string): string {
+  const d = new Date(iso);
+  return `${hai(d.getHours())}:${hai(d.getMinutes())}`;
+}
+
 /** Số phút khách đã chờ; `null` khi không ai chờ. Không bao giờ âm (lệch đồng hồ). */
 export function phutCho(waitingSince: string | null, now: Date): number | null {
   if (!waitingSince) return null;
