@@ -27,6 +27,9 @@ from src.modules.inbox.domain.ports import IRealtimeNotifier
 from src.modules.inbox.infrastructure.directory.workforce_directory import (
     IdentityWorkforceDirectory,
 )
+from src.modules.inbox.infrastructure.repositories.conversation_event_repository import (
+    SqlAlchemyConversationEventRepository,
+)
 from src.modules.inbox.infrastructure.repositories.conversation_repository import (
     SqlAlchemyConversationRepository,
 )
@@ -61,6 +64,7 @@ class InboxConversationAssigner:
             directory=IdentityWorkforceDirectory(session),
             notifier=notifier,
             clock=clock,
+            event_repo=SqlAlchemyConversationEventRepository(session),
         )
         self._log = log
         self._clock = clock

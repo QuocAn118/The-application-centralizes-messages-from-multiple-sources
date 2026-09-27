@@ -32,6 +32,8 @@ class InboxItemResponse(BaseModel):
     unread_count: int = 0
     # BE-9: khách chờ từ lúc nào; null = không chờ.
     waiting_since: datetime | None = None
+    # BE-2: tên người phụ trách (backend tra — Staff không gọi được /users).
+    assigned_user_name: str | None = None
 
     @classmethod
     def from_dto(cls, item: InboxItem) -> "InboxItemResponse":
@@ -48,6 +50,7 @@ class InboxItemResponse(BaseModel):
             last_message_preview=item.last_message_preview,
             unread_count=item.unread_count,
             waiting_since=item.waiting_since,
+            assigned_user_name=item.assigned_user_name,
         )
 
 
@@ -110,6 +113,17 @@ class MessageResponse(BaseModel):
         )
 
 
+class EventResponse(BaseModel):
+    """Dòng hệ thống trong khung chat (BE-2). Tên null = hệ thống / không rõ."""
+
+    id: UUID
+    kind: str
+    created_at: datetime
+    actor_name: str | None
+    from_name: str | None
+    to_name: str | None
+
+
 class ConversationResponse(BaseModel):
     conversation_id: UUID
     channel_id: UUID
@@ -122,6 +136,10 @@ class ConversationResponse(BaseModel):
     last_message_at: datetime
     messages: list[MessageResponse]
     waiting_since: datetime | None = None
+    assigned_user_name: str | None = None
+    # Id của khách trên nền tảng (panel khách, 2a).
+    customer_external_id: str = ""
+    events: list[EventResponse] = Field(default_factory=list)
 
     @classmethod
     def from_dto(cls, v: ConversationView, ky_url: KyUrl | None = None) -> "ConversationResponse":
@@ -137,7 +155,26 @@ class ConversationResponse(BaseModel):
             last_message_at=v.last_message_at,
             messages=[MessageResponse.from_dto(m, ky_url, v.conversation_id) for m in v.messages],
             waiting_since=v.waiting_since,
+            assigned_user_name=v.assigned_user_name,
+            customer_external_id=v.customer_external_id,
+            events=[
+                EventResponse(
+                    id=e.id,
+                    kind=e.kind,
+                    created_at=e.created_at,
+                    actor_name=e.actor_name,
+                    from_name=e.from_name,
+                    to_name=e.to_name,
+                )
+                for e in v.events
+            ],
         )
+
+
+class AssignUserRequest(BaseModel):
+    """Giao / đổi / gỡ người phụ trách (BE-2). ``user_id: null`` = gỡ."""
+
+    user_id: UUID | None
 
 
 class UnreadCountResponse(BaseModel):

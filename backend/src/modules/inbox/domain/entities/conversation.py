@@ -52,6 +52,26 @@ class AlreadyAssignedError(BusinessRuleViolationError):
         )
 
 
+class AlreadyAssignedToUserError(BusinessRuleViolationError):
+    """Đổi người phụ trách sang chính người đang phụ trách."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Người này đang là người phụ trách hội thoại.",
+            code="ALREADY_ASSIGNED_TO_USER",
+        )
+
+
+class NotAssignedError(BusinessRuleViolationError):
+    """Gỡ người phụ trách khi hội thoại chưa có ai."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Hội thoại chưa có người phụ trách để gỡ.",
+            code="CONVERSATION_NOT_ASSIGNED",
+        )
+
+
 @dataclass(eq=False, kw_only=True)
 class Conversation(AggregateRoot):
     """Một hội thoại gắn với đúng một cặp (kênh, khách).
@@ -118,6 +138,25 @@ class Conversation(AggregateRoot):
             raise AlreadyAssignedError
         self.assigned_user_id = user_id
         self.updated_at = now
+
+    def chuyen_nguoi_phu_trach(self, user_id: UUID | None, now: datetime) -> UUID | None:
+        """Manager/Admin giao, đổi (``user_id`` khác) hoặc gỡ (``None``) người phụ trách.
+
+        Trả người phụ trách CŨ (``None`` nếu trước đó chưa có ai). Khác
+        ``assign_to_agent`` ở chỗ được thay người đang phụ trách — đó là quy tắc
+        mới của BE-2 (redesign 2a, user duyệt). Quyền và "cùng phòng" do use case
+        kiểm; entity chỉ giữ bất biến trạng thái.
+        """
+        if self.status is not ConversationStatus.DANG_MO:
+            raise NotOpenError
+        if user_id is None and self.assigned_user_id is None:
+            raise NotAssignedError
+        if user_id is not None and user_id == self.assigned_user_id:
+            raise AlreadyAssignedToUserError
+        cu = self.assigned_user_id
+        self.assigned_user_id = user_id
+        self.updated_at = now
+        return cu
 
     def close(self, now: datetime) -> None:
         """Đánh dấu đã xử lý xong."""

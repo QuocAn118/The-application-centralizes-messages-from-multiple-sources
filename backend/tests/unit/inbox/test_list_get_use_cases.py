@@ -332,3 +332,90 @@ class TestListLocNguoiPhuTrach:
         page = await kho.list_uc().execute(admin)
 
         assert page.total == 3
+
+
+class TestTenNguoiVaTimeline:
+    """BE-2: tên người do backend trả (Staff bị 403 ở /users) + dòng hệ thống."""
+
+    async def test_danh_sach_co_ten_nguoi_phu_trach(self) -> None:
+        from src.modules.inbox.domain.ports import AgentInfo
+        from tests.unit.inbox.fakes import FakeWorkforceDirectory
+
+        kho = _KhoDuLieu()
+        b = new_id()
+        kho.ht_a.assign_to_agent(b, BAY_GIO)
+        thu_muc = FakeWorkforceDirectory(
+            [
+                AgentInfo(
+                    user_id=b,
+                    department_id=PHONG_A,
+                    role="STAFF",
+                    is_active=True,
+                    full_name="Trần Thị Bích",
+                ),
+            ]
+        )
+        uc = ListInbox(
+            kho.conversation_repo,
+            kho.customer_repo,
+            kho.channel_repo,
+            kho.message_repo,
+            directory=thu_muc,
+        )
+        staff = InboxActor(user_id=new_id(), role=ActorRole.STAFF, department_id=PHONG_A)
+
+        page = await uc.execute(staff)
+
+        assert page.items[0].assigned_user_name == "Trần Thị Bích"
+
+    async def test_chi_tiet_co_timeline_ten_va_id_nen_tang(self) -> None:
+        from src.modules.inbox.domain.entities.conversation_event import (
+            ConversationEvent,
+            ConversationEventKind,
+        )
+        from src.modules.inbox.domain.ports import AgentInfo
+        from tests.unit.inbox.fakes import (
+            FakeConversationEventRepository,
+            FakeWorkforceDirectory,
+        )
+
+        kho = _KhoDuLieu()
+        a, b = new_id(), new_id()
+        kho.ht_a.assign_to_agent(b, BAY_GIO)
+        su_kien = FakeConversationEventRepository()
+        await su_kien.add(
+            ConversationEvent.ghi(
+                kho.ht_a.id,
+                ConversationEventKind.REASSIGNED,
+                BAY_GIO,
+                actor_user_id=None,
+                from_user_id=a,
+                to_user_id=b,
+            )
+        )
+        thu_muc = FakeWorkforceDirectory(
+            [
+                AgentInfo(
+                    user_id=a, department_id=PHONG_A, role="STAFF", is_active=True, full_name="An"
+                ),
+                AgentInfo(
+                    user_id=b, department_id=PHONG_A, role="STAFF", is_active=True, full_name="Bình"
+                ),
+            ]
+        )
+        uc = GetConversation(
+            kho.conversation_repo,
+            kho.message_repo,
+            kho.channel_repo,
+            kho.customer_repo,
+            event_repo=su_kien,
+            directory=thu_muc,
+        )
+        staff = InboxActor(user_id=new_id(), role=ActorRole.STAFF, department_id=PHONG_A)
+
+        v = await uc.execute(staff, kho.ht_a.id)
+
+        assert v.assigned_user_name == "Bình"
+        assert v.customer_external_id.startswith("c_")
+        (e,) = v.events
+        assert (e.kind, e.actor_name, e.from_name, e.to_name) == ("REASSIGNED", None, "An", "Bình")

@@ -1,5 +1,6 @@
 """Interface repository cho Conversation."""
 
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -42,6 +43,16 @@ class IConversationRepository(Protocol):
         rỗng nghĩa là không phòng nào — không trả gì. ``include_awaiting`` gộp
         thêm mục chờ-phân (cho Manager/Admin).
         """
+        ...
+
+    async def doi_nguoi_phu_trach_neu_chua_doi(
+        self,
+        conversation_id: UUID,
+        nguoi_cu: UUID | None,
+        nguoi_moi: UUID | None,
+        now: datetime,
+    ) -> bool:
+        """So-và-đổi người phụ trách; ``False`` nếu đã có người đổi trước (BE-2)."""
         ...
 
     async def count_unread_for_scope(

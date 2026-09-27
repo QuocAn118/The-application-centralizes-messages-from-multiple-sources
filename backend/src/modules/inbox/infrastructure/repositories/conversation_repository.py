@@ -1,8 +1,9 @@
 """Repository hội thoại dùng SQLAlchemy."""
 
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, func, or_, select
+from sqlalchemy import ColumnElement, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -147,6 +148,33 @@ class SqlAlchemyConversationRepository:
         cau = cau.order_by(ConversationModel.last_message_at.desc()).limit(limit).offset(offset)
         ket_qua = await self._session.execute(cau)
         return [ConversationMapper.to_domain(m) for m in ket_qua.scalars()]
+
+    async def doi_nguoi_phu_trach_neu_chua_doi(
+        self,
+        conversation_id: UUID,
+        nguoi_cu: UUID | None,
+        nguoi_moi: UUID | None,
+        now: datetime,
+    ) -> bool:
+        """Đổi người phụ trách CHỈ KHI người hiện tại vẫn là ``nguoi_cu`` (so-và-đổi).
+
+        Hai người đổi cùng lúc (Manager đổi sang B, Admin gỡ): cả hai đọc cùng
+        trạng thái, nhưng câu UPDATE có điều kiện chỉ cho MỘT bên thắng; bên còn lại
+        nhận ``False`` và báo xung đột — ``assigned_user_id`` không bao giờ lệch với
+        timeline. ``IS NOT DISTINCT FROM`` để so được cả NULL.
+        """
+        cau = (
+            update(ConversationModel)
+            .where(
+                ConversationModel.id == conversation_id,
+                ConversationModel.status == ConversationStatus.DANG_MO.value,
+                ConversationModel.assigned_user_id.is_not_distinct_from(nguoi_cu),
+            )
+            .values(assigned_user_id=nguoi_moi, updated_at=now)
+            .returning(ConversationModel.id)
+        )
+        ket_qua = await self._session.execute(cau)
+        return ket_qua.scalar_one_or_none() is not None
 
     async def count_unread_for_scope(
         self, department_ids: list[UUID] | None, include_awaiting: bool, user_id: UUID

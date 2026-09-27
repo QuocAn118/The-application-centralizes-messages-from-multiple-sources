@@ -47,6 +47,9 @@ class _KhongBaoRealtime:
     ) -> None:
         return None
 
+    async def notify_user(self, user_id: UUID, conversation_id: UUID, change: str) -> None:
+        return None
+
 
 class _KhongCauHinhLLM:
     """Classifier luôn lỗi — dùng khi chưa cấu hình nhà cung cấp nào.
