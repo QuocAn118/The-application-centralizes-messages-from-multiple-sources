@@ -11,12 +11,11 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t } from "@/lib/i18n";
 import { khoaQuanTri, suaPhongBan, taoPhongBan } from "@/lib/quan-tri-api";
-import { thongDiepLoi } from "@/lib/loi-quan-tri";
+import { loiTheoTruong } from "@/lib/loi-truong";
 import { HopThoai, NutChinh, NutPhu } from "@/components/hop-thoai";
+import { Truong } from "@/components/ui/truong";
+import { ONhap, VungNhap } from "@/components/ui/o-nhap";
 import type { Department } from "@/lib/types";
-
-const LOP_O_NHAP =
-  "mt-1 w-full rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary";
 
 export function HopThoaiPhongBan({
   phong,
@@ -46,51 +45,34 @@ export function HopThoaiPhongBan({
     },
   });
 
+  const loi = luu.isError
+    ? loiTheoTruong(luu.error, { DEPARTMENT_NAME_EXISTS: "ten", EMPTY_DEPARTMENT_NAME: "ten" }, { name: "ten" })
+    : null;
+
   return (
     <HopThoai
       tieuDe={phong ? t("phongBan.sua") : t("phongBan.taoMoi")}
       moTa={phong ? phong.name : undefined}
-      loi={luu.isError ? thongDiepLoi(luu.error) : null}
+      loi={loi && !loi.truong ? loi.thongDiep : null}
       onDong={onDong}
       chanDuoi={
         <>
           <NutPhu onClick={onDong} disabled={luu.isPending}>
             {t("chung.huy")}
           </NutPhu>
-          <NutChinh
-            onClick={() => luu.mutate()}
-            disabled={luu.isPending || ten.trim().length === 0}
-          >
+          <NutChinh onClick={() => luu.mutate()} disabled={luu.isPending || ten.trim().length === 0}>
             {luu.isPending ? t("nguoiDung.dangLuu") : t("nguoiDung.luu")}
           </NutChinh>
         </>
       }
     >
-      <div className="mt-4 space-y-3">
-        <label className="block">
-          <span className="text-xs font-medium text-muted">{t("phongBan.ten")}</span>
-          <input
-            value={ten}
-            onChange={(e) => setTen(e.target.value)}
-            maxLength={200}
-            className={LOP_O_NHAP}
-          />
-        </label>
-
-        <label className="block">
-          <span className="text-xs font-medium text-muted">
-            {t("phongBan.moTa")}{" "}
-            <span className="font-normal text-muted-soft">
-              {t("nguoiDung.khongBatBuoc")}
-            </span>
-          </span>
-          <textarea
-            value={moTa}
-            onChange={(e) => setMoTa(e.target.value)}
-            rows={3}
-            className={`${LOP_O_NHAP} resize-none`}
-          />
-        </label>
+      <div className="mt-4 flex flex-col gap-4">
+        <Truong nhan={t("phongBan.ten")} batBuoc loi={loi?.truong === "ten" ? loi.thongDiep : null}>
+          {(o) => <ONhap {...o} value={ten} onChange={(e) => setTen(e.target.value)} maxLength={200} />}
+        </Truong>
+        <Truong nhan={`${t("phongBan.moTa")} ${t("nguoiDung.khongBatBuoc")}`}>
+          {(o) => <VungNhap {...o} value={moTa} onChange={(e) => setMoTa(e.target.value)} rows={3} className="resize-none" />}
+        </Truong>
       </div>
     </HopThoai>
   );

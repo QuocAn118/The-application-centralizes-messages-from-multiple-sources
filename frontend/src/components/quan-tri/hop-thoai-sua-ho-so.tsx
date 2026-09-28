@@ -13,10 +13,9 @@ import { t } from "@/lib/i18n";
 import { khoaQuanTri, suaHoSo } from "@/lib/quan-tri-api";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { HopThoai, NutChinh, NutPhu } from "@/components/hop-thoai";
+import { Truong } from "@/components/ui/truong";
+import { ONhap } from "@/components/ui/o-nhap";
 import type { UserResponse } from "@/lib/types";
-
-const LOP_O_NHAP =
-  "mt-1 w-full rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary";
 
 export function HopThoaiSuaHoSo({
   nguoi,
@@ -63,29 +62,13 @@ export function HopThoaiSuaHoSo({
         </>
       }
     >
-      <div className="mt-4 space-y-3">
-        <label className="block">
-          <span className="text-xs font-medium text-muted">{t("nguoiDung.hoTen")}</span>
-          <input
-            value={hoTen}
-            onChange={(e) => setHoTen(e.target.value)}
-            className={LOP_O_NHAP}
-          />
-        </label>
-
-        <label className="block">
-          <span className="text-xs font-medium text-muted">
-            {t("nguoiDung.dienThoai")}{" "}
-            <span className="font-normal text-muted-soft">
-              {t("nguoiDung.khongBatBuoc")}
-            </span>
-          </span>
-          <input
-            value={dienThoai}
-            onChange={(e) => setDienThoai(e.target.value)}
-            className={LOP_O_NHAP}
-          />
-        </label>
+      <div className="mt-4 flex flex-col gap-4">
+        <Truong nhan={t("nguoiDung.hoTen")} batBuoc>
+          {(o) => <ONhap {...o} value={hoTen} onChange={(e) => setHoTen(e.target.value)} />}
+        </Truong>
+        <Truong nhan={`${t("nguoiDung.dienThoai")} ${t("nguoiDung.khongBatBuoc")}`}>
+          {(o) => <ONhap {...o} type="tel" value={dienThoai} onChange={(e) => setDienThoai(e.target.value)} />}
+        </Truong>
       </div>
     </HopThoai>
   );

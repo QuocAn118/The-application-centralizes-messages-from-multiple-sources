@@ -11,10 +11,9 @@ import { t } from "@/lib/i18n";
 import { NHAN_VAI } from "@/lib/hien-thi";
 import { hienBoLocPhongBan } from "@/lib/quyen-quan-tri";
 import { OTimKiem } from "@/components/o-tim-kiem";
+import { OChon } from "@/components/ui/o-nhap";
 import type { Department, Role, ThamSoNguoiDung } from "@/lib/types";
 
-const LOP_SELECT =
-  "rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary";
 
 export function BoLocNguoiDung({
   vai,
@@ -29,20 +28,20 @@ export function BoLocNguoiDung({
   doiThamSo: (phan: Partial<ThamSoNguoiDung>) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 border-b border-border-subtle px-4 py-3">
+    <div className="flex flex-wrap items-center gap-3">
       <OTimKiem
         giaTriDau={thamSo.search ?? ""}
         nhanGoiY={t("nguoiDung.timKiem")}
         doiTuKhoa={(tuKhoa) => doiThamSo({ search: tuKhoa || undefined })}
       />
 
-      <select
+      <OChon
         aria-label={t("nguoiDung.locVaiTro")}
         value={thamSo.role ?? ""}
         onChange={(e) =>
           doiThamSo({ role: (e.target.value || undefined) as Role | undefined })
         }
-        className={LOP_SELECT}
+        className="w-52"
       >
         <option value="">
           {t("nguoiDung.locVaiTro")}: {t("quanTri.tatCa")}
@@ -52,14 +51,14 @@ export function BoLocNguoiDung({
             {NHAN_VAI[r]}
           </option>
         ))}
-      </select>
+      </OChon>
 
       {hienBoLocPhongBan(vai) && (
-        <select
+        <OChon
           aria-label={t("nguoiDung.locPhongBan")}
           value={thamSo.department_id ?? ""}
           onChange={(e) => doiThamSo({ department_id: e.target.value || undefined })}
-          className={LOP_SELECT}
+          className="w-52"
         >
           <option value="">
             {t("nguoiDung.locPhongBan")}: {t("quanTri.tatCa")}
@@ -70,10 +69,10 @@ export function BoLocNguoiDung({
               {p.is_active ? "" : ` (${t("phongBan.daNgung")})`}
             </option>
           ))}
-        </select>
+        </OChon>
       )}
 
-      <select
+      <OChon
         aria-label={t("nguoiDung.locTrangThai")}
         value={thamSo.is_active === undefined ? "" : String(thamSo.is_active)}
         onChange={(e) =>
@@ -83,14 +82,14 @@ export function BoLocNguoiDung({
             is_active: e.target.value === "" ? undefined : e.target.value === "true",
           })
         }
-        className={LOP_SELECT}
+        className="w-52"
       >
         <option value="">
           {t("nguoiDung.locTrangThai")}: {t("quanTri.tatCa")}
         </option>
         <option value="true">{t("nguoiDung.dangHoatDong")}</option>
         <option value="false">{t("nguoiDung.daVoHieuHoa")}</option>
-      </select>
+      </OChon>
     </div>
   );
 }
