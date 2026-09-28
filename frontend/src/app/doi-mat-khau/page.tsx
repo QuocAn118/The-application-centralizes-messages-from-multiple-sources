@@ -1,19 +1,28 @@
 "use client";
 
 /**
- * Đổi mật khẩu — bắt buộc với người vừa được Admin cấp mật khẩu tạm
- * (`must_change_password`, spec §6).
+ * Đổi mật khẩu (redesign Phần 6, L2) — bắt buộc với người vừa được Admin cấp
+ * mật khẩu tạm (`must_change_password`), hoặc tự nguyện.
  *
  * Không nằm dưới `/inbox` nên không bị `AuthGuard` của nhóm đó bọc; tự kiểm tra
  * phiên ở đây. Backend cố ý cho phép gọi endpoint này kể cả khi chưa đổi mật
  * khẩu — nếu chặn thì người dùng sẽ mắc kẹt.
+ *
+ * Danh sách điều kiện tick dần khi gõ, quy tắc lấy đúng `kiem_tra_do_manh` của
+ * backend (`dieuKienMatKhau`). Nút chỉ bật khi đạt đủ — server vẫn là trọng tài.
  */
 
 import { useEffect, useState } from "react";
-import { t } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
+import { Check, CircleAlert, Circle, KeyRound } from "lucide-react";
 import { api, ApiError } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
+import { dieuKienMatKhau } from "@/lib/xac-thuc";
+import { KhungXacThuc } from "@/components/khung-xac-thuc";
+import { The } from "@/components/ui/the";
+import { Truong } from "@/components/ui/truong";
+import { ONhap } from "@/components/ui/o-nhap";
+import { Nut } from "@/components/ui/nut";
 
 export default function DoiMatKhauPage() {
   const { user, isLoading, refreshUser } = useAuth();
@@ -29,19 +38,13 @@ export default function DoiMatKhauPage() {
     if (!isLoading && !user) router.replace("/login");
   }, [isLoading, user, router]);
 
+  const dieuKien = dieuKienMatKhau(matKhauMoi, xacNhan);
+  const hopLe = matKhauHienTai.length > 0 && dieuKien.every((d) => d.dat);
+
   async function xuLyGui(e: React.FormEvent) {
     e.preventDefault();
+    if (!hopLe || dangGui) return;
     setLoi(null);
-
-    if (matKhauMoi !== xacNhan) {
-      setLoi(t("doiMatKhau.khongKhop"));
-      return;
-    }
-    if (matKhauMoi.length < 8) {
-      setLoi(t("doiMatKhau.quaNgan"));
-      return;
-    }
-
     setDangGui(true);
     try {
       await api.post("/auth/change-password", {
@@ -52,107 +55,115 @@ export default function DoiMatKhauPage() {
       await refreshUser();
       router.replace("/inbox");
     } catch (err) {
-      setLoi(
-        err instanceof ApiError ? err.message : t("doiMatKhau.loiChung"),
-      );
+      setLoi(err instanceof ApiError ? err.message : "Không đổi được mật khẩu. Thử lại.");
       setDangGui(false);
     }
   }
 
   if (isLoading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface">
-        <p className="text-sm text-muted">{t("chung.dangTai")}</p>
+      <div className="flex min-h-screen items-center justify-center bg-paper">
+        <p className="text-sm text-ink-2">Đang tải…</p>
       </div>
     );
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-surface px-4">
-      <div className="w-full max-w-[420px] rounded-lg border border-border-subtle bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-bold text-foreground">{t("doiMatKhau.tieuDe")}</h1>
-        <p className="mt-1 text-sm text-muted">
+    <KhungXacThuc>
+      <The className="w-full max-w-[440px] px-8 py-9">
+        <h2 className="text-[28px] font-extrabold leading-tight tracking-tight text-ink">Đổi mật khẩu</h2>
+        <p className="mt-1 text-sm text-ink-2">
           {user.must_change_password
-            ? t("doiMatKhau.batBuoc")
-            : t("doiMatKhau.tuNguyen")}
+            ? "Bạn đang dùng mật khẩu tạm. Đặt mật khẩu mới để tiếp tục."
+            : "Đặt mật khẩu mới cho tài khoản của bạn."}
         </p>
 
-        <form onSubmit={xuLyGui} className="mt-8 space-y-5">
-          <O
-            id="mk-hien-tai"
-            nhan={t("doiMatKhau.hienTai")}
-            giaTri={matKhauHienTai}
-            doiGiaTri={setMatKhauHienTai}
-            autoComplete="current-password"
-          />
-          <O
-            id="mk-moi"
-            nhan={t("doiMatKhau.moi")}
-            giaTri={matKhauMoi}
-            doiGiaTri={setMatKhauMoi}
-            autoComplete="new-password"
-            goiY={t("doiMatKhau.goiYDoDai")}
-          />
-          <O
-            id="mk-xac-nhan"
-            nhan={t("doiMatKhau.nhapLai")}
-            giaTri={xacNhan}
-            doiGiaTri={setXacNhan}
-            autoComplete="new-password"
-          />
+        <form onSubmit={xuLyGui} className="mt-7 flex flex-col gap-5">
+          <Truong nhan="Mật khẩu hiện tại">
+            {(o) => (
+              <ONhap
+                {...o}
+                type="password"
+                required
+                autoComplete="current-password"
+                value={matKhauHienTai}
+                onChange={(e) => setMatKhauHienTai(e.target.value)}
+                autoFocus
+              />
+            )}
+          </Truong>
+          <Truong nhan="Mật khẩu mới">
+            {(o) => (
+              <ONhap
+                {...o}
+                aria-describedby="dieu-kien-mat-khau"
+                type="password"
+                required
+                autoComplete="new-password"
+                value={matKhauMoi}
+                onChange={(e) => setMatKhauMoi(e.target.value)}
+              />
+            )}
+          </Truong>
+          <Truong nhan="Nhập lại mật khẩu mới">
+            {(o) => (
+              <ONhap
+                {...o}
+                type="password"
+                required
+                autoComplete="new-password"
+                value={xacNhan}
+                onChange={(e) => setXacNhan(e.target.value)}
+              />
+            )}
+          </Truong>
 
-          <button
-            type="submit"
-            disabled={dangGui}
-            className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {dangGui ? t("doiMatKhau.dangLuu") : t("doiMatKhau.nut")}
-          </button>
+          <ul id="dieu-kien-mat-khau" aria-label="Điều kiện mật khẩu" className="flex flex-col gap-1.5">
+            {dieuKien.map((d) => (
+              <li
+                key={d.nhan}
+                className={`flex items-center gap-2 text-sm ${d.dat ? "font-bold text-ok" : "text-ink-2"}`}
+              >
+                <span
+                  className={`inline-flex size-5 items-center justify-center rounded-[4px] border-2 ${
+                    d.dat ? "border-ok bg-ok-bg" : "border-ink-2"
+                  }`}
+                >
+                  {d.dat ? (
+                    <Check aria-hidden className="size-3.5" strokeWidth={3} />
+                  ) : (
+                    <Circle aria-hidden className="size-2 fill-current" />
+                  )}
+                </span>
+                {d.nhan}
+                {/* Không chỉ dựa vào màu + icon: trình đọc màn hình đọc thành chữ. */}
+                <span className="sr-only">{d.dat ? "— đã đạt" : "— chưa đạt"}</span>
+              </li>
+            ))}
+          </ul>
 
           {loi && (
             <p
               role="alert"
-              className="rounded-lg border border-danger-border bg-danger-bg px-3.5 py-2.5 text-sm text-danger-fg"
+              className="flex items-start gap-2 rounded-nb border-2 border-bad bg-bad-bg px-3 py-2.5 text-sm font-semibold text-bad"
             >
+              <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={2.5} />
               {loi}
             </p>
           )}
-        </form>
-      </div>
-    </main>
-  );
-}
 
-function O({
-  id,
-  nhan,
-  giaTri,
-  doiGiaTri,
-  autoComplete,
-  goiY,
-}: {
-  id: string;
-  nhan: string;
-  giaTri: string;
-  doiGiaTri: (v: string) => void;
-  autoComplete: string;
-  goiY?: string;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-foreground">
-        {nhan}
-      </label>
-      <input
-        id={id}
-        type="password"
-        required
-        autoComplete={autoComplete}
-        value={giaTri}
-        onChange={(e) => doiGiaTri(e.target.value)}
-        className="w-full rounded-lg border border-border-subtle px-3.5 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-      />
-      {goiY && <p className="mt-1 text-xs text-muted-soft">{goiY}</p>}
-    </div>
+          <Nut
+            type="submit"
+            bienThe="chinh"
+            icon={KeyRound}
+            dangChay={dangGui}
+            disabled={!hopLe}
+            className="h-12 w-full text-base"
+          >
+            {dangGui ? "Đang lưu…" : "Đổi mật khẩu"}
+          </Nut>
+        </form>
+      </The>
+    </KhungXacThuc>
   );
 }
