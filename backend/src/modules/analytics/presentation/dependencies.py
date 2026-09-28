@@ -19,6 +19,7 @@ from src.modules.analytics.application.actor import ActorRole, AnalyticsActor
 from src.modules.analytics.application.use_cases.get_reports import (
     GetAgentReport,
     GetConversationReport,
+    GetOverview,
     GetRequestReport,
     GetWorkforceReport,
 )
@@ -112,6 +113,13 @@ def get_conversation_report(request: Request, session: AsyncSession) -> GetConve
 
 def get_agent_report(request: Request, session: AsyncSession) -> GetAgentReport:
     return GetAgentReport(request.app.state.analytics_rollup_repo_factory(session))
+
+
+def get_overview(request: Request, session: AsyncSession) -> GetOverview:
+    return GetOverview(
+        request.app.state.analytics_rollup_repo_factory(session),
+        request.app.state.analytics_response_source_factory(session),
+    )
 
 
 def get_workforce_report(request: Request, session: AsyncSession) -> GetWorkforceReport:

@@ -16,6 +16,7 @@ from src.modules.analytics.presentation.dependencies import (
     DbSession,
     get_agent_report,
     get_conversation_report,
+    get_overview,
     get_rebuild,
     get_request_report,
     get_workforce_report,
@@ -23,6 +24,7 @@ from src.modules.analytics.presentation.dependencies import (
 from src.modules.analytics.presentation.schemas.analytics_schemas import (
     AgentReportItem,
     ConversationReportItem,
+    OverviewResponse,
     RebuildResponse,
     RequestReportItem,
     WorkforceReportItem,
@@ -47,6 +49,19 @@ async def bao_cao_hoi_thoai(
     use_case = get_conversation_report(request, session)
     rows = await use_case.execute(actor, khoang, department_id)
     return [ConversationReportItem.from_row(r) for r in rows]
+
+
+@router.get("/overview", response_model=OverviewResponse)
+async def tong_quan(
+    actor: Actor,
+    session: DbSession,
+    khoang: DateRangeParam,
+    request: Request,
+    department_id: UUID | None = None,
+) -> OverviewResponse:
+    """BE-8: 4 thẻ KPI + xu hướng theo ngày. Cùng phạm vi các báo cáo khác (RB-4)."""
+    use_case = get_overview(request, session)
+    return OverviewResponse.from_report(await use_case.execute(actor, khoang, department_id))
 
 
 @router.get("/agents", response_model=list[AgentReportItem])

@@ -662,6 +662,8 @@ def _wire_analytics(app: FastAPI, settings: Settings) -> None:
         )
 
     app.state.analytics_rebuild_factory = rebuild_factory
+    # BE-8: tỉ lệ phản hồi đếm hội thoại thẳng từ #1 (rollup chỉ đếm tin).
+    app.state.analytics_response_source_factory = lambda session: InboxStatsSource(session, tz)
 
     def apply_factory(session: AsyncSession) -> ApplyEventDelta:
         return ApplyEventDelta(SqlAlchemyRollupRepository(session))

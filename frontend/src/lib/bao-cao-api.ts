@@ -17,6 +17,7 @@ import { api } from "./api-client";
 import type {
   AgentReportItem,
   ConversationReportItem,
+  OverviewResponse,
   RequestReportItem,
   WorkforceReportItem,
 } from "./types";
@@ -33,6 +34,8 @@ export const khoaBaoCao = {
    * Khoá gồm cả khoảng ngày VÀ phòng: đổi khoảng hoặc đổi phòng là tải lại.
    * `phong` để `""` khi không lọc (Admin xem tất cả / Manager luôn phòng mình).
    */
+  tongQuan: (k: KhoangNgay, phong: string) =>
+    ["bao-cao", "tong-quan", k.tu, k.den, phong] as const,
   hoiThoai: (k: KhoangNgay, phong: string) =>
     ["bao-cao", "hoi-thoai", k.tu, k.den, phong] as const,
   nhanVien: (k: KhoangNgay, phong: string) =>
@@ -46,6 +49,15 @@ export const khoaBaoCao = {
 /** Tham số query chung. `from` là alias của backend, không phải `from_`. */
 function thamSo(k: KhoangNgay, phong?: string) {
   return { from: k.tu, to: k.den, department_id: phong || undefined };
+}
+
+/** BE-8: 4 thẻ KPI + xu hướng theo ngày. Trả OBJECT (khác 4 báo cáo mảng trần). */
+export function tongQuan(
+  k: KhoangNgay,
+  phong?: string,
+  signal?: AbortSignal,
+): Promise<OverviewResponse> {
+  return api.get<OverviewResponse>("/analytics/overview", thamSo(k, phong), signal);
 }
 
 export function baoCaoHoiThoai(

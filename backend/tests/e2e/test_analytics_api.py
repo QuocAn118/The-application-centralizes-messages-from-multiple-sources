@@ -240,6 +240,69 @@ class TestRollupQuaWebhookVaBaoCao:
         assert all(item["department_id"] == ids["phong"] for item in r.json())
 
 
+class TestOverviewBe8:
+    async def test_tong_quan_qua_webhook_that(
+        self, client_an: AsyncClient, engine: AsyncEngine
+    ) -> None:
+        ids = await _seed(engine)
+        admin = await _login(client_an, "admin@x.vn")
+        await _connect_channel(client_an, admin, "oa_ov_1", ids["phong"])
+        await _connect_channel(client_an, admin, "oa_ov_2", ids["phong2"])
+
+        # Phòng KD: 1 hội thoại được trả lời. Phòng 2: 1 hội thoại chưa ai trả lời.
+        await _khach_nhan(client_an, "oa_ov_1", "kh1", "m1")
+        conv = await _conv_moi_nhat(engine)
+        await client_an.post(f"/api/v1/inbox/{conv}/take", headers=_bearer(admin))
+        r = await client_an.post(
+            f"/api/v1/inbox/{conv}/reply", headers=_bearer(admin), json={"text": "chao"}
+        )
+        assert r.status_code == 200, r.text
+        await _khach_nhan(client_an, "oa_ov_2", "kh2", "m2")
+
+        khoang = {"from": HOM_NAY, "to": HOM_NAY}
+        r = await client_an.get("/api/v1/analytics/overview", headers=_bearer(admin), params=khoang)
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["totals"]["inbound_count"] == 2
+        assert body["totals"]["outbound_count"] == 1
+        assert (body["conversations_with_inbound"], body["conversations_replied"]) == (2, 1)
+        assert body["response_rate"] == 0.5
+        assert body["first_response_samples"] == 1
+        assert body["avg_first_response_seconds"] is not None
+        assert [d["date"] for d in body["daily"]] == [HOM_NAY]
+
+        # Manager phòng KD cố xem phòng 2 -> vẫn bị ép về phòng mình (RB-4).
+        tok_m = await _login(client_an, "manager@x.vn")
+        r = await client_an.get(
+            "/api/v1/analytics/overview",
+            headers=_bearer(tok_m),
+            params={**khoang, "department_id": ids["phong2"]},
+        )
+        assert r.status_code == 200, r.text
+        assert r.json()["response_rate"] == 1.0
+        assert r.json()["totals"]["inbound_count"] == 1
+
+        r = await client_an.get(
+            "/api/v1/analytics/overview",
+            headers=_bearer(await _login(client_an, "staff@x.vn")),
+            params=khoang,
+        )
+        assert r.status_code == 403, r.text
+
+    async def test_khoang_nguoc_bi_tu_choi(
+        self, client_an: AsyncClient, engine: AsyncEngine
+    ) -> None:
+        await _seed(engine)
+        admin = await _login(client_an, "admin@x.vn")
+        r = await client_an.get(
+            "/api/v1/analytics/overview",
+            headers=_bearer(admin),
+            params={"from": "2026-09-10", "to": "2026-09-01"},
+        )
+        assert r.status_code == 400, r.text
+        assert r.json()["error"]["code"] == "ANALYTICS_INVALID_DATE_RANGE"
+
+
 class TestRebuildEndpoint:
     async def test_chi_admin_va_chan_range_dai(
         self, client_an: AsyncClient, engine: AsyncEngine

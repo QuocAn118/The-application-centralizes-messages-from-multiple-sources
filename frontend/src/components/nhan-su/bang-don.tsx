@@ -24,7 +24,7 @@ import { Nut } from "@/components/ui/nut";
 
 export type ThaoTacDon = "duyet" | "tuChoi" | "thuHoi";
 
-const TONG_TRANG_THAI: Record<RequestStatus, TongHuyHieu> = {
+export const TONG_TRANG_THAI_DON: Record<RequestStatus, TongHuyHieu> = {
   CHO_DUYET: "wait",
   DA_DUYET: "ok",
   TU_CHOI: "bad",
@@ -95,7 +95,7 @@ export function BangDon({
               </Td>
 
               <Td className="align-top">
-                <HuyHieu tong={TONG_TRANG_THAI[don.status]}>{NHAN_TRANG_THAI_DON[don.status]}</HuyHieu>
+                <HuyHieu tong={TONG_TRANG_THAI_DON[don.status]}>{NHAN_TRANG_THAI_DON[don.status]}</HuyHieu>
               </Td>
 
               <Td className="align-top whitespace-nowrap text-xs text-ink-2">

@@ -16,6 +16,9 @@ import {
   DAU_GACH,
   DON_VI_KPI,
   canXemLai,
+  chuaAiTraLoi,
+  tiLePhanTram,
+  trungBinhCoTrongSo,
   NHAN_KET_QUA_PHAN_TICH,
   doTinCay,
   NHAN_CHI_SO_KPI,
@@ -588,6 +591,7 @@ describe("thanhKpi (K1)", () => {
   it("cùng mốc màu với lopMucKpi", () => {
     expect(thanhKpi("85")?.lop).toBe("bg-ink-2");
     expect(thanhKpi("79.9")?.lop).toBe("bg-bad");
+    expect(thanhKpi(100)).toEqual({ rong: 100, lop: "bg-ok" }); // số từ báo cáo Ca & KPI
   });
 });
 
@@ -602,5 +606,36 @@ describe("doiKy (K3)", () => {
 describe("canXemLai (A2)", () => {
   it("chỉ kết quả AI KHÔNG tự phân được mới cần xem lại", () => {
     expect(MOI_KET_QUA.filter(canXemLai).sort()).toEqual(["AMBIGUOUS", "NOT_ANALYZED"]);
+  });
+});
+
+describe("tiLePhanTram (BE-8)", () => {
+  it("làm tròn phần trăm; null (chưa đo) là dấu gạch, khác 0%", () => {
+    expect(tiLePhanTram(0.5)).toBe("50%");
+    expect(tiLePhanTram(2 / 3)).toBe("67%");
+    expect(tiLePhanTram(0)).toBe("0%");
+    expect(tiLePhanTram(null)).toBe("—");
+  });
+});
+
+describe("chuaAiTraLoi (B2)", () => {
+  it("chỉ khi có tin vào mà 0 tin ra", () => {
+    expect(chuaAiTraLoi({ inbound_count: 9, outbound_count: 0 })).toBe(true);
+    expect(chuaAiTraLoi({ inbound_count: 9, outbound_count: 1 })).toBe(false);
+    expect(chuaAiTraLoi({ inbound_count: 0, outbound_count: 0 })).toBe(false);
+  });
+});
+
+describe("trungBinhCoTrongSo (B4)", () => {
+  it("theo số lượng, không phải trung bình của trung bình; bỏ nhóm chưa có mẫu", () => {
+    // 1 đơn 100s + 3 đơn TB 60s -> 280/4 = 70 (TB của TB sai thành 80).
+    expect(
+      trungBinhCoTrongSo([
+        { trungBinh: 100, soLuong: 1 },
+        { trungBinh: 60, soLuong: 3 },
+        { trungBinh: null, soLuong: 5 },
+      ]),
+    ).toBe(70);
+    expect(trungBinhCoTrongSo([{ trungBinh: null, soLuong: 2 }])).toBeNull();
   });
 });
