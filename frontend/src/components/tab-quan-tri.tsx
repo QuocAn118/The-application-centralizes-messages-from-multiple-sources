@@ -17,6 +17,10 @@ const TAB: { duongDan: string; nhan: KhoaChuoi; riengAdmin: boolean }[] = [
   { duongDan: "/quan-tri/nguoi-dung", nhan: "quanTri.tabNguoiDung", riengAdmin: false },
   { duongDan: "/quan-tri/phong-ban", nhan: "quanTri.tabPhongBan", riengAdmin: true },
   { duongDan: "/quan-tri/kenh", nhan: "quanTri.tabKenh", riengAdmin: true },
+  // Phần 6: nhãn + mẫu trả lời có chỗ cố định trong Cấu hình (Manager cũng vào
+  // được khu này). Hộp thoại trong Hộp thư vẫn giữ làm lối tắt.
+  { duongDan: "/quan-tri/nhan", nhan: "quanTri.tabNhan", riengAdmin: false },
+  { duongDan: "/quan-tri/mau-tra-loi", nhan: "quanTri.tabMauTraLoi", riengAdmin: false },
   { duongDan: "/quan-tri/nhat-ky", nhan: "quanTri.tabNhatKy", riengAdmin: true },
 ];
 

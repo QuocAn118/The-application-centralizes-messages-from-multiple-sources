@@ -10,10 +10,15 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Building2, Plus } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { khoaQuanTri, layDanhSachPhongBan } from "@/lib/quan-tri-api";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { OTimKiem } from "@/components/o-tim-kiem";
+import { DauTrang } from "@/components/ui/dau-trang";
+import { The } from "@/components/ui/the";
+import { Nut } from "@/components/ui/nut";
+import { TrangThaiLoi, TrangThaiRong, TrangThaiTai } from "@/components/ui/trang-thai";
 import { BangPhongBan, type ThaoTacPhong } from "./bang-phong-ban";
 import { HopThoaiPhongBan } from "./hop-thoai-phong-ban";
 import { HopXacNhanNgungPhong } from "./hop-xac-nhan-ngung-phong";
@@ -26,6 +31,9 @@ type DangMo =
 
 export function ManPhongBan() {
   const [tuKhoa, setTuKhoa] = useState("");
+  // Q2: mặc định chỉ phòng đang hoạt động — phòng đã ngừng cùng trọng lượng
+  // với phòng đang chạy làm danh sách rối.
+  const [hienDaNgung, setHienDaNgung] = useState(false);
   const [dangMo, setDangMo] = useState<DangMo>(null);
 
   const truyVan = useQuery({
@@ -33,8 +41,11 @@ export function ManPhongBan() {
     queryFn: ({ signal }) => layDanhSachPhongBan(signal),
   });
 
+  const tatCa = truyVan.data?.items ?? [];
+  const soDaNgung = tatCa.filter((p) => !p.is_active).length;
+
   const danhSach = useMemo(() => {
-    const items = truyVan.data?.items ?? [];
+    const items = (truyVan.data?.items ?? []).filter((p) => hienDaNgung || p.is_active);
     const tu = tuKhoa.trim().toLowerCase();
     if (!tu) return items;
     return items.filter(
@@ -42,61 +53,56 @@ export function ManPhongBan() {
         p.name.toLowerCase().includes(tu) ||
         (p.description ?? "").toLowerCase().includes(tu),
     );
-  }, [truyVan.data, tuKhoa]);
+  }, [truyVan.data, tuKhoa, hienDaNgung]);
 
   return (
-    <div className="px-6 py-6">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-base font-semibold text-foreground">
-          {t("phongBan.tieuDe")}
-        </h2>
-        <button
-          type="button"
-          onClick={() => setDangMo({ loai: "tao" })}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95"
-        >
-          + {t("phongBan.taoMoi")}
-        </button>
-      </div>
+    <div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-8 py-6">
+      <DauTrang
+        tieuDe={t("phongBan.tieuDe")}
+        moTa="Mỗi phòng nhận hội thoại của kênh mình phụ trách và có một quản lý."
+        hanhDong={
+          <Nut bienThe="chinh" icon={Plus} onClick={() => setDangMo({ loai: "tao" })}>
+            {t("phongBan.taoMoi")}
+          </Nut>
+        }
+      />
 
-      <div className="overflow-hidden rounded-lg border border-border-subtle bg-white">
-        <div className="border-b border-border-subtle px-4 py-3">
-          <OTimKiem nhanGoiY={t("phongBan.timKiem")} doiTuKhoa={setTuKhoa} />
-        </div>
-
-        {truyVan.isPending && (
-          <p className="px-5 py-10 text-center text-sm text-muted">
-            {t("chung.dangTai")}
-          </p>
-        )}
-
-        {truyVan.isError && (
-          <div className="px-5 py-10 text-center">
-            <p className="text-sm text-danger-fg">{thongDiepLoi(truyVan.error)}</p>
-            <button
-              type="button"
-              onClick={() => void truyVan.refetch()}
-              className="mt-3 rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-surface"
-            >
-              {t("chung.thuLai")}
-            </button>
-          </div>
-        )}
-
-        {truyVan.data && danhSach.length === 0 && (
-          <p className="px-5 py-10 text-center text-sm text-muted">
-            {t("quanTri.trong")}
-          </p>
-        )}
-
-        {danhSach.length > 0 && (
-          <BangPhongBan
-            danhSach={danhSach}
-            laAdmin
-            chonThaoTac={(thaoTac, phong) => setDangMo({ loai: thaoTac, phong })}
-          />
+      <div className="flex flex-wrap items-center gap-3">
+        <OTimKiem nhanGoiY={t("phongBan.timKiem")} doiTuKhoa={setTuKhoa} />
+        {soDaNgung > 0 && (
+          <Nut
+            co="sm"
+            bienThe={hienDaNgung ? "chinh" : "phu"}
+            aria-pressed={hienDaNgung}
+            onClick={() => setHienDaNgung((v) => !v)}
+          >
+            Hiện cả phòng đã ngừng ({soDaNgung})
+          </Nut>
         )}
       </div>
+
+      {truyVan.isPending && (
+        <The>
+          <TrangThaiTai />
+        </The>
+      )}
+      {truyVan.isError && (
+        <The>
+          <TrangThaiLoi thongDiep={thongDiepLoi(truyVan.error)} onThuLai={() => void truyVan.refetch()} />
+        </The>
+      )}
+      {truyVan.data && danhSach.length === 0 && (
+        <The>
+          <TrangThaiRong icon={Building2} tieuDe={t("quanTri.trong")} />
+        </The>
+      )}
+      {danhSach.length > 0 && (
+        <BangPhongBan
+          danhSach={danhSach}
+          laAdmin
+          chonThaoTac={(thaoTac, phong) => setDangMo({ loai: thaoTac, phong })}
+        />
+      )}
 
       {dangMo?.loai === "tao" && (
         <HopThoaiPhongBan phong={null} onDong={() => setDangMo(null)} />

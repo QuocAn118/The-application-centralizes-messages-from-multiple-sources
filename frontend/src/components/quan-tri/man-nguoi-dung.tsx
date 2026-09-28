@@ -11,6 +11,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { UserPlus, Users } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -22,6 +23,10 @@ import {
 import { hienTaoTaiKhoan, type NguoiThaoTac } from "@/lib/quyen-quan-tri";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { ThanhPhanTrang } from "@/components/thanh-phan-trang";
+import { DauTrang } from "@/components/ui/dau-trang";
+import { The } from "@/components/ui/the";
+import { Nut } from "@/components/ui/nut";
+import { TrangThaiLoi, TrangThaiRong, TrangThaiTai } from "@/components/ui/trang-thai";
 import { BoLocNguoiDung } from "./bo-loc-nguoi-dung";
 import { BangNguoiDung, type ThaoTac } from "./bang-nguoi-dung";
 import { HopThoaiTaoNguoiDung } from "./hop-thoai-tao-nguoi-dung";
@@ -77,77 +82,60 @@ export function ManNguoiDung() {
   }
 
   return (
-    <div className="px-6 py-6">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-base font-semibold text-foreground">
-          {t("nguoiDung.tieuDe")}
-        </h2>
-        {hienTaoTaiKhoan(actor) && (
-          <button
-            type="button"
-            onClick={() => setDangMo({ loai: "tao" })}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95"
-          >
-            + {t("nguoiDung.taoMoi")}
-          </button>
-        )}
-      </div>
+    <div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-8 py-6">
+      <DauTrang
+        tieuDe={t("nguoiDung.tieuDe")}
+        moTa={
+          actor.role === "ADMIN"
+            ? "Tài khoản của mọi phòng: vai trò, phòng ban, trạng thái."
+            : "Nhân viên trong phòng của bạn."
+        }
+        hanhDong={
+          hienTaoTaiKhoan(actor) && (
+            <Nut bienThe="chinh" icon={UserPlus} onClick={() => setDangMo({ loai: "tao" })}>
+              {t("nguoiDung.taoMoi")}
+            </Nut>
+          )
+        }
+      />
 
-      <div className="overflow-hidden rounded-lg border border-border-subtle bg-white">
-        <BoLocNguoiDung
-          vai={actor.role}
-          thamSo={thamSo}
-          phongBan={phongBan}
-          doiThamSo={doiThamSo}
-        />
+      <BoLocNguoiDung vai={actor.role} thamSo={thamSo} phongBan={phongBan} doiThamSo={doiThamSo} />
 
-        {truyVanNguoiDung.isPending && (
-          <p className="px-5 py-10 text-center text-sm text-muted">
-            {t("chung.dangTai")}
-          </p>
-        )}
-
-        {truyVanNguoiDung.isError && (
-          <div className="px-5 py-10 text-center">
-            <p className="text-sm text-danger-fg">
-              {thongDiepLoi(truyVanNguoiDung.error)}
-            </p>
-            <button
-              type="button"
-              onClick={() => void truyVanNguoiDung.refetch()}
-              className="mt-3 rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-surface"
-            >
-              {t("chung.thuLai")}
-            </button>
-          </div>
-        )}
-
-        {trang && trang.items.length === 0 && (
-          <p className="px-5 py-10 text-center text-sm text-muted">
-            {t("quanTri.trong")}
-          </p>
-        )}
-
-        {trang && trang.items.length > 0 && (
-          <>
-            <BangNguoiDung
-              danhSach={trang.items}
-              phongBan={phongBan}
-              actor={actor}
-              chonThaoTac={(thaoTac, nguoi) => setDangMo({ loai: thaoTac, nguoi })}
-            />
-            <ThanhPhanTrang
-              offset={trang.offset}
-              limit={trang.limit}
-              total={trang.total}
-              dangTai={truyVanNguoiDung.isFetching}
-              doiOffset={(offsetMoi) =>
-                setThamSo((truoc) => ({ ...truoc, offset: offsetMoi }))
-              }
-            />
-          </>
-        )}
-      </div>
+      {truyVanNguoiDung.isPending && (
+        <The>
+          <TrangThaiTai />
+        </The>
+      )}
+      {truyVanNguoiDung.isError && (
+        <The>
+          <TrangThaiLoi
+            thongDiep={thongDiepLoi(truyVanNguoiDung.error)}
+            onThuLai={() => void truyVanNguoiDung.refetch()}
+          />
+        </The>
+      )}
+      {trang && trang.items.length === 0 && (
+        <The>
+          <TrangThaiRong icon={Users} tieuDe={t("quanTri.trong")} moTa="Thử bỏ bớt bộ lọc hoặc đổi từ khoá tìm." />
+        </The>
+      )}
+      {trang && trang.items.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <BangNguoiDung
+            danhSach={trang.items}
+            phongBan={phongBan}
+            actor={actor}
+            chonThaoTac={(thaoTac, nguoi) => setDangMo({ loai: thaoTac, nguoi })}
+          />
+          <ThanhPhanTrang
+            offset={trang.offset}
+            limit={trang.limit}
+            total={trang.total}
+            dangTai={truyVanNguoiDung.isFetching}
+            doiOffset={(offsetMoi) => setThamSo((truoc) => ({ ...truoc, offset: offsetMoi }))}
+          />
+        </div>
+      )}
 
       {dangMo?.loai === "tao" && (
         <HopThoaiTaoNguoiDung

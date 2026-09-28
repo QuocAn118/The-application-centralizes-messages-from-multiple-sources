@@ -1,19 +1,25 @@
 "use client";
 
 /**
- * Bảng kênh đã kết nối (#F2 task 3.1).
+ * Bảng kênh đã kết nối (#F2 task 3.1; redesign Phần 6 Q2/Q3).
  *
  * **RB-6 — credential không bao giờ xuất hiện ở đây.** `ChannelResponse` của
  * backend cố ý không mang credential về (có ghi chú trong chính schema), nên
  * bảng này không có gì để lộ. Đừng thêm cột nào đọc token, kể cả dạng che dấu:
  * FE không có token để che.
  *
- * Badge nền tảng dùng `LOP_BADGE_KENH`/`NHAN_KENH` — bảng tra phủ đủ 4 giá trị
- * `Platform` và có test duyệt toàn bộ enum (RB-9, bài học TELEGRAM).
+ * Q3: "Ngắt kênh" không còn là nút đỏ trên mọi dòng — vào menu "⋯", nằm cuối,
+ * và vẫn qua hộp xác nhận (X5). Kênh đã ngắt không có mục này: backend không có
+ * endpoint kết nối lại (chỉ `deactivate`).
  */
 
+import { Pencil, Unplug } from "lucide-react";
 import { t } from "@/lib/i18n";
-import { LOP_BADGE_KENH, NHAN_KENH } from "@/lib/hien-thi";
+import { NHAN_KENH } from "@/lib/hien-thi";
+import { Bang, Td, Th, Tr } from "@/components/ui/bang";
+import { HuyHieu } from "@/components/ui/huy-hieu";
+import { IconKenh } from "@/components/ui/icon-kenh";
+import { MenuHanhDong } from "@/components/ui/menu-hanh-dong";
 import type { Channel, Department } from "@/lib/types";
 
 export type ThaoTacKenh = "sua" | "ngat";
@@ -30,89 +36,66 @@ export function BangKenh({
   const tenPhong = new Map(phongBan.map((p) => [p.id, p.name]));
 
   return (
-    <table className="w-full border-collapse text-left">
+    <Bang aria-label={t("kenh.tieuDe")}>
       <thead>
-        <tr className="border-b border-border-subtle bg-surface/60 text-xs font-bold uppercase tracking-wider text-muted">
-          <th scope="col" className="px-5 py-3.5">{t("kenh.cotKenh")}</th>
-          <th scope="col" className="w-32 px-4 py-3.5">{t("kenh.cotNenTang")}</th>
-          <th scope="col" className="w-48 px-4 py-3.5">{t("kenh.cotPhongBan")}</th>
-          <th scope="col" className="w-40 px-4 py-3.5">{t("kenh.cotTrangThai")}</th>
-          <th scope="col" className="w-44 px-5 py-3.5 text-right">
+        <tr>
+          <Th>{t("kenh.cotKenh")}</Th>
+          <Th className="w-40">{t("kenh.cotNenTang")}</Th>
+          <Th className="w-52">{t("kenh.cotPhongBan")}</Th>
+          <Th className="w-40">{t("kenh.cotTrangThai")}</Th>
+          <Th className="w-16">
             <span className="sr-only">{t("nguoiDung.thaoTac")}</span>
-          </th>
+          </Th>
         </tr>
       </thead>
       <tbody>
         {danhSach.map((kenh) => (
-          <tr
-            key={kenh.id}
-            className={`border-b border-border-subtle last:border-0 ${
-              kenh.is_active ? "" : "bg-surface/40 opacity-60"
-            }`}
-          >
-            <td className="px-5 py-3">
-              <span className="block text-sm font-semibold text-foreground">
-                {kenh.name}
-              </span>
+          <Tr key={kenh.id} className={kenh.is_active ? "" : "bg-sunken"}>
+            <Td>
+              <span className="block font-bold text-ink">{kenh.name}</span>
               {/* Mã kênh trên nền tảng (OA ID / Page ID) — công khai, không
                   phải bí mật. Token mới là bí mật, và nó không có ở đây. */}
-              <span className="block truncate font-mono text-xs text-muted">
-                {kenh.external_channel_id}
-              </span>
-            </td>
-
-            <td className="px-4 py-3">
-              <span
-                className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${LOP_BADGE_KENH[kenh.platform]}`}
-              >
+              <span className="block truncate font-mono text-xs text-ink-2">{kenh.external_channel_id}</span>
+            </Td>
+            <Td>
+              <span className="inline-flex items-center gap-2 font-semibold">
+                {/* Logo đã có tên kênh ngay cạnh → ẩn khỏi trình đọc màn hình, khỏi đọc hai lần. */}
+                <span aria-hidden className="inline-flex">
+                  <IconKenh kenh={kenh.platform} />
+                </span>
                 {NHAN_KENH[kenh.platform]}
               </span>
-            </td>
-
-            <td className="px-4 py-3 text-sm text-foreground">
-              {kenh.department_id
-                ? (tenPhong.get(kenh.department_id) ?? t("nguoiDung.khongPhong"))
-                : t("nguoiDung.khongPhong")}
-            </td>
-
-            <td className="px-4 py-3">
-              <span
-                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${
-                  kenh.is_active
-                    ? "bg-dang-mo-bg text-dang-mo-fg"
-                    : "bg-da-dong-bg text-da-dong-fg"
-                }`}
-              >
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
+            </Td>
+            <Td>
+              {kenh.department_id ? (
+                (tenPhong.get(kenh.department_id) ?? t("nguoiDung.khongPhong"))
+              ) : (
+                <span className="text-ink-2">{t("nguoiDung.khongPhong")}</span>
+              )}
+            </Td>
+            <Td>
+              <HuyHieu tong={kenh.is_active ? "ok" : "trung"}>
                 {kenh.is_active ? t("kenh.dangKetNoi") : t("kenh.daNgat")}
-              </span>
-            </td>
-
-            <td className="px-5 py-3 text-right">
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => chonThaoTac("sua", kenh)}
-                  className="whitespace-nowrap rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-surface"
-                >
-                  {t("kenh.sua")}
-                </button>
-                {/* Kênh đã ngắt không hiện nút: backend KHÔNG có endpoint kết
-                    nối lại (chỉ `deactivate`), giống phòng ban. */}
-                {kenh.is_active && (
-                  <button
-                    type="button"
-                    onClick={() => chonThaoTac("ngat", kenh)}
-                    className="whitespace-nowrap rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-danger-fg transition hover:bg-danger-bg"
-                  >
-                    {t("kenh.ngat")}
-                  </button>
-                )}
-              </div>
-            </td>
-          </tr>
+              </HuyHieu>
+            </Td>
+            <Td className="text-right">
+              <MenuHanhDong
+                nhan={`${t("nguoiDung.moThaoTac")}: ${kenh.name}`}
+                muc={[
+                  { nhan: t("kenh.sua"), icon: Pencil, onChon: () => chonThaoTac("sua", kenh) },
+                  {
+                    nhan: t("kenh.ngat"),
+                    icon: Unplug,
+                    nguyHiem: true,
+                    an: !kenh.is_active,
+                    onChon: () => chonThaoTac("ngat", kenh),
+                  },
+                ]}
+              />
+            </Td>
+          </Tr>
         ))}
       </tbody>
-    </table>
+    </Bang>
   );
 }
