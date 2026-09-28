@@ -496,6 +496,32 @@ export interface ConversationAnalysis {
  * bình là `null` khi chưa có mẫu — **`null` khác `0`**, không được suy null→0.
  */
 
+/** Bốn số đếm khối lượng — dùng chung cho tổng và từng ngày của BE-8. */
+export interface KhoiLuong {
+  inbound_count: number;
+  outbound_count: number;
+  opened_count: number;
+  closed_count: number;
+}
+
+/**
+ * `GET /analytics/overview` (BE-8). Đã gọi thật trên dữ liệu dev trước khi viết UI.
+ *
+ * - `response_rate` ∈ [0, 1] hoặc `null` khi kỳ không có hội thoại nào có tin vào
+ *   (chưa đo được — KHÔNG phải 0%).
+ * - `avg_first_response_seconds` có trọng số; `null` khi chưa có mẫu.
+ * - `daily` có ĐỦ mọi ngày trong khoảng (ngày trống = 0), `date` là "YYYY-MM-DD".
+ */
+export interface OverviewResponse {
+  totals: KhoiLuong;
+  avg_first_response_seconds: number | null;
+  first_response_samples: number;
+  response_rate: number | null;
+  conversations_with_inbound: number;
+  conversations_replied: number;
+  daily: (KhoiLuong & { date: string })[];
+}
+
 /** Khối lượng tin theo (phòng, kênh). `department_id=null`: chưa phân phòng. */
 export interface ConversationReportItem {
   department_id: string | null;

@@ -350,9 +350,10 @@ export function lopMucKpi(phanTram: string | null): string {
 /**
  * Thanh tiến độ ô "Hoàn thành" (K1): độ rộng 0–100% + màu theo cùng mốc với
  * `lopMucKpi`. `null` = không vẽ thanh — null ≠ 0% (dấu gạch, không phải thanh rỗng).
- * Vượt 100% thì thanh đầy, số in vẫn đúng (vd. 130%).
+ * Vượt 100% thì thanh đầy, số in vẫn đúng (vd. 130%). Nhận chuỗi Decimal (API KPI)
+ * hoặc số (báo cáo Ca & KPI).
  */
-export function thanhKpi(phanTram: string | null): { rong: number; lop: string } | null {
+export function thanhKpi(phanTram: string | number | null): { rong: number; lop: string } | null {
   if (phanTram === null) return null;
   const so = Number(phanTram);
   if (!Number.isFinite(so)) return null;
@@ -479,4 +480,43 @@ export function tenNguoi(ten: Map<string, string>, id: string): string {
 export function tenPhong(ten: Map<string, string>, id: string | null): string {
   if (id === null) return t("baoCao.chuaPhanPhong");
   return ten.get(id) ?? maRutGon(id);
+}
+
+// ---------------------------------------------------------------------------
+// Báo cáo — redesign Phần 5
+// ---------------------------------------------------------------------------
+
+/**
+ * Tỉ lệ ∈ [0, 1] → "75%". `null` = chưa đo được (kỳ không có hội thoại nào có
+ * tin vào) → dấu gạch, KHÔNG "0%" (0% là "có tin vào mà không trả lời cái nào").
+ */
+export function tiLePhanTram(tiLe: number | null): string {
+  if (tiLe === null) return DAU_GACH;
+  return `${Math.round(tiLe * 100)}%`;
+}
+
+/**
+ * B2: dòng báo cáo có tin vào mà KHÔNG có tin ra — cần cảnh báo, không để chìm
+ * trong bảng ("Chưa phân phòng: 9 vào / 0 ra" đo thật ở GĐ1).
+ */
+export function chuaAiTraLoi(r: { inbound_count: number; outbound_count: number }): boolean {
+  return r.inbound_count > 0 && r.outbound_count === 0;
+}
+
+/**
+ * Trung bình có trọng số của các nhóm đã có trung bình riêng (vd. thời gian duyệt
+ * theo từng (phòng, loại, trạng thái)). Nhóm `trungBinh=null` (chưa có mẫu) bị bỏ.
+ * Trung bình cộng các trung bình sẽ SAI khi các nhóm có số lượng khác nhau.
+ */
+export function trungBinhCoTrongSo(
+  nhom: readonly { trungBinh: number | null; soLuong: number }[],
+): number | null {
+  let tong = 0;
+  let mau = 0;
+  for (const n of nhom) {
+    if (n.trungBinh === null || n.soLuong <= 0) continue;
+    tong += n.trungBinh * n.soLuong;
+    mau += n.soLuong;
+  }
+  return mau ? tong / mau : null;
 }
