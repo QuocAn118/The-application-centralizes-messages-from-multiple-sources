@@ -20,11 +20,14 @@ export function DongHoiThoai({
   item,
   dangChon,
   bayGio,
+  boLoc,
 }: {
   item: InboxItem;
   dangChon: boolean;
   /** Đồng hồ chung của danh sách (nhịp 1 phút) — không gọi lại API. */
   bayGio: Date;
+  /** Chuỗi query hiện tại (`loc`, `status`, `q`) — mở hội thoại không làm mất bộ lọc. */
+  boLoc: string;
 }) {
   const ten = tenKhach(item.customer_display_name);
   const soChuaDoc = hienSoChuaDoc(item.unread_count);
@@ -32,7 +35,7 @@ export function DongHoiThoai({
 
   return (
     <Link
-      href={`/inbox/${item.conversation_id}`}
+      href={`/inbox/${item.conversation_id}${boLoc ? `?${boLoc}` : ""}`}
       aria-current={dangChon ? "true" : undefined}
       className={`flex gap-3 border-b-2 border-l-4 border-b-line px-4 py-3 outline-offset-[-3px] ${
         dangChon ? "border-l-ink bg-accent" : "border-l-transparent hover:bg-sunken"

@@ -38,21 +38,6 @@ export const NHAN_VAI: Record<Role, string> = {
   ADMIN: t("vai.ADMIN"),
 };
 
-/** Lớp Tailwind cho badge kênh — màu lấy từ design system. */
-export const LOP_BADGE_KENH: Record<Platform, string> = {
-  ZALO: "bg-zalo-bg text-zalo-fg",
-  FACEBOOK: "bg-facebook-bg text-facebook-fg",
-  INSTAGRAM: "bg-instagram-bg text-instagram-fg",
-  TELEGRAM: "bg-telegram-bg text-telegram-fg",
-};
-
-/** Lớp Tailwind cho badge trạng thái. */
-export const LOP_BADGE_TRANG_THAI: Record<ConversationStatus, string> = {
-  CHO_PHAN: "bg-cho-phan-bg text-cho-phan-fg",
-  DANG_MO: "bg-dang-mo-bg text-dang-mo-fg",
-  DA_DONG: "bg-da-dong-bg text-da-dong-fg",
-};
-
 /** Tên hiển thị của khách khi backend chưa có tên (kênh không trả về). */
 export function tenKhach(ten: string | null): string {
   return ten?.trim() ? ten : t("inbox.khachChuaRoTen");
@@ -167,7 +152,7 @@ export function nhomCuaHanhDong(hanhDong: AuditAction): NhomHanhDong {
  */
 export function lopBadgeHanhDong(hanhDong: AuditAction): string {
   if (hanhDong === "auth.token_reuse_detected") {
-    return "bg-danger-bg text-danger-fg";
+    return "bg-bad-bg text-bad";
   }
   if (hanhDong === "auth.login_failed") return "bg-cho-phan-bg text-cho-phan-fg";
 
@@ -194,20 +179,6 @@ export const NHAN_TRANG_THAI_DON: Record<RequestStatus, string> = {
   DA_DUYET: t("trangThaiDon.DA_DUYET"),
   TU_CHOI: t("trangThaiDon.TU_CHOI"),
   DA_HUY: t("trangThaiDon.DA_HUY"),
-};
-
-/**
- * Lớp badge trạng thái đơn.
- *
- * `DA_HUY` dùng màu xám như `TU_CHOI` nhưng KHÔNG cùng ý nghĩa: từ chối là
- * quyết định của người duyệt, thu hồi là người gửi tự rút. Nhãn chữ phân biệt
- * hai cái đó, màu chỉ nói "không còn chờ xử lý".
- */
-export const LOP_BADGE_TRANG_THAI_DON: Record<RequestStatus, string> = {
-  CHO_DUYET: "bg-cho-phan-bg text-cho-phan-fg",
-  DA_DUYET: "bg-dang-mo-bg text-dang-mo-fg",
-  TU_CHOI: "bg-danger-bg text-danger-fg",
-  DA_HUY: "bg-da-dong-bg text-da-dong-fg",
 };
 
 /**
@@ -339,12 +310,12 @@ export function phanTramKpi(phanTram: string | null): string {
  * đảo chiều ở đây là thừa và sẽ tô ngược.
  */
 export function lopMucKpi(phanTram: string | null): string {
-  if (phanTram === null) return "text-muted";
+  if (phanTram === null) return "text-ink-2";
   const so = Number(phanTram);
-  if (!Number.isFinite(so)) return "text-muted";
-  if (so >= 100) return "text-dang-mo-fg";
-  if (so >= 80) return "text-foreground";
-  return "text-danger-fg";
+  if (!Number.isFinite(so)) return "text-ink-2";
+  if (so >= 100) return "text-ok";
+  if (so >= 80) return "text-ink";
+  return "text-bad";
 }
 
 /**

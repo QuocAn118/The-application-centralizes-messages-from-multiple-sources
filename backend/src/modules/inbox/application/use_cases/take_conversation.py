@@ -4,7 +4,7 @@ from uuid import UUID
 
 from src.modules.inbox.application.actor import InboxActor
 from src.modules.inbox.application.authorization import bao_dam_thao_tac
-from src.modules.inbox.domain.entities.conversation import Conversation
+from src.modules.inbox.domain.entities.conversation import AlreadyAssignedError, Conversation
 from src.modules.inbox.domain.entities.conversation_event import (
     ConversationEvent,
     ConversationEventKind,
@@ -48,7 +48,12 @@ class TakeConversation:
 
         now = self._clock.now()
         conversation.assign_to_agent(actor.user_id, now)
-        await self._conversation_repo.update(conversation)
+        # HT-2: so-và-đổi (người cũ phải vẫn là "chưa ai"). Manager giao tay chen giữa
+        # lúc đọc và lúc ghi thì bên này thua — không ghi đè người Manager đã giao.
+        if not await self._conversation_repo.doi_nguoi_phu_trach_neu_chua_doi(
+            conversation.id, None, actor.user_id, now
+        ):
+            raise AlreadyAssignedError
         if self._event_repo is not None:
             await self._event_repo.add(
                 ConversationEvent.ghi(

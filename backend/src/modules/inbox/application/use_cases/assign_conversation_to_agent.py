@@ -9,7 +9,7 @@ gán khi hội thoại ``DANG_MO`` và chưa có người (không cướp việc
 from uuid import UUID
 
 from src.modules.inbox.application.actor import ActorRole, InboxActor
-from src.modules.inbox.domain.entities.conversation import Conversation
+from src.modules.inbox.domain.entities.conversation import AlreadyAssignedError, Conversation
 from src.modules.inbox.domain.entities.conversation_event import (
     ConversationEvent,
     ConversationEventKind,
@@ -81,7 +81,12 @@ class AssignConversationToAgent:
 
         now = self._clock.now()
         conversation.assign_to_agent(user_id, now)
-        await self._conversation_repo.update(conversation)
+        # HT-2: so-và-đổi như ``TakeConversation`` — Manager giao tay chen giữa thì #3
+        # thua (``AlreadyAssignedError`` → ``ALREADY_TAKEN``), không ghi đè.
+        if not await self._conversation_repo.doi_nguoi_phu_trach_neu_chua_doi(
+            conversation.id, None, user_id, now
+        ):
+            raise AlreadyAssignedError
         if self._event_repo is not None:
             # Đường này chỉ #3 dùng (actor hệ thống) — người giao ghi là None.
             await self._event_repo.add(

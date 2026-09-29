@@ -23,10 +23,10 @@ export default function QuanTriLayout({
       <div className="flex h-screen overflow-hidden">
         <NavRail />
         <ChanTheoVai cho="khuQuanTri">
-          <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-surface">
+          <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-paper">
             <TabQuanTri />
             <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-          </div>
+          </main>
         </ChanTheoVai>
       </div>
     </AuthGuard>

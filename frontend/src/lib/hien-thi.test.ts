@@ -8,9 +8,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  LOP_BADGE_KENH,
   LOP_BADGE_VAI,
-  LOP_BADGE_TRANG_THAI_DON,
   NHAN_HANH_DONG,
   NHAN_KENH,
   DAU_GACH,
@@ -107,7 +105,7 @@ describe("tenKhach / chuCaiDau", () => {
 
 /**
  * Khoá lỗi 2026-09-15: backend thêm kênh TELEGRAM (2026-09-14) nhưng frontend
- * không cập nhật theo. `NHAN_KENH` và `LOP_BADGE_KENH` là `Record<Platform,…>`
+ * không cập nhật theo. `NHAN_KENH` là `Record<Platform,…>`
  * nên tra khoá `TELEGRAM` trả `undefined` — badge hiện trống, không có lỗi nào
  * nổ ra. Đúng trên kênh DUY NHẤT đang chạy thật.
  *
@@ -119,10 +117,6 @@ describe("bảng nhãn kênh phủ đủ mọi nền tảng", () => {
 
   it.each(MOI_KENH)("kênh %s có nhãn hiển thị", (kenh) => {
     expect(NHAN_KENH[kenh]).toBeTruthy();
-  });
-
-  it.each(MOI_KENH)("kênh %s có lớp màu badge", (kenh) => {
-    expect(LOP_BADGE_KENH[kenh]).toBeTruthy();
   });
 });
 
@@ -200,7 +194,7 @@ describe("nhomCuaHanhDong", () => {
 
 describe("lopBadgeHanhDong — hai dòng cần thấy ngay", () => {
   it("token bị dùng lại tô màu nguy hiểm", () => {
-    expect(lopBadgeHanhDong("auth.token_reuse_detected")).toContain("danger");
+    expect(lopBadgeHanhDong("auth.token_reuse_detected")).toContain("text-bad");
   });
 
   it("đăng nhập thất bại tô màu cảnh báo, khác với đăng nhập thành công", () => {
@@ -243,9 +237,8 @@ describe("NHAN_TRANG_THAI_DON (RB-9)", () => {
     );
   });
 
-  it.each(MOI_TRANG_THAI_DON)("%s có nhãn và lớp badge", (tt) => {
+  it.each(MOI_TRANG_THAI_DON)("%s có nhãn", (tt) => {
     expect(NHAN_TRANG_THAI_DON[tt]?.trim().length).toBeGreaterThan(0);
-    expect(LOP_BADGE_TRANG_THAI_DON[tt]?.trim().length).toBeGreaterThan(0);
   });
 
   it("TU_CHOI và DA_HUY có NHÃN khác nhau dù đều là kết thúc", () => {
@@ -440,21 +433,21 @@ describe("phanTramKpi", () => {
  */
 describe("lopMucKpi (RB-8)", () => {
   it("null thì xám, không tô tốt cũng không tô xấu", () => {
-    expect(lopMucKpi(null)).toBe("text-muted");
+    expect(lopMucKpi(null)).toBe("text-ink-2");
   });
 
   it("đạt và vượt mục tiêu thì tô tốt", () => {
-    expect(lopMucKpi("100.0")).toBe("text-dang-mo-fg");
-    expect(lopMucKpi("250.0")).toBe("text-dang-mo-fg");
+    expect(lopMucKpi("100.0")).toBe("text-ok");
+    expect(lopMucKpi("250.0")).toBe("text-ok");
   });
 
   it("dưới 80% thì tô cảnh báo", () => {
-    expect(lopMucKpi("0.0")).toBe("text-danger-fg");
-    expect(lopMucKpi("79.9")).toBe("text-danger-fg");
+    expect(lopMucKpi("0.0")).toBe("text-bad");
+    expect(lopMucKpi("79.9")).toBe("text-bad");
   });
 
   it("chuỗi không phải số thì xám, không vỡ", () => {
-    expect(lopMucKpi("khong-phai-so")).toBe("text-muted");
+    expect(lopMucKpi("khong-phai-so")).toBe("text-ink-2");
   });
 });
 

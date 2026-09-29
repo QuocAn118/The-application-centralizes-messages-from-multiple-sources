@@ -37,9 +37,11 @@ export function KhungQuanLy({
     );
   }
   return (
-    <div className="mx-auto flex max-w-[960px] flex-col gap-5 px-8 py-6">
+    // Khung ngoài giống mọi màn Cấu hình (1440, sát trái — tiêu đề thẳng hàng khi
+    // chuyển tab); chỉ thẻ nội dung giới hạn 960px cho form khỏi quá dài.
+    <div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-8 py-6">
       <DauTrang tieuDe={tieuDe} moTa={moTa} />
-      <The className="p-5">
+      <The className="max-w-[960px] p-5">
         {loi && (
           <p
             role="alert"

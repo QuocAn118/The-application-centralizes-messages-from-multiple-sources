@@ -9,6 +9,7 @@
  */
 
 import type { LucideIcon } from "lucide-react";
+import { The } from "@/components/ui/the";
 
 export function HangTheSo({ nhan, children }: { nhan: string; children: React.ReactNode }) {
   return (
@@ -30,13 +31,13 @@ export function TheSo({
   phu?: string;
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-nb border-2 border-ink bg-card px-5 py-4 shadow-nb">
+    <The as="div" className="flex flex-col gap-1 px-5 py-4">
       <dt className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-ink-2">
         <Icon aria-hidden className="size-4" strokeWidth={2.5} />
         {nhan}
       </dt>
       <dd className="text-[28px] font-extrabold leading-tight tabular-nums text-ink">{giaTri}</dd>
       {phu && <dd className="text-xs text-ink-2">{phu}</dd>}
-    </div>
+    </The>
   );
 }

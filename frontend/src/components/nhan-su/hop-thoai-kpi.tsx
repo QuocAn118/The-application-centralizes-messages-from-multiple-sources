@@ -31,9 +31,8 @@ import type {
   Role,
   UserResponse,
 } from "@/lib/types";
-
-const LOP_O_NHAP =
-  "mt-1 w-full rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary";
+import { Truong } from "@/components/ui/truong";
+import { OChon, ONhap } from "@/components/ui/o-nhap";
 
 const CHI_SO: KpiMetricType[] = ["CONVERSATIONS_CLOSED", "AVG_RESPONSE_MINUTES"];
 
@@ -118,122 +117,102 @@ export function HopThoaiKpi({
         </>
       }
     >
-      <div className="mt-4 space-y-3">
+      <div className="mt-4 flex flex-col gap-4">
         {/* Khi sửa, khoá chính (đối tượng + chỉ số) hiện chỉ-đọc: đổi chúng
             không "sửa" dòng này mà tạo/ghi đè một mục tiêu KHÁC — dễ hiểu nhầm
             thành đang đổi tên dòng đang đứng. */}
         {dangSua ? (
-          <div className="rounded-lg border border-border-subtle bg-surface/50 px-3 py-2">
-            <span className="block text-xs text-muted">
+          <dl className="rounded-nb border-2 border-line bg-sunken px-3 py-2.5">
+            <dt className="text-xs font-bold uppercase tracking-wide text-ink-2">
               {NHAN_DOI_TUONG_KPI[sua.subject_type]}
-            </span>
-            <span className="block text-sm font-medium text-foreground">
-              {NHAN_CHI_SO_KPI[sua.metric_type]}
-            </span>
-          </div>
+            </dt>
+            <dd className="mt-1 text-sm font-semibold text-ink">{NHAN_CHI_SO_KPI[sua.metric_type]}</dd>
+          </dl>
         ) : (
           <>
             {chonDuocPhong && (
-              <label className="block">
-                <span className="text-xs font-medium text-muted">
-                  {t("kpi.loaiDoiTuong")}
-                </span>
-                <select
-                  value={loaiDoiTuong}
-                  onChange={(e) => setLoaiDoiTuong(e.target.value as KpiSubjectType)}
-                  className={LOP_O_NHAP}
-                >
-                  <option value="USER">{NHAN_DOI_TUONG_KPI.USER}</option>
-                  <option value="DEPARTMENT">{NHAN_DOI_TUONG_KPI.DEPARTMENT}</option>
-                </select>
-              </label>
+              <Truong nhan={t("kpi.loaiDoiTuong")}>
+                {(o) => (
+                  <OChon
+                    {...o}
+                    value={loaiDoiTuong}
+                    onChange={(e) => setLoaiDoiTuong(e.target.value as KpiSubjectType)}
+                  >
+                    <option value="USER">{NHAN_DOI_TUONG_KPI.USER}</option>
+                    <option value="DEPARTMENT">{NHAN_DOI_TUONG_KPI.DEPARTMENT}</option>
+                  </OChon>
+                )}
+              </Truong>
             )}
 
             {loaiDoiTuong === "USER" ? (
-              <label className="block">
-                <span className="text-xs font-medium text-muted">
-                  {t("kpi.chonNhanVien")}
-                </span>
-                <select
-                  value={subjectId}
-                  onChange={(e) => setSubjectId(e.target.value)}
-                  disabled={nhanVien.length === 0}
-                  className={LOP_O_NHAP}
-                >
-                  {nhanVien.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.full_name}
-                    </option>
-                  ))}
-                </select>
-                {nhanVien.length === 0 && (
-                  <span className="mt-1 block text-xs text-danger-fg">
-                    {t("kpi.khongCoNhanVien")}
-                  </span>
+              <Truong
+                nhan={t("kpi.chonNhanVien")}
+                loi={nhanVien.length === 0 ? t("kpi.khongCoNhanVien") : null}
+              >
+                {(o) => (
+                  <OChon
+                    {...o}
+                    value={subjectId}
+                    onChange={(e) => setSubjectId(e.target.value)}
+                    disabled={nhanVien.length === 0}
+                  >
+                    {nhanVien.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.full_name}
+                      </option>
+                    ))}
+                  </OChon>
                 )}
-              </label>
+              </Truong>
             ) : (
-              <label className="block">
-                <span className="text-xs font-medium text-muted">
-                  {t("kpi.chonPhong")}
-                </span>
-                <select
-                  value={phongId}
-                  onChange={(e) => setPhongId(e.target.value)}
-                  className={LOP_O_NHAP}
-                >
-                  {phongBan.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <Truong nhan={t("kpi.chonPhong")}>
+                {(o) => (
+                  <OChon {...o} value={phongId} onChange={(e) => setPhongId(e.target.value)}>
+                    {phongBan.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </OChon>
+                )}
+              </Truong>
             )}
 
-            <label className="block">
-              <span className="text-xs font-medium text-muted">{t("kpi.chiSo")}</span>
-              <select
-                value={chiSo}
-                onChange={(e) => setChiSo(e.target.value as KpiMetricType)}
-                className={LOP_O_NHAP}
-              >
-                {CHI_SO.map((c) => (
-                  <option key={c} value={c}>
-                    {NHAN_CHI_SO_KPI[c]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <Truong nhan={t("kpi.chiSo")}>
+              {(o) => (
+                <OChon {...o} value={chiSo} onChange={(e) => setChiSo(e.target.value as KpiMetricType)}>
+                  {CHI_SO.map((c) => (
+                    <option key={c} value={c}>
+                      {NHAN_CHI_SO_KPI[c]}
+                    </option>
+                  ))}
+                </OChon>
+              )}
+            </Truong>
           </>
         )}
 
-        <label className="block">
-          <span className="text-xs font-medium text-muted">
-            {t("kpi.giaTriMucTieu")}
-          </span>
-          <div className="mt-1 flex items-center gap-2">
-            <input
+        <Truong
+          nhan={`${t("kpi.giaTriMucTieu")} (${DON_VI_KPI[dangSua ? sua.metric_type : chiSo]})`}
+          batBuoc
+          loi={giaTri.trim() !== "" && !soHopLe ? t("kpi.giaTriPhaiDuong") : null}
+        >
+          {(o) => (
+            <ONhap
+              {...o}
               type="number"
               min={0}
               step="0.01"
               value={giaTri}
               onChange={(e) => setGiaTri(e.target.value)}
-              className="w-full rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
+              className="tabular-nums"
             />
-            <span className="shrink-0 text-sm text-muted">
-              {DON_VI_KPI[dangSua ? sua.metric_type : chiSo]}
-            </span>
-          </div>
-          {giaTri.trim() !== "" && !soHopLe && (
-            <span className="mt-1 block text-xs text-danger-fg">
-              {t("kpi.giaTriPhaiDuong")}
-            </span>
           )}
-        </label>
+        </Truong>
 
         {/* RB-3 nói thẳng cho người dùng, không chỉ nằm trong mã. */}
-        <p className="rounded-lg border border-border-subtle bg-surface/50 px-3 py-2 text-xs text-muted">
+        <p className="rounded-nb border-2 border-line bg-sunken px-3 py-2.5 text-xs text-ink-2">
           {t("kpi.ghiChuThucDat")}
           {!dangSua && ` ${t("kpi.deDatLai")}`}
         </p>
