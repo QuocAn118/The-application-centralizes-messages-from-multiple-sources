@@ -1,0 +1,183 @@
+  [DAT] Đăng nhập: không tràn ngang
+
+=== /inbox (1280) ===
+  [DAT] /inbox: đúng MỘT h1 cỡ 20px/800
+  [DAT] /inbox: chữ nhỏ nhất ≥ 12px
+  [DAT] /inbox: không tràn ngang
+  [DAT] /inbox: nút chỉ dùng 3 cỡ chiều cao chuẩn (32/36/40 ±2)
+  [DAT] /inbox: đang tải có khung xương aria-busy
+  [DAT] /inbox: rỗng có trạng thái rỗng (không lỗi, không bảng trống câm)
+  [DAT] /inbox: lỗi hiện thông điệp server trong role=alert
+
+=== /nhan-su/ca-lam-viec (1280) ===
+  [DAT] /nhan-su/ca-lam-viec: đúng MỘT h1 cỡ 28px/800
+  [DAT] /nhan-su/ca-lam-viec: chữ nhỏ nhất ≥ 12px
+  [DAT] /nhan-su/ca-lam-viec: không tràn ngang
+  [DAT] /nhan-su/ca-lam-viec: nút chỉ dùng 3 cỡ chiều cao chuẩn (32/36/40 ±2)
+  [DAT] /nhan-su/ca-lam-viec: đang tải có khung xương aria-busy
+  [DAT] /nhan-su/ca-lam-viec: rỗng có trạng thái rỗng (không lỗi, không bảng trống câm)
+  [DAT] /nhan-su/ca-lam-viec: lỗi hiện thông điệp server trong role=alert
+
+=== /nhan-su/don-tu (1280) ===
+  [DAT] /nhan-su/don-tu: đúng MỘT h1 cỡ 28px/800
+  [DAT] /nhan-su/don-tu: chữ nhỏ nhất ≥ 12px
+  [DAT] /nhan-su/don-tu: không tràn ngang
+  [DAT] /nhan-su/don-tu: nút chỉ dùng 3 cỡ chiều cao chuẩn (32/36/40 ±2)
+  [DAT] /nhan-su/don-tu: menu "⋯" mở và có mục
+  [DAT] /nhan-su/don-tu: Escape đóng menu và trả focus về nút "⋯"
+  [DAT] /nhan-su/don-tu: đang tải có khung xương aria-busy
+  [DAT] /nhan-su/don-tu: rỗng có trạng thái rỗng (không lỗi, không bảng trống câm)
+  [DAT] /nhan-su/don-tu: lỗi hiện thông điệp server trong role=alert
+
+=== /nhan-su/kpi (1280) ===
+  [DAT] /nhan-su/kpi: đúng MỘT h1 cỡ 28px/800
+  [DAT] /nhan-su/kpi: chữ nhỏ nhất ≥ 12px
+  [DAT] /nhan-su/kpi: không tràn ngang
+  [DAT] /nhan-su/kpi: nút chỉ dùng 3 cỡ chiều cao chuẩn (32/36/40 ±2)
+  [DAT] /nhan-su/kpi: menu "⋯" mở và có mục
+  [DAT] /nhan-su/kpi: Escape đóng menu và trả focus về nút "⋯"
+  [DAT] /nhan-su/kpi: đang tải có khung xương aria-busy
+  [DAT] /nhan-su/kpi: rỗng có trạng thái rỗng (không lỗi, không bảng trống câm)
+  [DAT] /nhan-su/kpi: lỗi hiện thông điệp server trong role=alert
+
+=== /tu-khoa/danh-sach (1280) ===
+  [DAT] /tu-khoa/danh-sach: đúng MỘT h1 cỡ 28px/800
+  [DAT] /tu-khoa/danh-sach: chữ nhỏ nhất ≥ 12px
+  [DAT] /tu-khoa/danh-sach: không tràn ngang
+  [DAT] /tu-khoa/danh-sach: nút chỉ dùng 3 cỡ chiều cao chuẩn (32/36/40 ±2)
+  [DAT] /tu-khoa/danh-sach: đang tải có khung xương aria-busy
+  [DAT] /tu-khoa/danh-sach: rỗng có trạng thái rỗng (không lỗi, không bảng trống câm)
+  [DAT] /tu-khoa/danh-sach: lỗi hiện thông điệp server trong role=alert
+
+=== /tu-khoa/phan-tich (1280) ===
+  [DAT] /tu-khoa/phan-tich: đúng MỘT h1 cỡ 28px/800
+  [DAT] /tu-khoa/phan-tich: chữ nhỏ nhất ≥ 12px
+  [DAT] /tu-khoa/phan-tich: không tràn ngang
+  [DAT] /tu-khoa/phan-tich: nút chỉ dùng 3 cỡ chiều cao chuẩn (32/36/40 ±2)
+  [DAT] /tu-khoa/phan-tich: đang tải có khung xương aria-busy
+  [DAT] /tu-khoa/phan-tich: rỗng có trạng thái rỗng (không lỗi, không bảng trống câm)
+  [DAT] /tu-khoa/phan-tich: lỗi hiện thông điệp server trong role=alert
+
+=== /bao-cao/hoi-thoai (1280) ===
+  [DAT] /bao-cao/hoi-thoai: đúng MỘT h1 cỡ 28px/800
+  [DAT] /bao-cao/hoi-thoai: chữ nhỏ nhất ≥ 12px
+  [DAT] /bao-cao/hoi-thoai: không tràn ngang
+  [DAT] /bao-cao/hoi-thoai: nút chỉ dùng 3 cỡ chiều cao chuẩn (32/36/40 ±2)
+  [DAT] /bao-cao/hoi-thoai: đang tải có khung xương aria-busy
+  [DAT] /bao-cao/hoi-thoai: lỗi hiện thông điệp server trong role=alert
+
+=== /bao-cao/nhan-vien (1280) ===
+  [DAT] /bao-cao/nhan-vien: đúng MỘT h1 cỡ 28px/800
+  [DAT] /bao-cao/nhan-vien: chữ nhỏ nhất ≥ 12px
+  [DAT] /bao-cao/nhan-vien: không tràn ngang
+  [DAT] /bao-cao/nhan-vien: nút chỉ dùng 3 cỡ chiều cao chuẩn (32/36/40 ±2)
+  [DAT] /bao-cao/nhan-vien: đang tải có khung xương aria-busy
+  [DAT] /bao-cao/nhan-vien: lỗi hiện thông điệp server trong role=alert
+
+=== /bao-cao/ca-kpi (1280) ===
+  [DAT] /bao-cao/ca-kpi: đúng MỘT h1 cỡ 28px/800
+  [DAT] /bao-cao/ca-kpi: chữ nhỏ nhất ≥ 12px
+  [DAT] /bao-cao/ca-kpi: không tràn ngang
+  [DAT] /bao-cao/ca-kpi: nút chỉ dùng 3 cỡ chiều cao chuẩn (32/36/40 ±2)
+  [DAT] /bao-cao/ca-kpi: đang tải có khung xương aria-busy
+  [DAT] /bao-cao/ca-kpi: lỗi hiện thông điệp server trong role=alert
+
+=== /bao-cao/don-tu (1280) ===
+  [DAT] /bao-cao/don-tu: đúng MỘT h1 cỡ 28px/800
+  [DAT] /bao-cao/don-tu: chữ nhỏ nhất ≥ 12px
+  [DAT] /bao-cao/don-tu: không tràn ngang
+  [DAT] /bao-cao/don-tu: nút chỉ dùng 3 cỡ chiều cao chuẩn (32/36/40 ±2)
+  [DAT] /bao-cao/don-tu: đang tải có khung xương aria-busy
+  [DAT] /bao-cao/don-tu: lỗi hiện thông điệp server trong role=alert
+
+=== /quan-tri/nguoi-dung (1280) ===
+  [DAT] /quan-tri/nguoi-dung: đúng MỘT h1 cỡ 28px/800
+  [DAT] /quan-tri/nguoi-dung: chữ nhỏ nhất ≥ 12px
+  [DAT] /quan-tri/nguoi-dung: không tràn ngang
+  [DAT] /quan-tri/nguoi-dung: nút chỉ dùng 3 cỡ chiều cao chuẩn (32/36/40 ±2)
+  [DAT] /quan-tri/nguoi-dung: menu "⋯" mở và có mục
+  [DAT] /quan-tri/nguoi-dung: Escape đóng menu và trả focus về nút "⋯"
+  [DAT] /quan-tri/nguoi-dung: đang tải có khung xương aria-busy
+  [DAT] /quan-tri/nguoi-dung: rỗng có trạng thái rỗng (không lỗi, không bảng trống câm)
+  [DAT] /quan-tri/nguoi-dung: lỗi hiện thông điệp server trong role=alert
+
+=== /quan-tri/phong-ban (1280) ===
+  [DAT] /quan-tri/phong-ban: đúng MỘT h1 cỡ 28px/800
+  [DAT] /quan-tri/phong-ban: chữ nhỏ nhất ≥ 12px
+  [DAT] /quan-tri/phong-ban: không tràn ngang
+  [DAT] /quan-tri/phong-ban: nút chỉ dùng 3 cỡ chiều cao chuẩn (32/36/40 ±2)
+  [DAT] /quan-tri/phong-ban: menu "⋯" mở và có mục
+  [DAT] /quan-tri/phong-ban: Escape đóng menu và trả focus về nút "⋯"
+  [DAT] /quan-tri/phong-ban: đang tải có khung xương aria-busy
+  [DAT] /quan-tri/phong-ban: rỗng có trạng thái rỗng (không lỗi, không bảng trống câm)
+  [DAT] /quan-tri/phong-ban: lỗi hiện thông điệp server trong role=alert
+
+=== /quan-tri/kenh (1280) ===
+  [DAT] /quan-tri/kenh: đúng MỘT h1 cỡ 28px/800
+  [DAT] /quan-tri/kenh: chữ nhỏ nhất ≥ 12px
+  [DAT] /quan-tri/kenh: không tràn ngang
+  [DAT] /quan-tri/kenh: nút chỉ dùng 3 cỡ chiều cao chuẩn (32/36/40 ±2)
+  [DAT] /quan-tri/kenh: menu "⋯" mở và có mục
+  [DAT] /quan-tri/kenh: Escape đóng menu và trả focus về nút "⋯"
+  [DAT] /quan-tri/kenh: đang tải có khung xương aria-busy
+  [DAT] /quan-tri/kenh: rỗng có trạng thái rỗng (không lỗi, không bảng trống câm)
+  [DAT] /quan-tri/kenh: lỗi hiện thông điệp server trong role=alert
+
+=== /quan-tri/nhan (1280) ===
+  [DAT] /quan-tri/nhan: đúng MỘT h1 cỡ 28px/800
+  [DAT] /quan-tri/nhan: chữ nhỏ nhất ≥ 12px
+  [DAT] /quan-tri/nhan: không tràn ngang
+  [DAT] /quan-tri/nhan: nút chỉ dùng 3 cỡ chiều cao chuẩn (32/36/40 ±2)
+  [DAT] /quan-tri/nhan: đang tải có khung xương aria-busy
+  [DAT] /quan-tri/nhan: rỗng có trạng thái rỗng (không lỗi, không bảng trống câm)
+  [DAT] /quan-tri/nhan: lỗi hiện thông điệp server trong role=alert
+
+=== /quan-tri/mau-tra-loi (1280) ===
+  [DAT] /quan-tri/mau-tra-loi: đúng MỘT h1 cỡ 28px/800
+  [DAT] /quan-tri/mau-tra-loi: chữ nhỏ nhất ≥ 12px
+  [DAT] /quan-tri/mau-tra-loi: không tràn ngang
+  [DAT] /quan-tri/mau-tra-loi: nút chỉ dùng 3 cỡ chiều cao chuẩn (32/36/40 ±2)
+  [DAT] /quan-tri/mau-tra-loi: đang tải có khung xương aria-busy
+  [DAT] /quan-tri/mau-tra-loi: rỗng có trạng thái rỗng (không lỗi, không bảng trống câm)
+  [DAT] /quan-tri/mau-tra-loi: lỗi hiện thông điệp server trong role=alert
+
+=== /quan-tri/nhat-ky (1280) ===
+  [DAT] /quan-tri/nhat-ky: đúng MỘT h1 cỡ 28px/800
+  [DAT] /quan-tri/nhat-ky: chữ nhỏ nhất ≥ 12px
+  [DAT] /quan-tri/nhat-ky: không tràn ngang
+  [DAT] /quan-tri/nhat-ky: nút chỉ dùng 3 cỡ chiều cao chuẩn (32/36/40 ±2)
+  [DAT] /quan-tri/nhat-ky: đang tải có khung xương aria-busy
+  [DAT] /quan-tri/nhat-ky: rỗng có trạng thái rỗng (không lỗi, không bảng trống câm)
+  [DAT] /quan-tri/nhat-ky: lỗi hiện thông điệp server trong role=alert
+
+=== Hộp xác nhận (1280) ===
+  [DAT] /quan-tri/phong-ban: /Ngừng hoạt động/ mở hộp xác nhận
+  [DAT] /quan-tri/phong-ban: Escape đóng hộp xác nhận
+  [DAT] /quan-tri/kenh: /Ngắt kênh/ mở hộp xác nhận
+  [DAT] /quan-tri/kenh: Escape đóng hộp xác nhận
+  [DAT] Xoá mẫu: mở hộp xác nhận (không xoá ngay)
+  [DAT] Xoá mẫu: Escape huỷ, mẫu vẫn còn
+  [DAT] Xoá mẫu: Escape trả focus về nút Xoá
+  [DAT] Xoá mẫu: xác nhận thì mẫu biến mất
+  [DAT] hai hộp xác nhận cùng cỡ tiêu đề
+  [DAT] hai hộp xác nhận cùng chiều cao nút
+
+BANG:
+  /inbox                   h1[Hộp thư@20px/800 x100 y16] min=12 nut=36 le=null menu=0
+  /nhan-su/ca-lam-viec     h1[Ca làm việc@28px/800 x116 y126] min=12 nut=32,40 le=860 menu=0
+  /nhan-su/don-tu          h1[Đơn từ@28px/800 x116 y126] min=12 nut=32 le=116 menu=1
+  /nhan-su/kpi             h1[Mục tiêu KPI@28px/800 x116 y126] min=12 nut=40 le=1097 menu=4
+  /tu-khoa/danh-sach       h1[Từ khoá theo phòng@28px/800 x116 y126] min=12 nut=28,40 le=1091 menu=0
+  /tu-khoa/phan-tich       h1[Phân tích hội thoại bằng AI@28px/800 x116 y126] min=12 nut=32 le=116 menu=0
+  /bao-cao/hoi-thoai       h1[Hội thoại@28px/800 x116 y126] min=12 nut=32 le=192 menu=0
+  /bao-cao/nhan-vien       h1[Nhân viên@28px/800 x116 y126] min=12 nut=32 le=192 menu=0
+  /bao-cao/ca-kpi          h1[Ca & KPI@28px/800 x116 y126] min=12 nut=32 le=192 menu=0
+  /bao-cao/don-tu          h1[Đơn từ@28px/800 x116 y126] min=12 nut=32 le=192 menu=0
+  /quan-tri/nguoi-dung     h1[Người dùng@28px/800 x116 y126] min=12 nut=32,40 le=1089 menu=25
+  /quan-tri/phong-ban      h1[Phòng ban@28px/800 x116 y126] min=12 nut=32,40 le=1081 menu=11
+  /quan-tri/kenh           h1[Kênh@28px/800 x116 y126] min=12 nut=32,40 le=1101 menu=6
+  /quan-tri/nhan           h1[Nhãn khách hàng@28px/800 x116 y126] min=12 nut=40 le=116 menu=0
+  /quan-tri/mau-tra-loi    h1[Mẫu trả lời@28px/800 x116 y126] min=12 nut=40 le=116 menu=0
+  /quan-tri/nhat-ky        h1[Nhật ký@28px/800 x116 y126] min=12 nut=32 le=116 menu=0
+
+===== TONG KET NHAT QUAN 1280: 129 dat / 0 hong =====

@@ -1,0 +1,40 @@
+=== ADMIN — Hội thoại ===
+  [DAT] Đầu trang h1 'Hội thoại'
+  [DAT] B3: mặc định '30 ngày' đang bật
+  [DAT] B3: đủ 4 nút nhanh
+  [DAT] BE-8: trang gọi /analytics/overview
+  [DAT] B1: 4 thẻ KPI
+  [DAT] B1: thẻ Tin vào = totals.inbound_count của API
+  [DAT] B1: thẻ Tỉ lệ phản hồi = response_rate của API
+  [DAT] B1: thẻ tỉ lệ nêu mẫu số (x/y hội thoại)
+  [DAT] B1: thẻ Đã đóng = totals.closed_count
+  [DAT] B1: có biểu đồ xu hướng (SVG Recharts)
+  [DAT] B1: bảng sr-only cho trình đọc màn hình, đủ mọi ngày
+  [DAT] B2: dòng có tin vào mà 0 tin ra được cảnh báo bằng chữ
+  [DAT] B2: dòng cảnh báo có nền cảnh báo
+  [DAT] Chú giải biểu đồ chữ màu mực (tương phản), không màu cột
+  [DAT] B3: 'Tháng trước' đặt đúng hai ô ngày
+  [DAT] B3: gửi đúng from/to lên API
+  [DAT] B3: nút 'Tháng trước' bật, '30 ngày' tắt
+  [DAT] B3: tự sửa ngày thì không nút nhanh nào bật
+  [DAT] Admin có ô chọn phòng
+=== ADMIN — Nhân viên ===
+  [DAT] B4 Nhân viên: 3 thẻ tóm tắt đúng tên
+  [DAT] Nhân viên: bảng có tên truy cập
+=== ADMIN — Ca & KPI ===
+  [DAT] B4 Ca & KPI: 3 thẻ tóm tắt đúng tên
+  [DAT] Ca & KPI: bảng có tên truy cập
+  [DAT] Ca & KPI: người chưa có mục tiêu hiện '—' (seed: Manager B)
+  [DAT] Ca & KPI: thẻ Đạt KPI dạng x/y
+=== ADMIN — Đơn từ ===
+  [DAT] B4 Đơn từ: 3 thẻ tóm tắt đúng tên
+  [DAT] Đơn từ: bảng có tên truy cập
+  [DAT] Đơn từ: thẻ 'Đang chờ duyệt' = tổng dòng Chờ duyệt
+  [DAT] Admin: không lỗi console
+=== MANAGER A ===
+  [DAT] Manager: không có ô chọn phòng (bị ép phòng mình)
+  [DAT] Manager: thẻ tỉ lệ khớp API của phạm vi phòng mình
+  [DAT] Manager: thẻ Tin vào khớp API
+  [DAT] Manager: không lỗi console
+
+===== TONG KET P5: 33 dat / 0 hong =====

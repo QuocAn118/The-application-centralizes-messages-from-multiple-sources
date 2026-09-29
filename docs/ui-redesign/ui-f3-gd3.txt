@@ -1,0 +1,75 @@
+=== MANAGER A ===
+  [DAT] vào được màn KPI
+  [DAT] tab KPI hết prefetch=false nên KHÔNG còn 404 (GĐ2 để lại)
+  [DAT] Manager thấy nút đặt mục tiêu
+  [DAT] có bảng mục tiêu
+  --- RB-3: thuc dat chi doc ---
+  [DAT] hộp đặt mục tiêu mở ra
+  [DAT] RB-3: hộp chỉ có ĐÚNG MỘT ô nhập (giá trị mục tiêu)
+  [DAT] RB-3: không có ô 'thực đạt' / 'hoàn thành'
+  [DAT] RB-3: có câu giải thích thực đạt lấy tự động
+      hop co 3 o chon
+  [DAT] nhập giá trị hợp lệ thì Lưu mở khoá
+  [DAT] số âm bị chặn tại chỗ (backend Field(ge=0))
+  [DAT] lưu được mục tiêu
+      bang sau khi dat:
+        F3 staffA
+        	Hội thoại đã đóng	99 hội thoại	0hội thoại	
+        0%
+        	
+        
+        
+        Phong F3 A 76aa2a (Cả phòng)
+        	Phút phản hồi trung bình	15 phút	3phút	
+        500%
+        	
+        
+        
+        F3 staffA
+        	Phút phản hồi trung bình	15 phút	1phút	
+        1500%
+        	
+        
+        
+        F3 mgrA (bạn)
+        	Phút phản hồi trung bình	12 phút	—	
+        —
+        	
+  --- 3.3: dau gach vs 0% ---
+  [DAT] chỉ số chưa có số liệu hiện DẤU GẠCH (không phải 0%)
+      co dau gach: true; co 0%: true
+  [DAT] bảng có ít nhất một dòng
+  --- upsert: dat lai ghi de ---
+  [DAT] hộp sửa mở ra
+  [DAT] khi sửa thì đối tượng + chỉ số hiện chỉ-đọc (không có ô chọn)
+  [DAT] sửa mục tiêu KHÔNG tạo thêm dòng (backend upsert)
+  [DAT] giá trị mới hiện trong bảng
+  --- doi ky ---
+  [DAT] đổi sang kỳ khác thì danh sách đổi (kỳ trống hiện lời nhắn)
+  [DAT] về kỳ cũ thì mục tiêu hiện lại
+  [DAT] Manager: không có 404
+
+=== ADMIN ===
+  [DAT] Admin vào được màn KPI
+  [DAT] Admin thấy nút đặt mục tiêu
+  [DAT] Admin chọn được loại đối tượng (Nhân viên / Cả phòng)
+
+=== STAFF ===
+  [DAT] Staff vào được màn KPI
+  [DAT] Staff KHÔNG thấy nút đặt mục tiêu
+  [DAT] Staff KHÔNG thấy nút sửa mục tiêu
+  [DAT] Staff vẫn thấy mục tiêu của chính mình
+  [DAT] Staff KHÔNG thấy mục tiêu cấp phòng (backend lọc)
+  [DAT] Staff không bị 403 KPI nào trong console (FE không gọi cái chắc chắn hỏng)
+      bang cua staff:
+F3 staffA
+	Hội thoại đã đóng	99 hội thoại	0hội thoại	
+0%
+	
+
+F3 staffA
+	Phút phản hồi trung bình	15 phút	1phút	
+1500%
+	
+
+===== TONG KET F3 GD3: 29 dat / 0 hong =====

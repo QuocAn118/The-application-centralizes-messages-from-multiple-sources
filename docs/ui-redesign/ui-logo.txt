@@ -1,0 +1,27 @@
+      link: [{"rel":"icon","href":"/favicon.ico?favicon.0ez39imzqozep.ico","type":"image/x-icon","sizes":"48x48"},{"rel":"icon","href":"/icon.svg?icon.3kbc1rhnl_o44.svg","type":"image/svg+xml","sizes":"any"},{"rel":"apple-touch-icon","href":"/apple-icon.png?apple-icon.3faq-p82zwo9b.png","type":"image/png","sizes":"180x180"}]
+  [DAT] có <link> favicon.ico
+  [DAT] có <link> icon.svg (type image/svg+xml)
+  [DAT] có <link rel=apple-touch-icon> 180x180
+  [DAT] /favicon.ico trả 200 đúng loại
+  [DAT] /icon.svg trả 200 đúng loại
+  [DAT] /apple-icon.png trả 200 đúng loại
+  [DAT] favicon.ico chứa đủ 16/32/48
+  [DAT] Đăng nhập: 'Đăng nhập · OmniChat'
+  [DAT] /bao-cao/hoi-thoai: 'Hội thoại · Báo cáo · OmniChat'
+  [DAT] /bao-cao/don-tu: 'Đơn từ · Báo cáo · OmniChat'
+  [DAT] /nhan-su/don-tu: 'Đơn từ · Nhân sự · OmniChat'
+  [DAT] /nhan-su/ca-lam-viec: 'Ca làm việc · Nhân sự · OmniChat'
+  [DAT] /tu-khoa/phan-tich: 'Phân tích AI · Từ khoá & AI · OmniChat'
+  [DAT] /quan-tri/nhan: 'Nhãn · Cấu hình · OmniChat'
+  [DAT] /quan-tri/nhat-ky: 'Nhật ký · Cấu hình · OmniChat'
+  [DAT] /doi-mat-khau: 'Đổi mật khẩu · OmniChat'
+      huy hiệu nav: 6, tiêu đề: (6) Hộp thư · OmniChat
+  [DAT] Hộp thư: tiêu đề có số chưa đọc KHỚP huy hiệu nav
+  [DAT] Mở hội thoại: tiêu đề vẫn khớp huy hiệu (không mất tiền tố khi Next đổi title)
+  [DAT] không bao giờ chồng tiền tố '(n) (m)'
+  [DAT] Rời Hộp thư: tiêu đề không còn số
+  [DAT] nav rail: logo SVG thay chữ 'OC'
+  [DAT] design-system: có mục logo, đủ 12 bản (6 cỡ × sáng/tối)
+      TIEU DE: Đăng nhập · OmniChat | Hội thoại · Báo cáo · OmniChat | Đơn từ · Báo cáo · OmniChat | Đơn từ · Nhân sự · OmniChat | Ca làm việc · Nhân sự · OmniChat | Phân tích AI · Từ khoá & AI · OmniChat | Nhãn · Cấu hình · OmniChat | Nhật ký · Cấu hình · OmniChat | Đổi mật khẩu · OmniChat | (6) Hộp thư · OmniChat
+
+===== TONG KET LOGO: 22 dat / 0 hong =====

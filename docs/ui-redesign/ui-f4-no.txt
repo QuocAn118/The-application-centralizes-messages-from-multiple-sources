@@ -1,0 +1,28 @@
+=== N6: STAFF (truoc day bi chan o cua) ===
+  [DAT] Staff thấy mục 'Từ khoá' ở nav-rail dạng LINK (không phải mục khoá)
+  [DAT] Staff VẪN thấy mục 'Cấu hình' bị khoá (không đụng gì tới #F2)
+  [DAT] N6: Staff VÀO ĐƯỢC màn Từ khoá
+  [DAT] N6: Staff KHÔNG còn thấy màn 'không có quyền'
+  [DAT] N6: Staff THẤY dữ liệu từ khoá phòng mình
+  [DAT] Staff KHÔNG thấy nút Thêm từ khoá
+  [DAT] Staff KHÔNG thấy nút Sửa
+  [DAT] Staff KHÔNG thấy nút Xoá
+  [DAT] N6: Staff vào được màn Phân tích
+  [DAT] N6: Staff không thấy 'không có quyền' ở màn Phân tích
+  [DAT] Staff không bị 403 nào ở hai màn (FE không gọi cái chắc chắn hỏng)
+  [DAT] không có 404
+
+=== N6: MANAGER (van phai sua duoc) ===
+  [DAT] Manager vào được màn Từ khoá
+  [DAT] Manager VẪN thấy nút Thêm từ khoá
+  [DAT] Manager tạo được từ khoá sau khi đổi khu
+  [DAT] Manager xoá được từ khoá
+
+=== #F2 khong bi dung toi ===
+  [DAT] thanh tab Cấu hình đúng 6 tab (4 của #F2 + Nhãn, Mẫu trả lời của Phần 6)
+  [DAT] không còn tab Từ khoá / Phân tích trong khu Cấu hình
+      tab Cau hinh: Người dùng, Phòng ban, Kênh, Nhãn, Mẫu trả lời, Nhật ký
+  [DAT] "Từ khoá": đúng MỘT phần tử aria-current="page"
+  [DAT] "Phân tích AI": đúng MỘT phần tử aria-current="page"
+
+===== TONG KET TRA NO N5+N6: 20 dat / 0 hong =====

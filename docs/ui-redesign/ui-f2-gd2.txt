@@ -1,0 +1,31 @@
+=== ADMIN — man Phong ban ===
+  [DAT] vào được màn Phòng ban
+  [DAT] bảng có dữ liệu thật
+  [DAT] cột nhân viên đã đếm xong, không kẹt ở 'đang đếm…'
+  [DAT] hộp tạo mở ra
+  [DAT] hộp đóng sau khi tạo
+  [DAT] phòng mới xuất hiện trong bảng
+  [DAT] trùng tên hiện lỗi rõ
+  [DAT] lỗi là câu tiếng Việt của server, có nhắc tên phòng
+  [DAT] hộp KHÔNG đóng khi lỗi
+  [DAT] hộp sửa điền sẵn tên hiện tại
+  [DAT] tên mới hiện trong bảng
+  [DAT] RB-5: không có nút nào tên 'Xoá'
+  [DAT] hộp xác nhận nói rõ dữ liệu cũ vẫn còn
+  [DAT] hộp xác nhận nói rõ KHÔNG bật lại được
+  [DAT] ngừng được phòng rỗng
+  [DAT] Q2: phòng vừa ngừng ẩn khỏi danh sách mặc định
+  [DAT] Q2: có nút 'Hiện cả phòng đã ngừng (n)'
+  [DAT] Q2: nút bật có aria-pressed=true
+  [DAT] dòng chuyển sang 'Đã ngừng hoạt động'
+  [DAT] phòng đã ngừng KHÔNG còn nút 'Ngừng hoạt động' (backend không bật lại được)
+  [DAT] phòng còn người: có cảnh báo số nhân viên
+  [DAT] phòng còn người: nút xác nhận bị khoá
+  [DAT] tìm kiếm lọc được danh sách
+  [DAT] không có request 404 nào
+
+=== MANAGER — bi chan ===
+  [DAT] manager KHÔNG thấy bảng phòng ban
+  [DAT] manager thấy câu giải thích
+
+===== TONG KET GD2: 26 dat / 0 hong =====

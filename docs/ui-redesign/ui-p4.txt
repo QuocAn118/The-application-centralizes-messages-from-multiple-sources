@@ -1,0 +1,46 @@
+=== MANAGER A — Từ khoá ===
+  [DAT] Đầu trang dạng DauTrang (h1)
+  [DAT] T1: từ khoá nhóm theo phòng (có danh sách chip của phòng)
+  [DAT] T1: có ô thêm nhanh cuối dãy
+  [DAT] T1: Enter tạo chip mới
+  [DAT] T1: ô thêm nhanh được xoá trắng sau khi thêm
+  [DAT] T1: focus vẫn ở ô thêm nhanh (gõ tiếp được)
+  [DAT] T1: thêm liên tiếp cái thứ hai
+  [DAT] T2: tooltip chip có dạng khớp
+  [DAT] T2: KHÔNG hiện dạng khớp thường trực
+  [DAT] T2: trùng -> thông điệp server 'đã tồn tại'
+  [DAT] T2: lỗi trùng kèm giải thích bỏ dấu/hoa thường
+  [DAT] Lỗi nối với ô bằng aria-describedby
+  [DAT] 409: thông điệp nêu tên từ khoá đang có
+  [DAT] 409: tô đúng MỘT chip, là chip đang có
+  [DAT] Gõ lại thì lỗi biến mất và bỏ tô chip
+  [DAT] T3: bấm chip mở hộp sửa
+  [DAT] T2: hộp sửa có dạng khớp hiện tại
+  [DAT] Esc đóng hộp sửa
+  [DAT] T3: × mở hộp xác nhận (không xoá ngay)
+  [DAT] T3: xác nhận thì chip biến mất
+  [DAT] Manager: không lỗi console
+=== STAFF A ===
+  [DAT] Staff: thấy chip của phòng mình (chỉ xem)
+  [DAT] Staff: chip KHÔNG bấm được / không có ×
+  [DAT] Staff: không có ô thêm nhanh
+  [DAT] Staff: không lỗi console
+=== ADMIN ===
+  [DAT] Admin: nhiều phòng, mỗi phòng một ô thêm nhanh
+  [DAT] Dọn: không còn từ khoá thử
+  [DAT] Tìm không ra -> trạng thái rỗng có tiêu đề
+  [DAT] Phân tích: bảng có tên truy cập
+  [DAT] A1: mỗi dòng có link mở hội thoại
+  [DAT] A1: link trỏ /inbox/<uuid>
+  [DAT] A2: dòng cần xem lại được tô nền
+  [DAT] A2: nút 'Cần xem lại' có số đếm
+  [DAT] X12: mốc thời gian có title đầy đủ
+  [DAT] A2: lọc 'Cần xem lại' chỉ còn AMBIGUOUS/NOT_ANALYZED
+  [DAT] A2: số dòng sau lọc = số trên nút (lọc ở SERVER, toàn bộ dữ liệu)
+  [DAT] A2: 'Hiển thị … trong N' khớp số trên nút
+  [DAT] A1: bấm link mở đúng hội thoại trong Hộp thư
+  [DAT] Admin: không lỗi console
+  [DAT] BE-10: Manager thấy hội thoại CHỜ PHÂN mà AI không phân được
+  [DAT] BE-10: Staff KHÔNG thấy hàng chờ phân (trạng thái rỗng riêng của bộ lọc)
+
+===== TONG KET P4: 41 dat / 0 hong =====

@@ -1,0 +1,12 @@
+  [DAT] "Ca làm việc": đúng MỘT phần tử aria-current="page"
+  [DAT] "Ca làm việc": tab đúng được đánh dấu
+  [DAT] "Đơn từ": đúng MỘT phần tử aria-current="page"
+  [DAT] "Đơn từ": tab đúng được đánh dấu
+  [DAT] "KPI": đúng MỘT phần tử aria-current="page"
+  [DAT] "KPI": tab đúng được đánh dấu
+  [DAT] bấm tab KPI thì sang được màn KPI
+  [DAT] bấm tab Đơn từ thì quay lại được
+  [DAT] review #F3: không có 404
+  [DAT] review #F3: không có lỗi console
+
+===== REVIEW #F3: 10 dat / 0 hong =====

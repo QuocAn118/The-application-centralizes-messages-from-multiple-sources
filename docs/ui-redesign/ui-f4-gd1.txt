@@ -1,0 +1,46 @@
+=== MANAGER A ===
+  [DAT] Manager vào được màn Từ khoá
+  [DAT] thấy tab 'Từ khoá' ở thanh tab
+  [DAT] thấy mục 'Từ khoá' ở nav-rail
+  [DAT] không có 404
+  [DAT] Manager thấy nút Thêm từ khoá
+  --- tao tu khoa ---
+  [DAT] hộp thêm mở ra
+  [DAT] hộp có câu giải thích chuẩn hoá (bỏ dấu, không phân biệt hoa thường)
+  [DAT] tạo được từ khoá
+  [DAT] từ khoá mới hiện trong danh sách (chip)
+  [DAT] T2: dạng chuẩn hoá nằm trong tooltip của chip
+  [DAT] T2: dạng khớp KHÔNG hiện thường trực
+  --- RB-3: trung do chuan hoa ---
+  [DAT] RB-3: "khác dấu + hoa/thường" bị báo trùng bằng thông điệp SERVER
+  [DAT] RB-3: hộp KHÔNG đóng khi trùng (khác dấu + hoa/thường)
+  [DAT] RB-3: "thừa khoảng trắng" bị báo trùng bằng thông điệp SERVER
+  [DAT] RB-3: hộp KHÔNG đóng khi trùng (thừa khoảng trắng)
+  --- sua tu khoa ---
+  [DAT] hộp sửa mở ra
+  [DAT] RB-6: khi sửa thì phòng chỉ-đọc (không có ô chọn phòng)
+  [DAT] sửa được từ khoá
+  [DAT] dạng chuẩn hoá cập nhật theo (tooltip)
+  --- xoa tu khoa (204) ---
+  [DAT] hộp xác nhận xoá mở ra
+  [DAT] RB-4: xoá xong (204) thì hộp đóng, UI KHÔNG vỡ
+  [DAT] từ khoá đã biến mất khỏi danh sách
+  --- pham vi phong ---
+  [DAT] Manager chỉ thấy MỘT phòng (phòng mình)
+      phong mgrA thay: Từ khoá của Phong F3 A 76aa2a
+  [DAT] Manager: không có 404
+
+=== ADMIN ===
+  [DAT] Admin vào được màn Từ khoá
+  [DAT] Admin thấy NHIỀU phòng hơn Manager
+      phong admin thay: Từ khoá của Phong F3 A 76aa2a, Từ khoá của Phong F3 B 76aa2a, Từ khoá của Phong GD2 mukxyvdo, Từ khoá của Phong kiem chung d990d5, Từ khoá của Phong kiem chung e8564d, Từ khoá của Phong kiem chung mat khau tam, Từ khoá của Phòng Kinh doanh, Từ khoá của Phòng Kỹ thuật, Từ khoá của Phong khac 340493, Từ khoá của Phong khac b325e9, Từ khoá của Phong UI 39c05b
+  [DAT] Admin chọn được nhiều phòng khi thêm
+
+=== STAFF (N6: vao duoc, chi khong sua duoc) ===
+  [DAT] N6: Staff VÀO ĐƯỢC màn Từ khoá
+  [DAT] N6: Staff không còn thấy 'không có quyền'
+  [DAT] Staff KHÔNG thấy nút Thêm
+  [DAT] Staff KHÔNG thấy nút Sửa/Xoá
+  [DAT] Staff KHÔNG có ô thêm nhanh
+
+===== TONG KET F4 GD1: 32 dat / 0 hong =====

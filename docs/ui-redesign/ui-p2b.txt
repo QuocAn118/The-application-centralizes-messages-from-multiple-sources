@@ -1,0 +1,29 @@
+=== MANAGER A ===
+  [DAT] Phân tay → dòng 'phân về Phong F3 A'
+  [DAT] Panel có mục Nhãn / Ghi chú / Hội thoại trước
+  [DAT] Lịch sử có hội thoại cũ đã đóng
+  [DAT] Tạo nhãn → hiện trong danh sách quản lý
+  [DAT] Gắn nhãn → chip hiện
+  [DAT] Gỡ nhãn → chip mất
+  [DAT] Dòng phạm vi ghi chú đúng phòng
+  [DAT] Lưu ghi chú → hiện trong danh sách
+  [DAT] Tạo mẫu → hiện trong danh sách quản lý
+  [DAT] Gõ '/kc2b chao' → danh sách mẫu mở, có mục khớp
+  [DAT] Ô soạn trỏ tới mục đang chọn (aria-activedescendant)
+  [DAT] Enter chèn nội dung mẫu
+  [DAT] Enter khi đang chọn mẫu KHÔNG gửi tin
+  [DAT] Esc đóng danh sách mẫu
+  [DAT] Manager: không lỗi console
+=== STAFF A ===
+  [DAT] Staff cùng phòng thấy ghi chú của Manager A
+  [DAT] Staff thấy nhãn đã gắn
+  [DAT] Staff KHÔNG có nút Quản lý nhãn
+  [DAT] Staff không xoá được ghi chú người khác
+  [DAT] Staff dùng được mẫu (thấy KC2b Chao hoi)
+  [DAT] Staff KHÔNG có 'Quản lý mẫu'
+  [DAT] Staff: không lỗi console
+=== ADMIN ===
+  [DAT] Admin thấy ghi chú phòng + tên phòng
+  [DAT] Admin: dòng phạm vi là quản trị viên
+
+===== TONG KET P2b: 24 dat / 0 hong =====

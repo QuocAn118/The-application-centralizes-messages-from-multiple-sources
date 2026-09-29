@@ -1,0 +1,32 @@
+=== ADMIN — man Kenh ===
+  [DAT] vào được màn Kênh
+  [DAT] hộp kết nối mở ra
+  [DAT] RB-6: ô token là type=password
+  [DAT] RB-6: KHÔNG có nút hiện/ẩn token
+  [DAT] đủ 4 nền tảng gồm Telegram
+  [DAT] hộp đóng sau khi kết nối
+  [DAT] kênh mới xuất hiện trong bảng
+  --- RB-6: truy tim token ---
+  [DAT] token KHÔNG có trong HTML của trang
+  [DAT] token KHÔNG có trong chữ hiển thị
+  [DAT] token KHÔNG nằm trong localStorage/sessionStorage
+  [DAT] token KHÔNG nằm trong URL
+  [DAT] token KHÔNG lọt vào lỗi console
+  [DAT] RB-6: KHÔNG phản hồi API nào trả token về
+  [DAT] RB-6: sửa kênh thì ô token để TRỐNG, không điền sẵn dấu sao
+  [DAT] ghi chú (không phải placeholder) nói rõ 'để trống = giữ token hiện tại'
+  [DAT] hộp sửa KHÔNG chứa token
+  [DAT] sửa được mà không cần nhập lại token
+  [DAT] tên mới hiện trong bảng
+  [DAT] RB-7: phòng đã được gỡ thật
+  [DAT] hộp xác nhận nói rõ hội thoại cũ vẫn xem được
+  [DAT] Q2: kênh vừa ngắt ẩn khỏi danh sách mặc định
+  [DAT] trạng thái chuyển sang 'Đã ngắt'
+  [DAT] kênh đã ngắt KHÔNG còn nút 'Ngắt kênh'
+  [DAT] không có lỗi console bất ngờ
+
+=== MANAGER — bi chan ===
+  [DAT] manager KHÔNG thấy bảng kênh
+  [DAT] manager thấy câu giải thích
+
+===== TONG KET GD3: 26 dat / 0 hong =====

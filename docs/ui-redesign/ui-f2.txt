@@ -1,0 +1,42 @@
+=== ADMIN ===
+  [DAT] admin vào được app
+  [DAT] admin thấy mục Cấu hình dạng link
+  [DAT] vào được màn Người dùng
+  [DAT] bảng có dữ liệu thật
+  [DAT] admin thấy tab Người dùng
+  [DAT] admin thấy tab Phòng ban
+  [DAT] admin thấy tab Kênh
+  [DAT] admin thấy tab Nhật ký
+  [DAT] admin thấy bộ lọc phòng ban
+  [DAT] admin thấy nút tạo tài khoản
+  [DAT] lọc 'Đã vô hiệu hoá' chạy (có kết quả hoặc báo trống)
+  [DAT] menu thao tác mở ra có mục
+  [DAT] Esc đóng được menu
+  [DAT] hộp thoại tạo mở ra
+  [DAT] ô mật khẩu là type=password
+  [DAT] bước 2 hiện mật khẩu tạm
+  [DAT] có cảnh báo chỉ hiện một lần
+  [DAT] RB-3: mật khẩu tạm KHÔNG nằm trong localStorage/sessionStorage
+  [DAT] RB-3: mật khẩu tạm KHÔNG nằm trong URL
+  [DAT] Esc không đóng được bước mật khẩu tạm
+  [DAT] đóng được bằng nút
+  [DAT] người mới xuất hiện trong bảng ngay (cache đã vô hiệu hoá: tổng tăng 1)
+  [DAT] không có lỗi console bất ngờ ở phiên Admin (bỏ qua 401 của lần thử khôi phục phiên trên trang login)
+
+=== MANAGER ===
+  [DAT] manager vào được app
+  [DAT] manager vào được màn Người dùng
+  [DAT] RB-2: manager KHÔNG thấy bộ lọc phòng ban
+  [DAT] manager KHÔNG thấy nút tạo tài khoản
+  [DAT] manager KHÔNG thấy tab Phòng ban
+  [DAT] manager KHÔNG thấy tab Kênh
+  [DAT] manager KHÔNG thấy tab Nhật ký
+  [DAT] manager gõ URL /quan-tri/phong-ban bị chặn
+
+=== STAFF ===
+  [DAT] staff vào được app
+  [DAT] staff KHÔNG thấy mục Cấu hình dạng link
+  [DAT] STAFF gõ URL /quan-tri/nguoi-dung bị chặn — không thấy bảng
+  [DAT] STAFF thấy câu giải thích, không phải màn trắng
+
+===== TONG KET UI: 35 dat / 0 hong =====

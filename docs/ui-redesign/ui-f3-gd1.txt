@@ -1,0 +1,40 @@
+=== STAFF A ===
+  [DAT] Staff thấy mục Nhân sự dạng link (khác mục Cấu hình bị khoá)
+  [DAT] Staff vào được màn Đơn từ
+  [DAT] Staff chỉ thấy đơn của CHÍNH MÌNH
+  [DAT] Staff KHÔNG thấy nút Duyệt trên đơn nào
+  [DAT] Staff thu hồi được đơn chờ duyệt của mình
+  [DAT] Staff thấy nút Gửi đơn
+
+=== MANAGER A (cung phong staffA) ===
+  [DAT] Manager A thấy đơn của Staff cùng phòng
+  [DAT] Manager A thấy đơn của chính mình
+  [DAT] RB-2: Manager A DUYỆT ĐƯỢC đơn của Staff cùng phòng
+  [DAT] RB-2: Manager A KHÔNG duyệt được đơn của CHÍNH MÌNH
+  [DAT] Manager A thu hồi được đơn của chính mình
+
+=== MANAGER B (phong khac) ===
+  [DAT] RB-2: Manager B KHÔNG thấy đơn của phòng khác
+
+=== ADMIN ===
+  [DAT] Admin thấy đơn của mọi phòng
+  [DAT] RB-2: Admin duyệt được đơn của Staff
+  [DAT] RB-2: Admin duyệt được đơn của MANAGER
+  [DAT] RB-1: Admin KHÔNG thấy nút Gửi đơn
+  [DAT] RB-1: có câu giải thích vì sao Admin không gửi được
+
+=== RB-7: tu choi bat buoc ly do ===
+  [DAT] hộp từ chối mở ra
+  [DAT] RB-7: nút từ chối bị KHOÁ khi chưa nhập lý do
+  [DAT] nhập lý do rồi thì mở khoá
+  [DAT] từ chối xong hộp đóng
+  [DAT] đơn chuyển sang 'Từ chối'
+  [DAT] lý do từ chối hiện trong bảng
+  [DAT] đơn đã quyết định KHÔNG còn nút Duyệt
+
+=== Admin duyet don cua Manager ===
+  [DAT] hộp xác nhận duyệt mở ra
+  [DAT] đơn của Manager chuyển sang 'Đã duyệt'
+  [DAT] lọc 'Đã duyệt' chỉ còn đơn đã duyệt
+
+===== TONG KET F3 GD1: 27 dat / 0 hong =====

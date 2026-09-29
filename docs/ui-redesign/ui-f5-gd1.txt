@@ -1,0 +1,45 @@
+=== ADMIN ===
+  [DAT] Admin vào được màn Báo cáo Hội thoại
+  [DAT] không có 404
+  [DAT] thấy đủ 4 tab báo cáo
+      tab: Hội thoại | Nhân viên | Ca & KPI | Đơn từ
+  [DAT] Admin THẤY ô chọn phòng
+  [DAT] có ô chọn Từ ngày + Đến ngày
+  [DAT] mục nav 'Báo cáo' là LINK cho Admin
+  [DAT] có bảng kết quả
+      bang:
+        Phòng Kinh doanh
+        	
+        Telegram	1	1	0	1
+        
+        Chưa phân phòng
+        9 tin vào, chưa có tin trả lời nào
+        	
+        Telegram	9	0	0	0
+        
+        Phong F3 A 76aa2a
+        	
+        Zalo	6	2	4	1
+        
+        Chưa phân phòng
+        1 tin vào, chưa có tin trả lời nào
+        	
+        Zalo	1	0	0	0
+        Tổng cộng	17	3	4	2
+  [DAT] dòng chưa-phân-phòng hiện 'Chưa phân phòng' (không ô trắng)
+  [DAT] KHÔNG có 'undefined'/'null' lọt ra bảng
+  [DAT] có dòng Tổng cộng ở chân bảng
+  [DAT] khoảng rỗng hiện 'Không có dữ liệu', không phải lỗi
+  [DAT] không có lỗi console (ngoài prefetch GĐ2 + 401 refresh)
+
+=== MANAGER A ===
+  [DAT] Manager vào được màn Báo cáo
+  [DAT] Manager KHÔNG có ô chọn phòng (RB-1)
+  [DAT] Manager: FE không gọi cái gì bị 403
+
+=== STAFF (bi chan) ===
+  [DAT] Staff KHÔNG thấy mục 'Báo cáo' dạng link (chỉ mục khoá)
+  [DAT] Staff bị ChanTheoVai chặn (thấy 'không có quyền')
+  [DAT] Staff KHÔNG thấy bảng báo cáo
+
+===== TONG KET F5 GD1: 18 dat / 0 hong =====
