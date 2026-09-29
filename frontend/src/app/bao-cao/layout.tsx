@@ -2,6 +2,11 @@ import { AuthGuard } from "@/components/auth-guard";
 import { NavRail } from "@/components/nav-rail";
 import { ChanTheoVai } from "@/components/chan-theo-vai";
 import { TabBaoCao } from "@/components/tab-bao-cao";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: { template: "%s · Báo cáo · OmniChat", default: "Báo cáo · OmniChat" },
+};
 
 /**
  * Khung của mọi màn `/bao-cao/*` (#F5).

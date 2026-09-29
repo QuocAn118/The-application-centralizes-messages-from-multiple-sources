@@ -1,6 +1,11 @@
 import { AuthGuard } from "@/components/auth-guard";
 import { NavRail } from "@/components/nav-rail";
 import { TabTuKhoa } from "@/components/tab-tu-khoa";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: { template: "%s · Từ khoá & AI · OmniChat", default: "Từ khoá & AI · OmniChat" },
+};
 
 /**
  * Khung của mọi màn `/tu-khoa/*` (#F4, trả nợ N6).

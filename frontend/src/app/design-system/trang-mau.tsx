@@ -27,6 +27,7 @@ import { Bang, Td, Th, Tr } from "@/components/ui/bang";
 import { DauTrang } from "@/components/ui/dau-trang";
 import { HuyHieu } from "@/components/ui/huy-hieu";
 import { IconKenh } from "@/components/ui/icon-kenh";
+import { Logo } from "@/components/ui/logo";
 import { MenuHanhDong } from "@/components/ui/menu-hanh-dong";
 import { Nut } from "@/components/ui/nut";
 import { NutIcon } from "@/components/ui/nut-icon";
@@ -123,6 +124,24 @@ export function TrangMau() {
             </Nut>
           }
         />
+
+        <Muc tieuDe="Logo “Khách mỉm cười” (≤ 20px tự dùng bản đơn giản: bỏ bóng, nét dày)">
+          <div className="grid grid-cols-2 gap-6">
+            {[
+              { nen: "bg-card", chu: "text-ink-2", ten: "Nền sáng" },
+              { nen: "bg-ink", chu: "text-card", ten: "Nền tối" },
+            ].map((n) => (
+              <div key={n.ten} className={`flex items-end gap-6 rounded-nb border-2 border-ink p-5 ${n.nen}`}>
+                {[128, 64, 44, 32, 20, 16].map((co) => (
+                  <div key={co} className="flex flex-col items-center gap-2">
+                    <Logo co={co} nhan={co === 128 ? "OmniChat" : undefined} />
+                    <span className={`text-xs font-semibold ${n.chu}`}>{co}px</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </Muc>
 
         <Muc tieuDe="Màu và tương phản (đọc từ CSS đang chạy)">
           <div className="grid grid-cols-8 gap-3">

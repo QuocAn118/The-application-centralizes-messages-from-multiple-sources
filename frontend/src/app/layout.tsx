@@ -10,8 +10,11 @@ const beVietnamPro = Be_Vietnam_Pro({
   weight: ["400", "500", "600", "700", "800"],
 });
 
+// Tiêu đề tab theo màn: "<Tên trang> · <Khu> · OmniChat" (layout từng khu đặt
+// template riêng — Next KHÔNG nối template lồng nhau, chỉ lấy template gần nhất).
+// Icon: app/icon.svg, favicon.ico, apple-icon.png — Next tự sinh thẻ <link>.
 export const metadata: Metadata = {
-  title: "OmniChat · Hộp thư đa kênh",
+  title: { template: "%s · OmniChat", default: "OmniChat" },
   description: "Tập trung tin nhắn từ Zalo, Facebook, Instagram, Telegram về một hộp thư.",
 };
 

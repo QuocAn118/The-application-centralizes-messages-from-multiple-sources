@@ -92,6 +92,16 @@ export function hienSoChuaDoc(n: number): string {
   return n > 99 ? "99+" : String(n);
 }
 
+/**
+ * Tiêu đề tab Hộp thư kèm số chưa đọc: "(5) Hộp thư · OmniChat". Bỏ tiền tố cũ
+ * trước khi gắn mới → gọi lại nhiều lần không thành "(5) (4) …"; 0 thì bỏ hẳn.
+ */
+export function tieuDeCoSoChuaDoc(tieuDe: string, soHoiThoai: number): string {
+  const goc = tieuDe.replace(/^\(\d+\+?\) /, "");
+  const so = hienSoChuaDoc(soHoiThoai);
+  return so ? `(${so}) ${goc}` : goc;
+}
+
 const ten = (s: string | null) => s?.trim() || "—";
 
 /** Câu của một dòng hệ thống (spec 2a §3.4). */

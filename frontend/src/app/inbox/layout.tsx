@@ -1,8 +1,12 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { AuthGuard } from "@/components/auth-guard";
 import { NavRail } from "@/components/nav-rail";
 import { DanhSachInbox } from "@/components/danh-sach-inbox";
 import { CauNoiRealtime } from "@/components/cau-noi-realtime";
+
+// Cả hai trang Hộp thư ("/inbox", "/inbox/[id]" — trang sau là client component).
+export const metadata: Metadata = { title: "Hộp thư" };
 
 /**
  * Khung của mọi màn `/inbox*`: nav trái + danh sách + vùng nội dung (spec §4.2).
