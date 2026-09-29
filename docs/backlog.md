@@ -50,13 +50,3 @@ Việc đã biết, chưa làm. Mỗi mục: vấn đề, hiện trạng tạm, 
   mọi phòng.
 - **Phương án:** cột `waiting_threshold_minutes` ở `departments` (mặc định 15),
   trả kèm `GET /departments`; FE đọc theo phòng của hội thoại.
-
-## HT-2. Nhận việc / tự giao có thể ghi đè một lần giao tay chen giữa
-
-- **Vấn đề (code-review GĐ4):** `TakeConversation` và tự giao (#3) đọc hội thoại
-  → `assign_to_agent` → `update`, không so-và-đổi. Nếu `/assign-user` của Manager
-  commit chen giữa, lần nhận việc ghi đè: người được Manager giao đã nhận thông báo
-  nhưng không còn phụ trách.
-- **Phương án:** dùng `doi_nguoi_phu_trach_neu_chua_doi(conv_id, None, user, now)`
-  (đã có, `/assign-user` đang dùng); trả 409 `ASSIGNEE_CHANGED_CONCURRENTLY` khi lệch;
-  #3 thì bỏ qua hội thoại đó. **Chờ duyệt** (thay đổi backend).

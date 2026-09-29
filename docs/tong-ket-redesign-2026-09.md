@@ -21,7 +21,7 @@ sau duyệt và **thay thế** những đoạn trước nó.
 | CI + bản vá | `6996ff44`, `8504b33f` | CI sinh `CHANNEL_CIPHER_KEY` ngẫu nhiên. Next.js 16.3.0 → 16.3.6 vá GHSA-p293-qw3h-jr36 và GHSA-2xp9-vwfh-vxw4; `npm audit` còn 0 lỗ hổng |
 | **5 — Báo cáo** | `75c1b7fd`, `04e7dea6` | Tổng quan có 4 thẻ số, biểu đồ xu hướng (Recharts) và bảng. Bốn tab dùng chung khung chọn khoảng thời gian. Backend: BE-8. ADR ghi việc module khác đọc bảng `conversations` |
 | **6 — Cấu hình + Xác thực** | `36f6651d` | Đăng nhập và Đổi mật khẩu bố cục chia đôi: báo lỗi chung, cảnh báo Caps Lock, nhớ email, điều kiện mật khẩu tick dần. Bảng Cấu hình dùng menu "⋯", ẩn mục đã ngừng/ngắt, lỗi hiện dưới đúng ô. Thêm tab **Nhãn** và **Mẫu trả lời** trong Cấu hình |
-| **GĐ4 — Hoàn thiện** | nhánh `feat/hoan-thien-gd4` | 5 hộp thoại Nhân sự dùng component chung. Bỏ token cũ và các lớp màu không còn ai dùng. Sửa 4 lỗi FE tìm được khi code-review. Kịch bản rà nhất quán `ui-nhat-quan` chặn API để thử trạng thái tải/rỗng/lỗi ở 16 màn, và nhờ nó sửa thêm 3 chỗ: Nhãn, Mẫu trả lời và Lịch ca hiện "Chưa có…" khi đang tải hoặc lỗi; 5 layout thiếu mốc `<main>`; trang Nhãn/Mẫu lệch trái 200px so với các màn Cấu hình khác |
+| **GĐ4 — Hoàn thiện** | nhánh `feat/hoan-thien-gd4` | 5 hộp thoại Nhân sự dùng component chung. Bỏ token cũ và các lớp màu không còn ai dùng. Sửa 4 lỗi FE và 1 lỗi backend (HT-2: "Nhận việc"/tự giao dùng so-và-đổi, không ghi đè lần giao tay chen giữa) tìm được khi code-review. Kịch bản rà nhất quán `ui-nhat-quan` chặn API để thử trạng thái tải/rỗng/lỗi ở 16 màn, và nhờ nó sửa thêm 3 chỗ: Nhãn, Mẫu trả lời và Lịch ca hiện "Chưa có…" khi đang tải hoặc lỗi; 5 layout thiếu mốc `<main>`; trang Nhãn/Mẫu lệch trái 200px so với các màn Cấu hình khác |
 
 Thư viện thêm: `lucide-react` (icon), `@radix-ui/react-dialog`, `-dropdown-menu`,
 `-tooltip` (dùng thẳng Radix, không qua shadcn), `recharts` (chỉ cho Báo cáo),
@@ -132,4 +132,3 @@ Chi tiết từng mục (vấn đề, hiện trạng, phương án) ở `docs/ba
 | NH-1 | Giao diện đổi tên nhãn | `PATCH /tags/{id}` đã nhận `name` và `color` (FE có sẵn `suaNhan`). UI mới chỉ có tạo và ngừng/bật lại |
 | KH-2 | Nhập tay thông tin liên hệ khách | Hoãn theo GĐ1 §10.1 #4. Nền tảng không gửi SĐT/email |
 | HT-1 | Ngưỡng "Chờ N phút" là hằng số 15 phút | `NGUONG_CHO_PHUT` trong `frontend/src/lib/hop-thu.ts`. Muốn mỗi phòng một ngưỡng thì cần cấu hình phía backend |
-| HT-2 | Nhận việc / tự giao có thể ghi đè một lần giao tay chen giữa | Code-review GĐ4. `TakeConversation` và #3 ghi người phụ trách không so-và-đổi, khác `/assign-user`. Cách sửa: dùng `doi_nguoi_phu_trach_neu_chua_doi` (đã có), trả 409 khi lệch. **Chờ duyệt** vì là thay đổi backend |
