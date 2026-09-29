@@ -1,5 +1,8 @@
 import { ChanTheoVai } from "@/components/chan-theo-vai";
 import { ManPhongBan } from "@/components/quan-tri/man-phong-ban";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Phòng ban" };
 
 /**
  * `/quan-tri/phong-ban` — chỉ Admin.

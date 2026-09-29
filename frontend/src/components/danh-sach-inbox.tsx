@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Inbox, SearchX, X, Search } from "lucide-react";
 import { t } from "@/lib/i18n";
@@ -21,9 +21,10 @@ import {
   KICH_THUOC_TRANG,
   khoaInbox,
   layDanhSachInbox,
+  layDemChuaDoc,
   type LocNguoiPhuTrach,
 } from "@/lib/inbox-api";
-import { gopTrang } from "@/lib/hop-thu";
+import { gopTrang, tieuDeCoSoChuaDoc } from "@/lib/hop-thu";
 import { NHAN_TRANG_THAI } from "@/lib/hien-thi";
 import type { ConversationStatus, Role } from "@/lib/types";
 import { DongHoiThoai } from "./dong-hoi-thoai";
@@ -87,6 +88,20 @@ export function DanhSachInbox() {
     });
 
   const items = data ? gopTrang(data.pages.map((p) => p.items)) : [];
+
+  // Tiêu đề tab "(5) Hộp thư · OmniChat" — cùng cache với huy hiệu nav (không gọi
+  // thêm API). Chạy lại khi đổi hội thoại: Next đặt lại <title> lúc điều hướng.
+  const { data: chuaDoc } = useQuery({
+    queryKey: khoaInbox.chuaDoc,
+    queryFn: ({ signal }) => layDemChuaDoc(signal),
+    enabled: Boolean(user),
+  });
+  const soChuaDoc = chuaDoc?.conversations ?? 0;
+  useEffect(() => {
+    document.title = tieuDeCoSoChuaDoc(document.title, soChuaDoc);
+  }, [soChuaDoc, params?.id]);
+  // Rời Hộp thư: bỏ tiền tố (màn khác không nói về tin chưa đọc).
+  useEffect(() => () => void (document.title = tieuDeCoSoChuaDoc(document.title, 0)), []);
 
   function dieuHuong(thayDoi: { loc?: Loc; status?: ConversationStatus | null; q?: string }) {
     const sp = new URLSearchParams(searchParams.toString());

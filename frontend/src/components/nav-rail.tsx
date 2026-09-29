@@ -44,6 +44,7 @@ import { hienSoChuaDoc } from "@/lib/hop-thu";
 import { khoaNhanSu, layDanhSachDon } from "@/lib/nhan-su-api";
 import { demDonCanDuyet } from "@/lib/quyen-nhan-su";
 import { GoiY } from "./ui/goi-y";
+import { Logo } from "./ui/logo";
 
 interface MucNav {
   /** Tiền tố đường dẫn của khu — để biết đang ở khu nào. */
@@ -122,9 +123,9 @@ export function NavRail() {
 
   return (
     <nav className="flex w-[84px] shrink-0 flex-col items-center gap-2 border-r-2 border-ink bg-card py-4">
-      <div className="mb-3 flex size-10 items-center justify-center rounded-nb border-2 border-ink bg-ink text-sm font-extrabold text-accent">
-        OC
-      </div>
+      <Link href="/inbox" className="mb-3 rounded-nb" aria-label="OmniChat — về Hộp thư">
+        <Logo co={44} />
+      </Link>
 
       {MUC.map((muc) => {
         const Icon = muc.icon;

@@ -13,6 +13,7 @@ import {
   nhanPhamViGhiChu,
   noiDungSuKien,
   phutCho,
+  tieuDeCoSoChuaDoc,
 } from "./hop-thu";
 import type { ConversationEvent, InboxItem, Message } from "./types";
 
@@ -68,6 +69,20 @@ describe("gopTrang (Review Focus #5)", () => {
     expect(gopTrang([trang1Moi, trang2Cu]).map((i) => i.conversation_id)).toEqual([
       "x", "a", "b", "c", "d",
     ]);
+  });
+});
+
+describe("tieuDeCoSoChuaDoc", () => {
+  const T = "Hộp thư · OmniChat";
+  it("có chưa đọc thì gắn (n) phía trước", () => {
+    expect(tieuDeCoSoChuaDoc(T, 5)).toBe("(5) Hộp thư · OmniChat");
+  });
+  it("gọi lại không chồng tiền tố; về 0 thì bỏ hẳn", () => {
+    expect(tieuDeCoSoChuaDoc("(5) Hộp thư · OmniChat", 3)).toBe("(3) Hộp thư · OmniChat");
+    expect(tieuDeCoSoChuaDoc("(99+) Hộp thư · OmniChat", 0)).toBe(T);
+  });
+  it("trên 99 hiện 99+ như huy hiệu", () => {
+    expect(tieuDeCoSoChuaDoc(T, 150)).toBe("(99+) Hộp thư · OmniChat");
   });
 });
 

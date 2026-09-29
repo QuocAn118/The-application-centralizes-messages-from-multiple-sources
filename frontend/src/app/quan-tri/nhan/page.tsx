@@ -1,4 +1,7 @@
 import { HopQuanLyNhan } from "@/components/panel-khach-muc";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Nhãn" };
 
 /**
  * `/quan-tri/nhan` — Manager + Admin (BE-6: chỉ hai vai này tạo/sửa nhãn; layout

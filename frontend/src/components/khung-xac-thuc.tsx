@@ -10,8 +10,8 @@
  * đọc tiêu đề rồi vào thẳng form.
  */
 
-import { MessagesSquare } from "lucide-react";
 import { IconKenh } from "@/components/ui/icon-kenh";
+import { Logo } from "@/components/ui/logo";
 import type { Platform } from "@/lib/types";
 
 const TIN_MAU: { kenh: Platform; ten: string; noiDung: string; luc: string; lop: string }[] = [
@@ -49,10 +49,8 @@ export function KhungXacThuc({ children }: { children: React.ReactNode }) {
   return (
     <main className="grid min-h-screen grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] bg-paper">
       <section className="flex flex-col justify-center gap-8 overflow-hidden border-r-[3px] border-ink bg-accent px-14 py-12">
-        <p className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-ink">
-          <span className="inline-flex size-9 items-center justify-center rounded-nb border-2 border-ink bg-card shadow-nb-sm">
-            <MessagesSquare aria-hidden className="size-5" strokeWidth={2.5} />
-          </span>
+        <p className="flex items-center gap-3 text-2xl font-extrabold tracking-tight text-ink">
+          <Logo co={52} />
           OmniChat
         </p>
 

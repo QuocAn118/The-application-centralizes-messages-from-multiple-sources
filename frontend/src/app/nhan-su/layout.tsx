@@ -1,6 +1,11 @@
 import { AuthGuard } from "@/components/auth-guard";
 import { NavRail } from "@/components/nav-rail";
 import { TabNhanSu } from "@/components/tab-nhan-su";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: { template: "%s · Nhân sự · OmniChat", default: "Nhân sự · OmniChat" },
+};
 
 /**
  * Khung của mọi màn `/nhan-su/*` (#F3 task 1.2).

@@ -2,6 +2,11 @@ import { AuthGuard } from "@/components/auth-guard";
 import { NavRail } from "@/components/nav-rail";
 import { ChanTheoVai } from "@/components/chan-theo-vai";
 import { TabQuanTri } from "@/components/tab-quan-tri";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: { template: "%s · Cấu hình · OmniChat", default: "Cấu hình · OmniChat" },
+};
 
 /**
  * Khung của mọi màn `/quan-tri/*` (#F2 task 1.2).
