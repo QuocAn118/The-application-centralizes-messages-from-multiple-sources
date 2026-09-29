@@ -82,7 +82,9 @@ class TestNhanViecKhongDeGiaoTay:
         self, db_session: AsyncSession
     ) -> None:
         cv, b, _, chen = await _dung(db_session)
-        nhan_vien_a = InboxActor(user_id=new_id(), role=ActorRole.STAFF, department_id=cv.department_id)
+        nhan_vien_a = InboxActor(
+            user_id=new_id(), role=ActorRole.STAFF, department_id=cv.department_id
+        )
         su_kien = SqlAlchemyConversationEventRepository(db_session)
         uc = TakeConversation(
             _RepoQuanLyChenGiua(db_session, chen), FakeRealtimeNotifier(), FakeClock(T0), su_kien

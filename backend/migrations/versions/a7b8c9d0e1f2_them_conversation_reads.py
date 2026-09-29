@@ -39,16 +39,27 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["conversation_id"], ["conversations.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("user_id", "conversation_id"),
     )
-    op.create_index(
-        "ix_message_inbound_conv_created",
-        "messages",
-        ["conversation_id", "created_at"],
-        unique=False,
-        postgresql_where=sa.text("direction = 'INBOUND'"),
-    )
+    # CONCURRENTLY: không khoá ghi bảng ``messages`` trong lúc dựng (webhook vẫn nhận
+    # tin). PostgreSQL cấm lệnh này trong transaction → ``autocommit_block`` commit
+    # phần trước (bảng ``conversation_reads``) rồi chạy lệnh ngoài transaction.
+    # Hỏng giữa chừng để lại index INVALID: ``DROP INDEX CONCURRENTLY`` rồi chạy lại.
+    with op.get_context().autocommit_block():
+        op.create_index(
+            "ix_message_inbound_conv_created",
+            "messages",
+            ["conversation_id", "created_at"],
+            unique=False,
+            postgresql_where=sa.text("direction = 'INBOUND'"),
+            postgresql_concurrently=True,
+        )
 
 
 def downgrade() -> None:
     """Gỡ index và bảng — không đụng dữ liệu tin nhắn."""
-    op.drop_index("ix_message_inbound_conv_created", table_name="messages")
+    with op.get_context().autocommit_block():
+        op.drop_index(
+            "ix_message_inbound_conv_created",
+            table_name="messages",
+            postgresql_concurrently=True,
+        )
     op.drop_table("conversation_reads")
