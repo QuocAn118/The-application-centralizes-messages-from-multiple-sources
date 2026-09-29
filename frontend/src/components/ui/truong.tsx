@@ -50,8 +50,10 @@ export function Truong({
           {goiY}
         </p>
       )}
+      {/* `role="alert"`: lỗi dưới ô xuất hiện SAU khi bấm Lưu (lỗi server gắn về
+          đúng ô), người dùng trình đọc màn hình phải được báo ngay. */}
       {loi && (
-        <p id={idLoi} className="text-xs font-semibold text-bad">
+        <p id={idLoi} role="alert" className="text-xs font-semibold text-bad">
           {loi}
         </p>
       )}

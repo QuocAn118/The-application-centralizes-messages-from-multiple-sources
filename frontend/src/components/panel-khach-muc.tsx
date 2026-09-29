@@ -31,7 +31,8 @@ import {
 } from "@/lib/inbox-api";
 import { useBayGio } from "@/lib/use-bay-gio";
 import type { CustomerNote, MauNhan, Tag } from "@/lib/types";
-import { HopThoai, NutChinh, NutPhu } from "./hop-thoai";
+import { NutChinh } from "./hop-thoai";
+import { KhungQuanLy } from "./khung-quan-ly";
 import { HopXacNhan } from "./hop-xac-nhan";
 import { lopMau, type SoMau } from "./ui/ban-mau";
 import { HuyHieu } from "./ui/huy-hieu";
@@ -148,7 +149,8 @@ export function MucNhan({ customerId }: { customerId: string }) {
   );
 }
 
-function HopQuanLyNhan({ onDong }: { onDong: () => void }) {
+/** Quản lý nhãn: hộp thoại trong Hộp thư (`onDong`) hoặc tab Cấu hình (`trang`). */
+export function HopQuanLyNhan({ onDong, trang = false }: { onDong?: () => void; trang?: boolean }) {
   const qc = useQueryClient();
   const [ten, setTen] = useState("");
   const [mau, setMau] = useState<MauNhan>("swatch-1");
@@ -178,12 +180,12 @@ function HopQuanLyNhan({ onDong }: { onDong: () => void }) {
   });
 
   return (
-    <HopThoai
-      tieuDe="Quản lý nhãn"
+    <KhungQuanLy
+      trang={trang}
+      tieuDe={trang ? "Nhãn khách hàng" : "Quản lý nhãn"}
       moTa="Nhãn dùng chung toàn công ty. Ngừng dùng thì nhãn không gắn mới được, khách đang có vẫn giữ."
       loi={loi}
       onDong={onDong}
-      chanDuoi={<NutPhu onClick={onDong}>Xong</NutPhu>}
     >
       <form
         className="flex flex-col gap-3 rounded-nb border-2 border-ink bg-sunken p-3"
@@ -225,6 +227,7 @@ function HopQuanLyNhan({ onDong }: { onDong: () => void }) {
         </div>
       </form>
 
+      {tatCa.length === 0 && <p className="mt-4 text-sm text-ink-2">Chưa có nhãn nào. Tạo nhãn đầu tiên ở trên.</p>}
       <ul className="mt-4 flex flex-col divide-y-2 divide-line">
         {tatCa.map((t) => (
           <li key={t.id} className="flex items-center gap-3 py-2">
@@ -246,7 +249,7 @@ function HopQuanLyNhan({ onDong }: { onDong: () => void }) {
           </li>
         ))}
       </ul>
-    </HopThoai>
+    </KhungQuanLy>
   );
 }
 

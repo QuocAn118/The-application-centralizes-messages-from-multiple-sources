@@ -1,34 +1,43 @@
 "use client";
 
 /**
- * Màn Nhật ký (#F2 GĐ4) — chỉ Admin.
+ * Màn Nhật ký (#F2 GĐ4; redesign Phần 6 Q4) — chỉ Admin.
  *
  * **RB-8: chỉ đọc.** Entity `AuditLog` cố ý không có phương thức sửa/xoá, nên
  * màn này không có nút ghi nào. Có một dòng nói rõ điều đó để người dùng không
  * đi tìm nút xoá.
  *
- * Tên người thực hiện: nhật ký chỉ trả `actor_id`, nên tra ngược sang danh sách
- * người dùng đã tải sẵn. Không gọi `GET /users/{id}` cho từng dòng — 25 dòng là
- * 25 lời gọi, mà phần lớn trỏ tới cùng vài người.
+ * Tên người thực hiện và **tên đối tượng** (Q4): nhật ký chỉ trả UUID, nên tra
+ * ngược sang danh sách người dùng + phòng ban đã tải sẵn (giống màn Báo cáo),
+ * UUID chuyển vào tooltip. Không gọi `GET /users/{id}` cho từng dòng — 25 dòng
+ * là 25 lời gọi, mà phần lớn trỏ tới cùng vài người. Không tra được (ngoài 100
+ * người đầu, hoặc đã xoá) → mã rút gọn 8 ký tự, UUID đủ vẫn ở tooltip.
  */
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ScrollText, X } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { NHAN_HANH_DONG, lopBadgeHanhDong, mocDayDu } from "@/lib/hien-thi";
 import {
   KICH_THUOC_TRANG,
   khoaQuanTri,
   layDanhSachNguoiDung,
+  layDanhSachPhongBan,
   layNhatKy,
   type ThamSoNhatKy,
 } from "@/lib/quan-tri-api";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { ThanhPhanTrang } from "@/components/thanh-phan-trang";
+import { DauTrang } from "@/components/ui/dau-trang";
+import { The } from "@/components/ui/the";
+import { Nut } from "@/components/ui/nut";
+import { OChon, ONhap } from "@/components/ui/o-nhap";
+import { Bang, Td, Th, Tr } from "@/components/ui/bang";
+import { HuyHieu } from "@/components/ui/huy-hieu";
+import { GoiY } from "@/components/ui/goi-y";
+import { TrangThaiLoi, TrangThaiRong, TrangThaiTai } from "@/components/ui/trang-thai";
 import type { AuditAction } from "@/lib/types";
-
-const LOP_SELECT =
-  "rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary";
 
 /** Nhóm hành động cho ô chọn, theo đúng tiền tố backend dùng. */
 const NHOM: { nhan: string; loai: string }[] = [
@@ -36,6 +45,7 @@ const NHOM: { nhan: string; loai: string }[] = [
   { nhan: t("nhatKy.loaiDepartment"), loai: "department" },
   { nhan: t("nhatKy.loaiAuth"), loai: "auth" },
 ];
+const NHAN_LOAI = new Map(NHOM.map((n) => [n.loai, n.nhan]));
 
 const MOI_HANH_DONG = Object.keys(NHAN_HANH_DONG) as AuditAction[];
 
@@ -50,15 +60,23 @@ export function ManNhatKy() {
     queryFn: ({ signal }) => layNhatKy(thamSo, signal),
   });
 
-  // Tải một lần danh sách người dùng để tra tên theo `actor_id`.
+  // Tải một lần danh sách người dùng + phòng ban để tra tên theo UUID.
   const truyVanNguoiDung = useQuery({
     queryKey: [...khoaQuanTri.nguoiDung.all, "tra-ten"],
     queryFn: ({ signal }) => layDanhSachNguoiDung({ limit: 100, offset: 0 }, signal),
   });
+  const truyVanPhongBan = useQuery({
+    queryKey: khoaQuanTri.phongBan.all,
+    queryFn: ({ signal }) => layDanhSachPhongBan(signal),
+  });
 
   const tenTheoId = useMemo(
-    () => new Map((truyVanNguoiDung.data?.items ?? []).map((u) => [u.id, u.full_name])),
-    [truyVanNguoiDung.data],
+    () =>
+      new Map<string, string>([
+        ...(truyVanNguoiDung.data?.items ?? []).map((u) => [u.id, u.full_name] as const),
+        ...(truyVanPhongBan.data?.items ?? []).map((p) => [p.id, p.name] as const),
+      ]),
+    [truyVanNguoiDung.data, truyVanPhongBan.data],
   );
 
   function doiThamSo(phan: Partial<ThamSoNhatKy>) {
@@ -73,189 +91,150 @@ export function ManNhatKy() {
     thamSo.to_time !== undefined;
 
   return (
-    <div className="px-6 py-6">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-base font-semibold text-foreground">{t("nhatKy.tieuDe")}</h2>
-        <p className="text-xs text-muted">{t("nhatKy.chiDoc")}</p>
+    <div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-8 py-6">
+      <DauTrang tieuDe={t("nhatKy.tieuDe")} moTa={t("nhatKy.chiDoc")} />
+
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink">
+          {t("nhatKy.locHanhDong")}
+          <OChon
+            className="w-64"
+            value={thamSo.action ?? ""}
+            onChange={(e) => doiThamSo({ action: (e.target.value || undefined) as AuditAction | undefined })}
+          >
+            <option value="">{t("quanTri.tatCa")}</option>
+            {MOI_HANH_DONG.map((hd) => (
+              <option key={hd} value={hd}>
+                {NHAN_HANH_DONG[hd]}
+              </option>
+            ))}
+          </OChon>
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink">
+          {t("nhatKy.locLoaiDoiTuong")}
+          <OChon
+            className="w-44"
+            value={thamSo.resource_type ?? ""}
+            onChange={(e) => doiThamSo({ resource_type: e.target.value || undefined })}
+          >
+            <option value="">{t("quanTri.tatCa")}</option>
+            {NHOM.map((n) => (
+              <option key={n.loai} value={n.loai}>
+                {n.nhan}
+              </option>
+            ))}
+          </OChon>
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink">
+          {t("nhatKy.locTuNgay")}
+          <ONhap
+            type="date"
+            className="w-44"
+            value={thamSo.from_time?.slice(0, 10) ?? ""}
+            onChange={(e) =>
+              doiThamSo({
+                // Ô `date` cho ra "2026-09-16"; backend nhận datetime nên gắn
+                // đầu ngày. Không dùng `new Date(...)`: nó diễn giải chuỗi
+                // trần là UTC và ngày sẽ lệch với người ở múi giờ khác.
+                from_time: e.target.value ? `${e.target.value}T00:00:00` : undefined,
+              })
+            }
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink">
+          {t("nhatKy.locDenNgay")}
+          <ONhap
+            type="date"
+            className="w-44"
+            value={thamSo.to_time?.slice(0, 10) ?? ""}
+            onChange={(e) =>
+              doiThamSo({
+                // Cuối ngày, không phải đầu ngày: chọn "đến 16/09" mà gửi
+                // 00:00 thì mất hết bản ghi của chính ngày 16.
+                to_time: e.target.value ? `${e.target.value}T23:59:59` : undefined,
+              })
+            }
+          />
+        </label>
+        {coLoc && (
+          <Nut bienThe="trong" icon={X} onClick={() => setThamSo({ limit: KICH_THUOC_TRANG, offset: 0 })}>
+            {t("nhatKy.xoaLoc")}
+          </Nut>
+        )}
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border-subtle bg-white">
-        <div className="flex flex-wrap items-end gap-3 border-b border-border-subtle px-4 py-3">
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted">
-              {t("nhatKy.locHanhDong")}
-            </span>
-            <select
-              value={thamSo.action ?? ""}
-              onChange={(e) =>
-                doiThamSo({ action: (e.target.value || undefined) as AuditAction | undefined })
-              }
-              className={LOP_SELECT}
-            >
-              <option value="">{t("quanTri.tatCa")}</option>
-              {MOI_HANH_DONG.map((hd) => (
-                <option key={hd} value={hd}>
-                  {NHAN_HANH_DONG[hd]}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted">
-              {t("nhatKy.locLoaiDoiTuong")}
-            </span>
-            <select
-              value={thamSo.resource_type ?? ""}
-              onChange={(e) => doiThamSo({ resource_type: e.target.value || undefined })}
-              className={LOP_SELECT}
-            >
-              <option value="">{t("quanTri.tatCa")}</option>
-              {NHOM.map((n) => (
-                <option key={n.loai} value={n.loai}>
-                  {n.nhan}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted">
-              {t("nhatKy.locTuNgay")}
-            </span>
-            <input
-              type="date"
-              value={thamSo.from_time?.slice(0, 10) ?? ""}
-              onChange={(e) =>
-                doiThamSo({
-                  // Ô `date` cho ra "2026-09-16"; backend nhận datetime nên gắn
-                  // đầu ngày. Không dùng `new Date(...)`: nó diễn giải chuỗi
-                  // trần là UTC và ngày sẽ lệch với người ở múi giờ khác.
-                  from_time: e.target.value ? `${e.target.value}T00:00:00` : undefined,
-                })
-              }
-              className={LOP_SELECT}
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted">
-              {t("nhatKy.locDenNgay")}
-            </span>
-            <input
-              type="date"
-              value={thamSo.to_time?.slice(0, 10) ?? ""}
-              onChange={(e) =>
-                doiThamSo({
-                  // Cuối ngày, không phải đầu ngày: chọn "đến 16/09" mà gửi
-                  // 00:00 thì mất hết bản ghi của chính ngày 16.
-                  to_time: e.target.value ? `${e.target.value}T23:59:59` : undefined,
-                })
-              }
-              className={LOP_SELECT}
-            />
-          </label>
-
-          {coLoc && (
-            <button
-              type="button"
-              onClick={() =>
-                setThamSo({ limit: KICH_THUOC_TRANG, offset: 0 })
-              }
-              className="rounded-lg border border-border-subtle px-3 py-2 text-xs font-medium text-muted transition hover:bg-surface"
-            >
-              {t("nhatKy.xoaLoc")}
-            </button>
-          )}
-        </div>
-
-        {truyVan.isPending && (
-          <p className="px-5 py-10 text-center text-sm text-muted">{t("chung.dangTai")}</p>
-        )}
-
-        {truyVan.isError && (
-          <div className="px-5 py-10 text-center">
-            <p className="text-sm text-danger-fg">{thongDiepLoi(truyVan.error)}</p>
-            <button
-              type="button"
-              onClick={() => void truyVan.refetch()}
-              className="mt-3 rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-surface"
-            >
-              {t("chung.thuLai")}
-            </button>
-          </div>
-        )}
-
-        {trang && trang.items.length === 0 && (
-          <p className="px-5 py-10 text-center text-sm text-muted">{t("quanTri.trong")}</p>
-        )}
-
-        {trang && trang.items.length > 0 && (
-          <>
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="border-b border-border-subtle bg-surface/60 text-xs font-bold uppercase tracking-wider text-muted">
-                  <th scope="col" className="w-44 px-5 py-3.5">
-                    {t("nhatKy.cotThoiGian")}
-                  </th>
-                  <th scope="col" className="w-64 px-4 py-3.5">
-                    {t("nhatKy.cotHanhDong")}
-                  </th>
-                  <th scope="col" className="w-48 px-4 py-3.5">
-                    {t("nhatKy.cotNguoiThucHien")}
-                  </th>
-                  <th scope="col" className="px-4 py-3.5">{t("nhatKy.cotDoiTuong")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trang.items.map((dong) => (
-                  <tr key={dong.id} className="border-b border-border-subtle last:border-0">
-                    <td className="whitespace-nowrap px-5 py-3 text-xs text-muted">
-                      {mocDayDu(dong.created_at)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${lopBadgeHanhDong(dong.action)}`}
-                      >
-                        {NHAN_HANH_DONG[dong.action]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-foreground">
-                      {dong.actor_id
-                        ? // Người thực hiện có thể đã bị xoá khỏi trang hiện tại
-                          // của danh sách; khi đó hiện "Không rõ" thay vì UUID
-                          // trần, vốn chẳng nói gì với người đọc.
-                          (tenTheoId.get(dong.actor_id) ?? t("nhatKy.khongRo"))
-                        : // `actor_id` rỗng = hệ thống tự làm (ví dụ đăng nhập
-                          // thất bại: chưa biết là ai).
-                          t("nhatKy.heThong")}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="block text-sm text-foreground">
-                        {dong.resource_type}
-                      </span>
-                      {dong.resource_id && (
-                        <span className="block truncate font-mono text-xs text-muted">
-                          {dong.resource_id}
+      {truyVan.isPending && (
+        <The>
+          <TrangThaiTai />
+        </The>
+      )}
+      {truyVan.isError && (
+        <The>
+          <TrangThaiLoi thongDiep={thongDiepLoi(truyVan.error)} onThuLai={() => void truyVan.refetch()} />
+        </The>
+      )}
+      {trang && trang.items.length === 0 && (
+        <The>
+          <TrangThaiRong icon={ScrollText} tieuDe={t("quanTri.trong")} />
+        </The>
+      )}
+      {trang && trang.items.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <Bang aria-label={t("nhatKy.tieuDe")}>
+            <thead>
+              <tr>
+                <Th className="w-44">{t("nhatKy.cotThoiGian")}</Th>
+                <Th className="w-64">{t("nhatKy.cotHanhDong")}</Th>
+                <Th className="w-52">{t("nhatKy.cotNguoiThucHien")}</Th>
+                <Th>{t("nhatKy.cotDoiTuong")}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {trang.items.map((dong) => (
+                <Tr key={dong.id}>
+                  <Td className="whitespace-nowrap text-xs text-ink-2">{mocDayDu(dong.created_at)}</Td>
+                  <Td>
+                    <HuyHieu lop={lopBadgeHanhDong(dong.action)}>{NHAN_HANH_DONG[dong.action]}</HuyHieu>
+                  </Td>
+                  <Td>
+                    {dong.actor_id
+                      ? // Người thực hiện có thể không nằm trong 100 người đã tải;
+                        // khi đó "Không rõ" thay vì UUID trần.
+                        (tenTheoId.get(dong.actor_id) ?? t("nhatKy.khongRo"))
+                      : // `actor_id` rỗng = hệ thống tự làm (ví dụ đăng nhập
+                        // thất bại: chưa biết là ai).
+                        <span className="text-ink-2">{t("nhatKy.heThong")}</span>}
+                  </Td>
+                  <Td>
+                    <span className="text-xs font-bold uppercase tracking-wide text-ink-2">
+                      {NHAN_LOAI.get(dong.resource_type) ?? dong.resource_type}
+                    </span>
+                    {dong.resource_id && (
+                      <GoiY noiDung={<span className="font-mono">{dong.resource_id}</span>}>
+                        <span
+                          tabIndex={0}
+                          className="block w-fit cursor-help font-semibold text-ink underline decoration-dotted underline-offset-2"
+                        >
+                          {tenTheoId.get(dong.resource_id) ?? (
+                            <span className="font-mono">#{dong.resource_id.slice(0, 8)}</span>
+                          )}
                         </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <ThanhPhanTrang
-              offset={trang.offset}
-              limit={trang.limit}
-              total={trang.total}
-              dangTai={truyVan.isFetching}
-              doiOffset={(offsetMoi) =>
-                setThamSo((truoc) => ({ ...truoc, offset: offsetMoi }))
-              }
-            />
-          </>
-        )}
-      </div>
+                      </GoiY>
+                    )}
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Bang>
+          <ThanhPhanTrang
+            offset={trang.offset}
+            limit={trang.limit}
+            total={trang.total}
+            dangTai={truyVan.isFetching}
+            doiOffset={(offsetMoi) => setThamSo((truoc) => ({ ...truoc, offset: offsetMoi }))}
+          />
+        </div>
+      )}
     </div>
   );
 }

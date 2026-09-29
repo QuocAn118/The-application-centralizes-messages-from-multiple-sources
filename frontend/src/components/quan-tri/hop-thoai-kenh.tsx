@@ -24,12 +24,19 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t } from "@/lib/i18n";
 import { NHAN_KENH } from "@/lib/hien-thi";
 import { ketNoiKenh, khoaQuanTri, suaKenh, thanSuaKenh } from "@/lib/quan-tri-api";
-import { thongDiepLoi } from "@/lib/loi-quan-tri";
+import { loiTheoTruong } from "@/lib/loi-truong";
 import { HopThoai, NutChinh, NutPhu } from "@/components/hop-thoai";
+import { Truong } from "@/components/ui/truong";
+import { OChon, ONhap } from "@/components/ui/o-nhap";
+import { IconKenh } from "@/components/ui/icon-kenh";
 import type { Channel, Department, Platform } from "@/lib/types";
 
-const LOP_O_NHAP =
-  "mt-1 w-full rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted-soft focus:border-primary";
+type O = "ten" | "maKenh" | "token";
+const THEO_MA: Partial<Record<string, O>> = {
+  CHANNEL_ALREADY_CONNECTED: "maKenh",
+  EMPTY_EXTERNAL_CHANNEL_ID: "maKenh",
+};
+const THEO_TEN: Partial<Record<string, O>> = { name: "ten", external_channel_id: "maKenh", credential: "token" };
 
 const NEN_TANG: readonly Platform[] = [
   "ZALO",
@@ -85,11 +92,16 @@ export function HopThoaiKenh({
     },
   });
 
+  // Lỗi server về đúng ô (§4.6). `loiTheoTruong` chỉ đọc `message` của server —
+  // không bao giờ nối giá trị ô token vào chuỗi hiển thị (RB-6).
+  const loi = luu.isError ? loiTheoTruong(luu.error, THEO_MA, THEO_TEN) : null;
+  const loiO = (o: O) => (loi?.truong === o ? loi.thongDiep : null);
+
   return (
     <HopThoai
       tieuDe={dangSua ? t("kenh.suaTieuDe") : t("kenh.ketNoi")}
       moTa={dangSua ? kenh.name : undefined}
-      loi={luu.isError ? thongDiepLoi(luu.error) : null}
+      loi={loi && !loi.truong ? loi.thongDiep : null}
       onDong={onDong}
       chanDuoi={
         <>
@@ -102,99 +114,92 @@ export function HopThoaiKenh({
         </>
       }
     >
-      <div className="mt-4 space-y-3">
-        <label className="block">
-          <span className="text-xs font-medium text-muted">{t("kenh.ten")}</span>
-          <input
-            value={ten}
-            onChange={(e) => setTen(e.target.value)}
-            maxLength={200}
-            className={LOP_O_NHAP}
-          />
-        </label>
+      <div className="mt-4 flex flex-col gap-4">
+        <Truong nhan={t("kenh.ten")} batBuoc loi={loiO("ten")}>
+          {(o) => <ONhap {...o} value={ten} onChange={(e) => setTen(e.target.value)} maxLength={200} />}
+        </Truong>
 
         {/* Nền tảng và mã kênh KHÔNG sửa được: `UpdateChannelRequest` không
             nhận chúng. Khi sửa thì hiện dạng chỉ-đọc thay vì ô nhập, để không
             mời người dùng gõ vào thứ sẽ bị bỏ qua. */}
         {dangSua ? (
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <span className="text-xs font-medium text-muted">{t("kenh.nenTang")}</span>
-              <p className="mt-1 text-sm text-foreground">{NHAN_KENH[kenh.platform]}</p>
+          <dl className="grid grid-cols-2 gap-3 rounded-nb border-2 border-line bg-sunken px-3 py-2.5">
+            <div>
+              <dt className="text-xs font-bold uppercase tracking-wide text-ink-2">{t("kenh.nenTang")}</dt>
+              <dd className="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-ink">
+                <span aria-hidden className="inline-flex">
+                  <IconKenh kenh={kenh.platform} />
+                </span>
+                {NHAN_KENH[kenh.platform]}
+              </dd>
             </div>
-            <div className="min-w-0 flex-1">
-              <span className="text-xs font-medium text-muted">{t("kenh.maKenh")}</span>
-              <p className="mt-1 truncate font-mono text-sm text-foreground">
-                {kenh.external_channel_id}
-              </p>
+            <div className="min-w-0">
+              <dt className="text-xs font-bold uppercase tracking-wide text-ink-2">{t("kenh.maKenh")}</dt>
+              <dd className="mt-1 truncate font-mono text-sm text-ink">{kenh.external_channel_id}</dd>
             </div>
-          </div>
+          </dl>
         ) : (
-          <>
-            <label className="block">
-              <span className="text-xs font-medium text-muted">{t("kenh.nenTang")}</span>
-              <select
-                value={nenTang}
-                onChange={(e) => setNenTang(e.target.value as Platform)}
-                className={LOP_O_NHAP}
-              >
-                {NEN_TANG.map((p) => (
-                  <option key={p} value={p}>
-                    {NHAN_KENH[p]}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block">
-              <span className="text-xs font-medium text-muted">{t("kenh.maKenh")}</span>
-              <input
-                value={maKenh}
-                onChange={(e) => setMaKenh(e.target.value)}
-                placeholder={t("kenh.maKenhGoiY")}
-                maxLength={255}
-                className={`${LOP_O_NHAP} font-mono`}
-              />
-            </label>
-          </>
+          <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-3">
+            <Truong nhan={t("kenh.nenTang")}>
+              {(o) => (
+                <OChon {...o} value={nenTang} onChange={(e) => setNenTang(e.target.value as Platform)}>
+                  {NEN_TANG.map((p) => (
+                    <option key={p} value={p}>
+                      {NHAN_KENH[p]}
+                    </option>
+                  ))}
+                </OChon>
+              )}
+            </Truong>
+            <Truong nhan={t("kenh.maKenh")} batBuoc loi={loiO("maKenh")}>
+              {(o) => (
+                <ONhap
+                  {...o}
+                  value={maKenh}
+                  onChange={(e) => setMaKenh(e.target.value)}
+                  placeholder={t("kenh.maKenhGoiY")}
+                  maxLength={255}
+                  className="font-mono"
+                />
+              )}
+            </Truong>
+          </div>
         )}
 
-        <label className="block">
-          <span className="text-xs font-medium text-muted">
-            {t("kenh.phongPhuTrach")}
-          </span>
-          <select
-            value={phongId}
-            onChange={(e) => setPhongId(e.target.value)}
-            className={LOP_O_NHAP}
-          >
-            <option value="">{t("kenh.khongPhong")}</option>
-            {phongHoatDong.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Truong nhan={t("kenh.phongPhuTrach")}>
+          {(o) => (
+            <OChon {...o} value={phongId} onChange={(e) => setPhongId(e.target.value)}>
+              <option value="">{t("kenh.khongPhong")}</option>
+              {phongHoatDong.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </OChon>
+          )}
+        </Truong>
 
-        <label className="block">
-          <span className="text-xs font-medium text-muted">{t("kenh.token")}</span>
-          <input
-            // LUÔN `type="password"`, KHÔNG có nút hiện/ẩn (RB-6). Khác ô mật
-            // khẩu tạm lúc tạo tài khoản — ở đó Admin phải đọc để gửi cho
-            // người dùng, còn token nền tảng thì dán vào là xong, không ai cần
-            // nhìn lại. Bớt một đường lộ token trên màn hình.
-            type="password"
-            autoComplete="off"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder={dangSua ? t("kenh.tokenGiuNguyen") : t("kenh.tokenGoiY")}
-            className={LOP_O_NHAP}
-          />
-          <span className="mt-1 block text-xs text-muted-soft">
-            {dangSua ? t("kenh.tokenKhongDocLai") : t("kenh.tokenGoiY")}
-          </span>
-        </label>
+        <Truong
+          nhan={t("kenh.token")}
+          batBuoc={!dangSua}
+          goiY={dangSua ? t("kenh.tokenKhongDocLai") : t("kenh.tokenGoiY")}
+          loi={loiO("token")}
+        >
+          {(o) => (
+            <ONhap
+              {...o}
+              // LUÔN `type="password"`, KHÔNG có nút hiện/ẩn (RB-6). Khác ô mật
+              // khẩu tạm lúc tạo tài khoản — ở đó Admin phải đọc để gửi cho
+              // người dùng, còn token nền tảng thì dán vào là xong, không ai cần
+              // nhìn lại. Bớt một đường lộ token trên màn hình.
+              type="password"
+              autoComplete="off"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder={dangSua ? t("kenh.tokenGiuNguyen") : undefined}
+            />
+          )}
+        </Truong>
       </div>
     </HopThoai>
   );

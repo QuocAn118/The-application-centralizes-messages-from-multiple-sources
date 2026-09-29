@@ -76,7 +76,7 @@ export function HopXacNhanNgungPhong({
       }
     >
       {conNguoi && (
-        <p className="mt-4 rounded-lg border border-cho-phan-fg/30 bg-cho-phan-bg px-3.5 py-2.5 text-xs text-cho-phan-fg">
+        <p className="mt-4 rounded-nb border-2 border-wait bg-wait-bg px-3 py-2.5 text-sm font-semibold text-wait">
           {t("phongBan.conNhanVien", { so: dem.data })}
         </p>
       )}

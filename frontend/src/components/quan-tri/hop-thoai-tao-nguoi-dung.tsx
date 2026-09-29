@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Tạo tài khoản — hai bước (#F2 task 1.5, mockup Stitch "Tạo tài khoản").
+ * Tạo tài khoản — hai bước (#F2 task 1.5; redesign Phần 6 §4.6).
  *
  * Bước 2 hiện mật khẩu tạm **một lần duy nhất** (RB-3). Vì vậy ở đây cố ý
  * KHÔNG: ghi vào `localStorage`, đưa vào URL, hay `console.log`. Mật khẩu chỉ
@@ -9,19 +9,47 @@
  *
  * Hộp bước 2 không đóng được bằng Esc, bấm nền hay nút "×": đóng nhầm là mất
  * mật khẩu, phải đặt lại. Chỉ nút "Đã sao chép, đóng lại" mới đóng được.
+ *
+ * Lỗi server gắn về ĐÚNG ô (`loiTheoTruong`): email trùng hiện dưới ô email, mật
+ * khẩu yếu dưới ô mật khẩu… Lỗi không thuộc ô nào (vd. phòng đã có quản lý) vẫn
+ * ở dòng lỗi chung của hộp.
  */
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Eye, EyeOff } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { NHAN_VAI } from "@/lib/hien-thi";
 import { khoaQuanTri, taoNguoiDung } from "@/lib/quan-tri-api";
-import { thongDiepLoi } from "@/lib/loi-quan-tri";
+import { loiTheoTruong } from "@/lib/loi-truong";
+import { DO_DAI_MAT_KHAU_TOI_THIEU } from "@/lib/xac-thuc";
 import { HopThoai, NutChinh, NutPhu } from "@/components/hop-thoai";
+import { Truong } from "@/components/ui/truong";
+import { OChon, ONhap } from "@/components/ui/o-nhap";
+import { Nut } from "@/components/ui/nut";
+import { MatKhauMotLan } from "./mat-khau-mot-lan";
 import type { Department, Role, UserResponse } from "@/lib/types";
 
-const LOP_O_NHAP =
-  "mt-1 w-full rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted-soft focus:border-primary";
+type O = "hoTen" | "email" | "dienThoai" | "phong" | "matKhau";
+
+const THEO_MA: Partial<Record<string, O>> = {
+  EMAIL_ALREADY_EXISTS: "email",
+  INVALID_EMAIL: "email",
+  EMAIL_TOO_LONG: "email",
+  EMPTY_FULL_NAME: "hoTen",
+  WEAK_PASSWORD: "matKhau",
+  DEPARTMENT_REQUIRED: "phong",
+  INACTIVE_DEPARTMENT: "phong",
+  DEPARTMENT_ALREADY_HAS_MANAGER: "phong",
+  ADMIN_CANNOT_HAVE_DEPARTMENT: "phong",
+};
+const THEO_TEN: Partial<Record<string, O>> = {
+  full_name: "hoTen",
+  email: "email",
+  phone: "dienThoai",
+  department_id: "phong",
+  password: "matKhau",
+};
 
 export function HopThoaiTaoNguoiDung({
   phongBan,
@@ -42,10 +70,7 @@ export function HopThoaiTaoNguoiDung({
 
   // Bước 2: giữ cả người vừa tạo lẫn mật khẩu đã gửi đi — response không trả
   // mật khẩu về (đúng) nên phải nhớ lại chính chuỗi mình vừa gửi.
-  const [daTao, setDaTao] = useState<{ nguoi: UserResponse; matKhau: string } | null>(
-    null,
-  );
-  const [daSaoChep, setDaSaoChep] = useState(false);
+  const [daTao, setDaTao] = useState<{ nguoi: UserResponse; matKhau: string } | null>(null);
 
   // Admin không được gắn phòng (`ADMIN_CANNOT_HAVE_DEPARTMENT`); Staff/Manager
   // thì bắt buộc có (`DEPARTMENT_REQUIRED`).
@@ -55,7 +80,7 @@ export function HopThoaiTaoNguoiDung({
   const hopLe =
     hoTen.trim().length > 0 &&
     email.trim().length > 0 &&
-    matKhau.length >= 8 &&
+    matKhau.length >= DO_DAI_MAT_KHAU_TOI_THIEU &&
     (!canPhong || phongId !== "");
 
   const tao = useMutation({
@@ -84,162 +109,101 @@ export function HopThoaiTaoNguoiDung({
         onDong={null}
         chanDuoi={<NutChinh onClick={onDong}>{t("nguoiDung.dongLai")}</NutChinh>}
       >
-        <p className="mt-4 rounded-lg border border-cho-phan-fg/30 bg-cho-phan-bg px-3.5 py-2.5 text-xs text-cho-phan-fg">
-          {t("nguoiDung.canhBaoMotLan")}
-        </p>
-
-        <div className="mt-4">
-          <p className="text-xs font-medium text-muted">{t("nguoiDung.matKhauTam")}</p>
-          <div className="mt-1 flex items-center gap-2">
-            <code className="min-w-0 flex-1 truncate rounded-lg border border-border-subtle bg-surface px-3 py-2 font-mono text-sm text-foreground">
-              {daTao.matKhau}
-            </code>
-            <button
-              type="button"
-              onClick={() => {
-                void navigator.clipboard
-                  .writeText(daTao.matKhau)
-                  .then(() => setDaSaoChep(true))
-                  // Trình duyệt có thể chặn clipboard (không phải HTTPS,
-                  // không có tương tác…). Nuốt lỗi: mật khẩu vẫn đang hiện
-                  // trên màn, người dùng chép tay được.
-                  .catch(() => setDaSaoChep(false));
-              }}
-              className="shrink-0 rounded-lg border border-border-subtle px-3 py-2 text-xs font-medium text-foreground transition hover:bg-surface"
-            >
-              {daSaoChep ? t("nguoiDung.daSaoChep") : t("nguoiDung.saoChep")}
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-muted">{t("nguoiDung.phaiDoiLanDau")}</p>
-        </div>
+        <MatKhauMotLan matKhau={daTao.matKhau} ghiChu={t("nguoiDung.phaiDoiLanDau")} />
       </HopThoai>
     );
   }
+
+  const loi = tao.isError ? loiTheoTruong(tao.error, THEO_MA, THEO_TEN) : null;
+  const loiO = (o: O) => (loi?.truong === o ? loi.thongDiep : null);
 
   return (
     <HopThoai
       tieuDe={t("nguoiDung.taoMoi")}
       moTa={t("nguoiDung.phaiDoiLanDau")}
-      loi={tao.isError ? thongDiepLoi(tao.error) : null}
+      loi={loi && !loi.truong ? loi.thongDiep : null}
       onDong={onDong}
       chanDuoi={
         <>
           <NutPhu onClick={onDong} disabled={tao.isPending}>
             {t("chung.huy")}
           </NutPhu>
-          <NutChinh
-            onClick={() => tao.mutate()}
-            disabled={!hopLe || tao.isPending}
-          >
+          <NutChinh onClick={() => tao.mutate()} disabled={!hopLe || tao.isPending}>
             {tao.isPending ? t("nguoiDung.dangLuu") : t("nguoiDung.taoMoi")}
           </NutChinh>
         </>
       }
     >
-      <div className="mt-4 space-y-3">
-        <label className="block">
-          <span className="text-xs font-medium text-muted">{t("nguoiDung.hoTen")}</span>
-          <input
-            value={hoTen}
-            onChange={(e) => setHoTen(e.target.value)}
-            className={LOP_O_NHAP}
-          />
-        </label>
+      <div className="mt-4 flex flex-col gap-4">
+        <Truong nhan={t("nguoiDung.hoTen")} batBuoc loi={loiO("hoTen")}>
+          {(o) => <ONhap {...o} value={hoTen} onChange={(e) => setHoTen(e.target.value)} />}
+        </Truong>
 
-        <label className="block">
-          <span className="text-xs font-medium text-muted">{t("nguoiDung.email")}</span>
-          <input
-            type="email"
-            autoComplete="off"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className={LOP_O_NHAP}
-          />
-        </label>
+        <Truong nhan={t("nguoiDung.email")} batBuoc loi={loiO("email")}>
+          {(o) => (
+            <ONhap {...o} type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} />
+          )}
+        </Truong>
 
-        <label className="block">
-          <span className="text-xs font-medium text-muted">
-            {t("nguoiDung.dienThoai")}{" "}
-            <span className="font-normal text-muted-soft">
-              {t("nguoiDung.khongBatBuoc")}
-            </span>
-          </span>
-          <input
-            value={dienThoai}
-            onChange={(e) => setDienThoai(e.target.value)}
-            className={LOP_O_NHAP}
-          />
-        </label>
+        <Truong nhan={`${t("nguoiDung.dienThoai")} ${t("nguoiDung.khongBatBuoc")}`} loi={loiO("dienThoai")}>
+          {(o) => <ONhap {...o} type="tel" value={dienThoai} onChange={(e) => setDienThoai(e.target.value)} />}
+        </Truong>
 
-        <div className="flex gap-3">
-          <label className="block flex-1">
-            <span className="text-xs font-medium text-muted">
-              {t("nguoiDung.locVaiTro")}
-            </span>
-            <select
-              value={vai}
-              onChange={(e) => {
-                const vaiMoi = e.target.value as Role;
-                setVai(vaiMoi);
-                // Đổi sang Admin thì bỏ phòng đã chọn, không gửi kèm rồi để
-                // server trả `ADMIN_CANNOT_HAVE_DEPARTMENT`.
-                if (vaiMoi === "ADMIN") setPhongId("");
-              }}
-              className={LOP_O_NHAP}
-            >
-              {(["STAFF", "MANAGER", "ADMIN"] as const).map((r) => (
-                <option key={r} value={r}>
-                  {NHAN_VAI[r]}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {canPhong && (
-            <label className="block flex-1">
-              <span className="text-xs font-medium text-muted">
-                {t("nguoiDung.locPhongBan")}
-              </span>
-              <select
-                value={phongId}
-                onChange={(e) => setPhongId(e.target.value)}
-                className={LOP_O_NHAP}
+        <div className="grid grid-cols-2 gap-3">
+          <Truong nhan={t("nguoiDung.locVaiTro")}>
+            {(o) => (
+              <OChon
+                {...o}
+                value={vai}
+                onChange={(e) => {
+                  const vaiMoi = e.target.value as Role;
+                  setVai(vaiMoi);
+                  // Đổi sang Admin thì bỏ phòng đã chọn, không gửi kèm rồi để
+                  // server trả `ADMIN_CANNOT_HAVE_DEPARTMENT`.
+                  if (vaiMoi === "ADMIN") setPhongId("");
+                }}
               >
-                <option value="">—</option>
-                {phongHoatDong.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
+                {(["STAFF", "MANAGER", "ADMIN"] as const).map((r) => (
+                  <option key={r} value={r}>
+                    {NHAN_VAI[r]}
                   </option>
                 ))}
-              </select>
-            </label>
+              </OChon>
+            )}
+          </Truong>
+
+          {canPhong && (
+            <Truong nhan={t("nguoiDung.locPhongBan")} batBuoc loi={loiO("phong")}>
+              {(o) => (
+                <OChon {...o} value={phongId} onChange={(e) => setPhongId(e.target.value)}>
+                  <option value="">—</option>
+                  {phongHoatDong.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </OChon>
+              )}
+            </Truong>
           )}
         </div>
 
-        <label className="block">
-          <span className="text-xs font-medium text-muted">
-            {t("nguoiDung.matKhauTam")}
-          </span>
-          <div className="relative">
-            <input
-              type={hienMatKhau ? "text" : "password"}
-              autoComplete="new-password"
-              value={matKhau}
-              onChange={(e) => setMatKhau(e.target.value)}
-              className={LOP_O_NHAP}
-            />
-            <button
-              type="button"
-              onClick={() => setHienMatKhau((truoc) => !truoc)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-xs text-muted transition hover:text-foreground"
-            >
-              {hienMatKhau ? t("nguoiDung.an") : t("nguoiDung.hien")}
-            </button>
-          </div>
-          <span className="mt-1 block text-xs text-muted-soft">
-            {t("nguoiDung.toiThieu8")}
-          </span>
-        </label>
+        <Truong nhan={t("nguoiDung.matKhauTam")} batBuoc goiY={t("nguoiDung.toiThieu8")} loi={loiO("matKhau")}>
+          {(o) => (
+            <div className="flex gap-2">
+              <ONhap
+                {...o}
+                type={hienMatKhau ? "text" : "password"}
+                autoComplete="new-password"
+                value={matKhau}
+                onChange={(e) => setMatKhau(e.target.value)}
+              />
+              <Nut icon={hienMatKhau ? EyeOff : Eye} aria-pressed={hienMatKhau} onClick={() => setHienMatKhau((v) => !v)}>
+                {hienMatKhau ? t("nguoiDung.an") : t("nguoiDung.hien")}
+              </Nut>
+            </div>
+          )}
+        </Truong>
       </div>
     </HopThoai>
   );
