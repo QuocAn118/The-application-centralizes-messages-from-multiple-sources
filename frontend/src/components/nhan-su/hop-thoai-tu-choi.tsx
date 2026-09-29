@@ -14,6 +14,8 @@ import { t } from "@/lib/i18n";
 import { khoaNhanSu, tuChoiDon } from "@/lib/nhan-su-api";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { HopThoai, NutChinh, NutPhu } from "@/components/hop-thoai";
+import { Truong } from "@/components/ui/truong";
+import { VungNhap } from "@/components/ui/o-nhap";
 import type { LeaveRequest } from "@/lib/types";
 
 export function HopThoaiTuChoi({
@@ -57,19 +59,20 @@ export function HopThoaiTuChoi({
         </>
       }
     >
-      <label className="mt-4 block">
-        <span className="text-xs font-medium text-muted">{t("don.lyDoTuChoi")}</span>
-        <textarea
-          value={lyDo}
-          onChange={(e) => setLyDo(e.target.value)}
-          rows={3}
-          autoFocus
-          className="mt-1 w-full resize-none rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary"
-        />
-        <span className="mt-1 block text-xs text-muted-soft">
-          {t("don.batBuocLyDoTuChoi")}
-        </span>
-      </label>
+      <div className="mt-4">
+        <Truong nhan={t("don.lyDoTuChoi")} batBuoc goiY={t("don.batBuocLyDoTuChoi")}>
+          {(o) => (
+            <VungNhap
+              {...o}
+              value={lyDo}
+              onChange={(e) => setLyDo(e.target.value)}
+              rows={3}
+              autoFocus
+              className="resize-none"
+            />
+          )}
+        </Truong>
+      </div>
     </HopThoai>
   );
 }

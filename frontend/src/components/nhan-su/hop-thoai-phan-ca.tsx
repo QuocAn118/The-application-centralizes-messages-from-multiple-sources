@@ -21,10 +21,9 @@ import { khoaNhanSu, phanCa } from "@/lib/nhan-su-api";
 import { nhanVienPhanCaDuoc } from "@/lib/quyen-nhan-su";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { HopThoai, NutChinh, NutPhu } from "@/components/hop-thoai";
+import { Truong } from "@/components/ui/truong";
+import { OChon } from "@/components/ui/o-nhap";
 import type { Shift, UserResponse } from "@/lib/types";
-
-const LOP_O_NHAP =
-  "mt-1 w-full rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary";
 
 export function HopThoaiPhanCa({
   ngay,
@@ -85,44 +84,38 @@ export function HopThoaiPhanCa({
         </>
       }
     >
-      <div className="mt-4 space-y-3">
-        <label className="block">
-          <span className="text-xs font-medium text-muted">{t("lich.chonCa")}</span>
-          <select
-            value={shiftId}
-            onChange={(e) => setShiftId(e.target.value)}
-            className={LOP_O_NHAP}
-          >
-            {danhSachCa.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({gioNgan(c.start_time)}–{gioNgan(c.end_time)})
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block">
-          <span className="text-xs font-medium text-muted">
-            {t("lich.chonNhanVien")}
-          </span>
-          <select
-            value={userHopLe}
-            onChange={(e) => setUserId(e.target.value)}
-            disabled={nhanVienHopLe.length === 0}
-            className={LOP_O_NHAP}
-          >
-            {nhanVienHopLe.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.full_name}
-              </option>
-            ))}
-          </select>
-          {nhanVienHopLe.length === 0 && (
-            <span className="mt-1 block text-xs text-danger-fg">
-              {t("lich.khongCoNhanVien")}
-            </span>
+      <div className="mt-4 flex flex-col gap-4">
+        <Truong nhan={t("lich.chonCa")}>
+          {(o) => (
+            <OChon {...o} value={shiftId} onChange={(e) => setShiftId(e.target.value)}>
+              {danhSachCa.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({gioNgan(c.start_time)}–{gioNgan(c.end_time)})
+                </option>
+              ))}
+            </OChon>
           )}
-        </label>
+        </Truong>
+
+        <Truong
+          nhan={t("lich.chonNhanVien")}
+          loi={nhanVienHopLe.length === 0 ? t("lich.khongCoNhanVien") : null}
+        >
+          {(o) => (
+            <OChon
+              {...o}
+              value={userHopLe}
+              onChange={(e) => setUserId(e.target.value)}
+              disabled={nhanVienHopLe.length === 0}
+            >
+              {nhanVienHopLe.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.full_name}
+                </option>
+              ))}
+            </OChon>
+          )}
+        </Truong>
       </div>
     </HopThoai>
   );

@@ -24,7 +24,7 @@ export default function BaoCaoLayout({
       <div className="flex h-screen overflow-hidden">
         <NavRail />
         <ChanTheoVai cho="khuQuanTri">
-          <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-surface">
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-paper">
             <TabBaoCao />
             <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
           </div>

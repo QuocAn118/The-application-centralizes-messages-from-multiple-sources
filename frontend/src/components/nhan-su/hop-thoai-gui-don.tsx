@@ -15,10 +15,9 @@ import { NHAN_LOAI_DON } from "@/lib/hien-thi";
 import { guiDon, khoaNhanSu } from "@/lib/nhan-su-api";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { HopThoai, NutChinh, NutPhu } from "@/components/hop-thoai";
+import { Truong } from "@/components/ui/truong";
+import { OChon, ONhap, VungNhap } from "@/components/ui/o-nhap";
 import type { RequestType } from "@/lib/types";
-
-const LOP_O_NHAP =
-  "mt-1 w-full rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary";
 
 const LOAI_DON: readonly RequestType[] = ["NGHI_PHEP", "TANG_LUONG", "KHAC"] as const;
 
@@ -65,60 +64,55 @@ export function HopThoaiGuiDon({ onDong }: { onDong: () => void }) {
         </>
       }
     >
-      <div className="mt-4 space-y-3">
-        <label className="block">
-          <span className="text-xs font-medium text-muted">{t("don.loaiDon")}</span>
-          <select
-            value={loai}
-            onChange={(e) => setLoai(e.target.value as RequestType)}
-            className={LOP_O_NHAP}
-          >
-            {LOAI_DON.map((l) => (
-              <option key={l} value={l}>
-                {NHAN_LOAI_DON[l]}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="mt-4 flex flex-col gap-4">
+        <Truong nhan={t("don.loaiDon")}>
+          {(o) => (
+            <OChon {...o} value={loai} onChange={(e) => setLoai(e.target.value as RequestType)}>
+              {LOAI_DON.map((l) => (
+                <option key={l} value={l}>
+                  {NHAN_LOAI_DON[l]}
+                </option>
+              ))}
+            </OChon>
+          )}
+        </Truong>
 
         {canKhoangNgay && (
-          <div className="flex gap-3">
-            <label className="block flex-1">
-              <span className="text-xs font-medium text-muted">{t("don.tuNgay")}</span>
-              <input
-                type="date"
-                value={tuNgay}
-                onChange={(e) => {
-                  setTuNgay(e.target.value);
-                  // Kéo ngày kết thúc theo nếu nó đang ở trước ngày bắt đầu —
-                  // để người dùng khỏi gửi một khoảng ngược rồi nhận 422.
-                  if (denNgay && e.target.value > denNgay) setDenNgay(e.target.value);
-                }}
-                className={LOP_O_NHAP}
-              />
-            </label>
-            <label className="block flex-1">
-              <span className="text-xs font-medium text-muted">{t("don.denNgay")}</span>
-              <input
-                type="date"
-                value={denNgay}
-                min={tuNgay || undefined}
-                onChange={(e) => setDenNgay(e.target.value)}
-                className={LOP_O_NHAP}
-              />
-            </label>
+          <div className="grid grid-cols-2 gap-3">
+            <Truong nhan={t("don.tuNgay")} batBuoc>
+              {(o) => (
+                <ONhap
+                  {...o}
+                  type="date"
+                  value={tuNgay}
+                  onChange={(e) => {
+                    setTuNgay(e.target.value);
+                    // Kéo ngày kết thúc theo nếu nó đang ở trước ngày bắt đầu —
+                    // để người dùng khỏi gửi một khoảng ngược rồi nhận 422.
+                    if (denNgay && e.target.value > denNgay) setDenNgay(e.target.value);
+                  }}
+                />
+              )}
+            </Truong>
+            <Truong nhan={t("don.denNgay")} batBuoc>
+              {(o) => (
+                <ONhap
+                  {...o}
+                  type="date"
+                  value={denNgay}
+                  min={tuNgay || undefined}
+                  onChange={(e) => setDenNgay(e.target.value)}
+                />
+              )}
+            </Truong>
           </div>
         )}
 
-        <label className="block">
-          <span className="text-xs font-medium text-muted">{t("don.lyDo")}</span>
-          <textarea
-            value={lyDo}
-            onChange={(e) => setLyDo(e.target.value)}
-            rows={3}
-            className={`${LOP_O_NHAP} resize-none`}
-          />
-        </label>
+        <Truong nhan={t("don.lyDo")} batBuoc>
+          {(o) => (
+            <VungNhap {...o} value={lyDo} onChange={(e) => setLyDo(e.target.value)} rows={3} className="resize-none" />
+          )}
+        </Truong>
       </div>
     </HopThoai>
   );
