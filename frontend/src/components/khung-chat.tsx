@@ -31,7 +31,7 @@ import {
   traLoiHoiThoai,
 } from "@/lib/inbox-api";
 import { DAU_GACH, NHAN_KENH, tenKhach } from "@/lib/hien-thi";
-import { dungDongChat, gioPhut, laChoLau, nenDanhDauDaDoc, nhanCho, phutCho } from "@/lib/hop-thu";
+import { dungDongChat, gioPhut, laChoLau, nhanCho, phutCho } from "@/lib/hop-thu";
 import { useAuth } from "@/lib/auth-context";
 import { useBayGio } from "@/lib/use-bay-gio";
 import {
@@ -90,6 +90,9 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
   });
   const tinVaoCuoi = data?.messages.findLast((m) => m.direction === "INBOUND")?.id;
   const tinVaoDaXetRef = useRef<string | null | undefined>(undefined);
+  // Có tin tới lúc tab ở nền mà chưa đánh dấu. KHÔNG dựa `data.unread_count`:
+  // `GET /inbox/{id}` không tính số đó (luôn 0) — chỉ danh sách mới tính.
+  const boQuaLucONenRef = useRef(false);
   useEffect(() => {
     if (!data) return;
     const lanDau = tinVaoDaXetRef.current === undefined;
@@ -97,14 +100,17 @@ export function KhungChat({ conversationId }: { conversationId: string }) {
     tinVaoDaXetRef.current = tinVaoCuoi ?? null;
     // Lần đầu = vừa mở hội thoại → luôn đánh dấu. Sau đó chỉ khi có tin mới VÀ
     // cửa sổ đang có focus (tab ở nền mà đánh dấu thì người dùng không biết có tin).
-    if (lanDau || (coTinMoi && nenDanhDauDaDoc(true, document.hasFocus()))) danhDau.mutate();
+    if (lanDau || (coTinMoi && document.hasFocus())) danhDau.mutate();
+    else if (coTinMoi) boQuaLucONenRef.current = true;
     // `danhDau` đổi mỗi render; chỉ phản ứng theo tin vào cuối.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [Boolean(data), tinVaoCuoi]);
   // Quay lại tab sau khi có tin lúc vắng mặt → giờ mới thật sự đọc.
   useEffect(() => {
     const khiFocus = () => {
-      if (data && data.unread_count > 0) danhDau.mutate();
+      if (!boQuaLucONenRef.current) return;
+      boQuaLucONenRef.current = false;
+      danhDau.mutate();
     };
     window.addEventListener("focus", khiFocus);
     return () => window.removeEventListener("focus", khiFocus);
@@ -464,17 +470,19 @@ function DanhSachTin({
   const bayGio = useBayGio();
   const cuoiRef = useRef<HTMLDivElement>(null);
   const khungRef = useRef<HTMLDivElement>(null);
-  // Chiều cao nội dung trước khi chèn tin cũ, để bù lại vị trí cuộn.
-  const caoTruocRef = useRef<number | null>(null);
+  // Chiều cao nội dung + tin đầu trước khi bấm "Xem tin cũ", để bù lại vị trí cuộn.
+  const truocTaiRef = useRef<{ cao: number; dau: string | undefined } | null>(null);
   const idCuoiRef = useRef<string | null>(null);
 
   useEffect(() => {
     const khung = khungRef.current;
     if (!khung) return;
-    if (caoTruocRef.current !== null) {
-      // Vừa chèn tin CŨ vào đầu: giữ nguyên chỗ người dùng đang đọc.
-      khung.scrollTop += khung.scrollHeight - caoTruocRef.current;
-      caoTruocRef.current = null;
+    const truoc = truocTaiRef.current;
+    truocTaiRef.current = null;
+    // Chỉ bù khi tin CŨ thật sự chèn vào đầu (tin đầu đổi). Tải về rỗng / lỗi thì
+    // bỏ mốc — nếu giữ, tin realtime kế tiếp sẽ bị coi là tin cũ và không trôi xuống.
+    if (truoc && messages[0]?.id !== truoc.dau) {
+      khung.scrollTop += khung.scrollHeight - truoc.cao;
       return;
     }
     // Tin/dòng MỚI ở cuối (hoặc lần mở đầu) → trôi xuống đáy.
@@ -511,7 +519,8 @@ function DanhSachTin({
             co="sm"
             dangChay={dangTaiThem}
             onClick={() => {
-              caoTruocRef.current = khungRef.current?.scrollHeight ?? null;
+              const khung = khungRef.current;
+              truocTaiRef.current = khung ? { cao: khung.scrollHeight, dau: messages[0]?.id } : null;
               onTaiThem();
             }}
           >
