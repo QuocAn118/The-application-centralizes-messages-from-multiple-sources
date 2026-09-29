@@ -52,7 +52,7 @@ và tên người/phòng trong `events` (backend tra qua `IWorkforceDirectory`).
 
 | Revision | Nội dung | `downgrade()` |
 |---|---|---|
-| `a7b8c9d0e1f2` | `conversation_reads` + index tin vào | Xoá bảng và index |
+| `a7b8c9d0e1f2` | `conversation_reads` + index tin vào (`CREATE INDEX CONCURRENTLY`, ngoài transaction) | Xoá index (`DROP INDEX CONCURRENTLY`) và bảng |
 | `b8c9d0e1f2a3` | `conversation_events` | Xoá bảng (**mất timeline**) |
 | `c9d0e1f2a3b4` | `conversation_events` thêm `department_id`, `detail` và 2 loại sự kiện mới | **Xoá các dòng** `DEPARTMENT_ASSIGNED`/`AUTO_ROUTED` rồi dựng lại ràng buộc cũ |
 | `d0e1f2a3b4c5` | `customer_notes` | Xoá bảng (**mất ghi chú**) |
@@ -60,6 +60,9 @@ và tên người/phòng trong `events` (backend tra qua `IWorkforceDirectory`).
 | `f2a3b4c5d6e7` | `reply_templates` | Xoá bảng (**mất mẫu**) |
 
 Cả 6 migration chỉ **thêm**, không sửa cột cũ. Mỗi migration đã thử up → down → up.
+Sau khi đổi index sang `CONCURRENTLY` (GĐ4), cả chuỗi `f6a7b8c9d0e1 ↔ head` được
+chạy lại hai vòng trên DB dev (sao lưu trước, khôi phục dữ liệu 6 bảng sau); index
+tạo lại có `indisvalid = t`.
 
 ## 3. Quyết định đã chốt
 
@@ -93,20 +96,25 @@ máy chạy ba tiến trình như lúc dev: API, worker phân tích, frontend.
 3. **Dừng API và worker** (`scripts.run_worker`). Code mới ghi vào bảng/cột mới
    (worker ghi dòng `AUTO_ROUTED`), nên KHÔNG được chạy code mới trước khi migrate.
 4. **Migration:** `cd backend && uv sync --locked && uv run alembic upgrade head`
-   → head `f2a3b4c5d6e7`. Index `ix_message_inbound_conv_created` tạo KHÔNG
-   `CONCURRENTLY`: bảng `messages` bị khoá ghi trong lúc dựng — với vài chục
-   nghìn tin chỉ vài giây, lớn hơn nhiều thì chạy lúc vắng.
-5. **Khởi động lại API + worker** với code mới.
-6. **Frontend:** `cd frontend && npm ci && npm run build && npx next start -p <cổng>`
+   → head `f2a3b4c5d6e7`. Index `ix_message_inbound_conv_created` tạo bằng
+   `CREATE INDEX CONCURRENTLY` (ngoài transaction, qua `autocommit_block`): bảng
+   `messages` KHÔNG bị khoá ghi. Kiểm sau khi chạy: index phải hợp lệ —
+   `SELECT indisvalid FROM pg_index WHERE indexrelid = 'ix_message_inbound_conv_created'::regclass;` → `t`.
+5. **(Tuỳ chọn) Đánh dấu đã đọc tới lúc triển khai** — tránh huy hiệu 99+ (xem lưu ý
+   bên dưới). Chạy thử trước, xem số cặp, rồi mới ghi:
+   `uv run python -m scripts.danh_dau_da_doc_khi_trien_khai` (chạy thử: rollback, in
+   số cặp sẽ ghi) → `uv run python -m scripts.danh_dau_da_doc_khi_trien_khai --ghi`.
+   Ghi `last_read_at = lúc chạy` cho mọi (người dùng đang hoạt động × hội thoại chưa
+   đóng); không lùi mốc đã có. Chạy TRƯỚC khi mở lại cho người dùng.
+6. **Khởi động lại API + worker** với code mới.
+7. **Frontend:** `cd frontend && npm ci && npm run build && npx next start -p <cổng>`
    (Next 16.3.6 nằm trong `package-lock.json` — `npm ci` lấy đúng bản đã vá).
-7. **Kiểm nhanh:** `GET /health`; đăng nhập; mở Hộp thư (số chưa đọc, dòng hệ
+8. **Kiểm nhanh:** `GET /health`; đăng nhập; mở Hộp thư (số chưa đọc, dòng hệ
    thống); Báo cáo tổng quan; `npm audit` = 0.
 
 **Lưu ý sau khi lên:** `conversation_reads` rỗng nên **mọi tin vào của hội thoại
 đang mở hiện là chưa đọc** với mọi người (huy hiệu có thể là 99+), tới khi từng
-người mở hội thoại. Nếu không muốn, có thể đánh dấu đã đọc tới thời điểm triển
-khai cho mọi (người, hội thoại đang mở) trong phạm vi — việc này ghi dữ liệu, cần
-duyệt riêng. Timeline (`conversation_events`) bắt đầu từ lúc triển khai: hội thoại
+người mở hội thoại — trừ khi chạy bước 5. Timeline (`conversation_events`) bắt đầu từ lúc triển khai: hội thoại
 cũ không có dòng hệ thống.
 
 **Quay lại nếu lỗi:**
@@ -116,10 +124,16 @@ cũ không có dòng hệ thống.
 - *Buộc phải lùi schema:* dừng API + worker → `uv run alembic downgrade f6a7b8c9d0e1`
   → chạy bản cũ. **Mất** ghi chú, nhãn, mẫu trả lời, timeline, trạng thái đã đọc
   tạo từ lúc lên bản mới (xem bảng migration §2).
-- *Migration hỏng giữa chừng:* `migrations/env.py` chạy cả lần `upgrade` trong
-  MỘT transaction (không bật `transaction_per_migration`), PostgreSQL lùi được DDL
-  → hỏng ở revision nào thì cả 6 cùng lùi, `alembic current` vẫn là `f6a7b8c9d0e1`.
-  Chạy lại bản cũ là xong. Trường hợp xấu hơn: `pg_restore --clean -d … omnichat-truoc-redesign.dump`.
+- *Migration hỏng giữa chừng:* `CREATE INDEX CONCURRENTLY` phải chạy ngoài
+  transaction nên lần `upgrade` chia làm ba đoạn (đã kiểm bằng `alembic upgrade --sql`):
+  (1) bảng `conversation_reads` — **commit ngay**; (2) index — ngoài transaction;
+  (3) mọi thứ còn lại **cùng** các dòng cập nhật `alembic_version` — một transaction.
+  Hỏng ở (2) hoặc (3) thì `alembic current` vẫn là `f6a7b8c9d0e1` nhưng bảng (và có
+  thể index, kể cả index INVALID) đã có → chạy lại sẽ báo "đã tồn tại". Dọn rồi chạy lại:
+  `DROP INDEX CONCURRENTLY IF EXISTS ix_message_inbound_conv_created;`
+  `DROP TABLE IF EXISTS conversation_reads;` → `uv run alembic upgrade head`.
+  Hai đối tượng đó chỉ chứa dữ liệu mới (rỗng lúc này), dọn không mất gì. Trường
+  hợp xấu hơn: `pg_restore --clean -d … omnichat-truoc-redesign.dump`.
 
 ## 5. Backlog còn lại
 

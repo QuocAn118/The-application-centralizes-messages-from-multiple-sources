@@ -25,6 +25,7 @@ import {
 import type { ReplyTemplate } from "@/lib/types";
 import { NutChinh, NutPhu } from "./hop-thoai";
 import { KhungQuanLy } from "./khung-quan-ly";
+import { HopXacNhan } from "./hop-xac-nhan";
 import { HuyHieu } from "./ui/huy-hieu";
 import { Nut } from "./ui/nut";
 import { NutIcon } from "./ui/nut-icon";
@@ -114,8 +115,8 @@ export function HopQuanLyMau({ onDong, trang = false }: { onDong?: () => void; t
   const [noiDung, setNoiDung] = useState("");
   const [phamVi, setPhamVi] = useState<string>(laAdmin ? "" : (user?.department_id ?? ""));
   const [loi, setLoi] = useState<string | null>(null);
-  // Xoá cần bấm hai lần: lần đầu đổi nút thành "Xoá hẳn?" (thao tác huỷ hoại phải xác nhận).
-  const [choXoa, setChoXoa] = useState<string | null>(null);
+  // Xoá cứng → hộp xác nhận như mọi thao tác huỷ hoại khác (GĐ4; trước là bấm 2 lần).
+  const [choXoa, setChoXoa] = useState<ReplyTemplate | null>(null);
 
   const suaDuoc = (m: ReplyTemplate) =>
     laAdmin || (user?.role === "MANAGER" && m.department_id === user.department_id);
@@ -140,11 +141,8 @@ export function HopQuanLyMau({ onDong, trang = false }: { onDong?: () => void; t
     onSuccess: xong,
     onError: (e) => setLoi(loiCua(e)),
   });
-  const xoa = useMutation({
-    mutationFn: (id: string) => xoaMau(id),
-    onSuccess: xong,
-    onError: (e) => setLoi(loiCua(e)),
-  });
+  // Lỗi xoá hiện TRONG hộp xác nhận (hộp không đóng khi lỗi).
+  const xoa = useMutation({ mutationFn: (id: string) => xoaMau(id), onSuccess: xong });
 
   return (
     <KhungQuanLy
@@ -229,28 +227,28 @@ export function HopQuanLyMau({ onDong, trang = false }: { onDong?: () => void; t
                     setNoiDung(m.body);
                   }}
                 />
-                {choXoa === m.id ? (
-                  <>
-                    <Nut bienThe="nguyHiem" co="sm" dangChay={xoa.isPending} onClick={() => xoa.mutate(m.id)}>
-                      Xoá hẳn?
-                    </Nut>
-                    <Nut bienThe="trong" co="sm" onClick={() => setChoXoa(null)}>
-                      Thôi
-                    </Nut>
-                  </>
-                ) : (
-                  <NutIcon
-                    icon={Trash2}
-                    nhan={`Xoá mẫu ${m.title}`}
-                    co="sm"
-                    onClick={() => setChoXoa(m.id)}
-                  />
-                )}
+                <NutIcon icon={Trash2} nhan={`Xoá mẫu ${m.title}`} co="sm" onClick={() => setChoXoa(m)} />
               </>
             )}
           </li>
         ))}
       </ul>
+
+      {choXoa && (
+        <HopXacNhan
+          tieuDe="Xoá mẫu trả lời?"
+          moTa={`Mẫu "${choXoa.title}" sẽ mất hẳn với mọi người thấy nó.`}
+          nhanXacNhan="Xoá mẫu"
+          nguyHiem
+          dangChay={xoa.isPending}
+          loi={xoa.isError ? loiCua(xoa.error) : null}
+          onDong={() => {
+            xoa.reset();
+            setChoXoa(null);
+          }}
+          onXacNhan={() => xoa.mutate(choXoa.id)}
+        />
+      )}
     </KhungQuanLy>
   );
 }

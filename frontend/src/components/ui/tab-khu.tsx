@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Thanh tab của một khu (Nhân sự, Từ khoá, Báo cáo, Cấu hình) — thay 4 bản chép
+ * Thanh tab của một khu (Nhân sự, Từ khoá & AI, Báo cáo, Cấu hình) — thay 4 bản chép
  * nhau trước đây (X10). Mỗi khu chỉ còn lo danh sách tab và điều kiện vai.
  *
  * Tab đang mở: nền vàng + viền, KHÔNG bóng (không phải thứ để bấm nữa). Tab khác
@@ -23,9 +23,11 @@ export function TabKhu({ tieuDe, tab }: { tieuDe: string; tab: MucTab[] }) {
   const pathname = usePathname();
 
   return (
-    <header className="shrink-0 border-b-2 border-ink bg-card px-8 pb-4 pt-6">
-      <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-ink">{tieuDe}</h1>
-      <nav className="mt-4 flex gap-2" aria-label={tieuDe}>
+    <header className="shrink-0 border-b-2 border-ink bg-card px-8 pb-4 pt-5">
+      {/* Tên khu là NHÃN, không phải h1: mỗi màn một h1 duy nhất = tên trang
+          (DauTrang). Hai h1 ngang cỡ làm trình đọc màn hình không biết đâu là chính. */}
+      <p className="text-xs font-bold uppercase tracking-wide text-ink-2">{tieuDe}</p>
+      <nav className="mt-3 flex gap-2" aria-label={tieuDe}>
         {tab.map((muc) => {
           const dangO = pathname.startsWith(muc.duongDan);
           return (
