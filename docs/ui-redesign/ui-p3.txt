@@ -1,0 +1,37 @@
+=== MANAGER A ===
+  [DAT] Nav 'Nhân sự' có huy hiệu đơn chờ duyệt
+  [DAT] S1: mở ra là LỊCH (Lịch tuần đang bật)
+  [DAT] S1: bảng lịch hiện ngay, không phải danh sách mẫu ca
+  [DAT] S5: cột hôm nay có nhãn 'Hôm nay' + đúng ngày
+  [DAT] S2: ngày đã qua có nhãn 'Đã qua'
+  [DAT] S3: ô xếp ca có nhãn đọc được
+  [DAT] S4: sau khi xếp có chú giải màu
+  [DAT] S4: khối ca mới có nút huỷ ✕ (nhãn đọc được)
+  [DAT] Huỷ ca xong: về đúng số khối trước, chú giải như trước
+  [DAT] Mẫu ca: bảng có cột Trạng thái
+  [DAT] S7: thao tác qua menu '⋯'
+  [DAT] S7: menu có Sửa
+  [DAT] D1: Manager mở ra ở 'Chờ duyệt'
+  [DAT] D1: nút 'Chờ duyệt' có số đếm
+  [DAT] D1: chỉ đơn Chờ duyệt trong bảng
+  [DAT] Có nút Duyệt trên dòng đơn của nhân viên
+  [DAT] X12: mốc gửi có title đầy đủ
+  [DAT] Lọc 'Tất cả' bật
+  [DAT] K3: chọn kỳ bằng ‹ Tháng x/yyyy ›
+  [DAT] KPI: có bảng mục tiêu kỳ này
+  [DAT] K2: sửa mục tiêu qua menu '⋯'
+  [DAT] K3: sang tháng sau thì có nút 'Về tháng này'
+  [DAT] Manager: không lỗi console
+=== STAFF A ===
+  [DAT] Staff: nav 'Nhân sự' KHÔNG có huy hiệu
+  [DAT] Staff: không có ô xếp ca
+  [DAT] Staff: không có nút Tạo mẫu ca
+  [DAT] Staff: mặc định 'Tất cả'
+  [DAT] Staff: có nút Gửi đơn
+  [DAT] Staff: không lỗi console
+=== ADMIN ===
+  [DAT] D2: Admin thấy câu giải thích ở chỗ nút Gửi đơn
+  [DAT] Admin duyệt được đơn của Manager (có nút Duyệt)
+  [DAT] Admin: không lỗi console
+
+===== TONG KET P3: 32 dat / 0 hong =====

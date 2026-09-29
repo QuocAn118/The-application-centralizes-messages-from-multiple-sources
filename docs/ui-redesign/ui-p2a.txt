@@ -1,0 +1,30 @@
+=== STAFF A ===
+  [DAT] Staff mặc định tab 'Của tôi'
+  [DAT] 'Của tôi' có hội thoại của A
+  [DAT] 'Của tôi' KHÔNG có hội thoại chưa ai nhận
+  [DAT] Staff không có tuỳ chọn 'Chờ phân' trong ô trạng thái
+  [DAT] Nav có huy hiệu chưa đọc
+  [DAT] URL giữ bộ lọc
+  [DAT] Tab 'Chưa ai nhận' có KC2a Khach cho
+  [DAT] Dòng có huy hiệu 'Chưa ai nhận'
+  [DAT] Dòng có 'Chờ 20 phút' (theo waiting_since từ API, ±1)
+  [DAT] Dòng có 3 tin chưa đọc
+  [DAT] Mở rồi: số chưa đọc về 0
+  [DAT] Staff chỉ thấy chữ người phụ trách, không có ô chọn
+  [DAT] 3 tin khách liên tiếp gom 1 nhóm (1 mốc giờ)
+  [DAT] Nhận việc → dòng hệ thống 'đã nhận việc'
+  [DAT] Enter gửi tin (POST /reply)
+  [DAT] Không lỗi console (trừ lỗi gửi qua kênh giả)
+=== MANAGER A ===
+  [DAT] Manager mặc định tab 'Tất cả'
+  [DAT] Manager có ô chọn người phụ trách
+  [DAT] Ô chọn đang chỉ người vừa nhận việc
+  [DAT] Gỡ → dòng 'Gỡ người phụ trách'
+  [DAT] Giao lại → dòng 'giao cho'
+  [DAT] Đổi người → dòng 'Chuyển từ … sang …'
+  [DAT] Đóng có hộp xác nhận
+  [DAT] Sau khi đóng: header 'Đã đóng'
+  [DAT] Sau khi đóng: ô soạn bị khoá
+  [DAT] Phần tử kế tiếp có viền focus
+
+===== TONG KET P2a: 26 dat / 0 hong =====

@@ -1,0 +1,172 @@
+{
+ "BANG": [
+  {
+   "duong": "/inbox",
+   "h1": "Hộp thư@20px/800 x100 y16",
+   "nhoNhat": 12,
+   "hNut": "36",
+   "le": null,
+   "menu": 0
+  },
+  {
+   "duong": "/nhan-su/ca-lam-viec",
+   "h1": "Ca làm việc@28px/800 x116 y126",
+   "nhoNhat": 12,
+   "hNut": "32,40",
+   "le": 860,
+   "menu": 0
+  },
+  {
+   "duong": "/nhan-su/don-tu",
+   "h1": "Đơn từ@28px/800 x116 y126",
+   "nhoNhat": 12,
+   "hNut": "32",
+   "le": 116,
+   "menu": 1
+  },
+  {
+   "duong": "/nhan-su/kpi",
+   "h1": "Mục tiêu KPI@28px/800 x116 y126",
+   "nhoNhat": 12,
+   "hNut": "40",
+   "le": 1097,
+   "menu": 4
+  },
+  {
+   "duong": "/tu-khoa/danh-sach",
+   "h1": "Từ khoá theo phòng@28px/800 x116 y126",
+   "nhoNhat": 12,
+   "hNut": "28,40",
+   "le": 1091,
+   "menu": 0
+  },
+  {
+   "duong": "/tu-khoa/phan-tich",
+   "h1": "Phân tích hội thoại bằng AI@28px/800 x116 y126",
+   "nhoNhat": 12,
+   "hNut": "32",
+   "le": 116,
+   "menu": 0
+  },
+  {
+   "duong": "/bao-cao/hoi-thoai",
+   "h1": "Hội thoại@28px/800 x116 y126",
+   "nhoNhat": 12,
+   "hNut": "32",
+   "le": 192,
+   "menu": 0
+  },
+  {
+   "duong": "/bao-cao/nhan-vien",
+   "h1": "Nhân viên@28px/800 x116 y126",
+   "nhoNhat": 12,
+   "hNut": "32",
+   "le": 192,
+   "menu": 0
+  },
+  {
+   "duong": "/bao-cao/ca-kpi",
+   "h1": "Ca & KPI@28px/800 x116 y126",
+   "nhoNhat": 12,
+   "hNut": "32",
+   "le": 192,
+   "menu": 0
+  },
+  {
+   "duong": "/bao-cao/don-tu",
+   "h1": "Đơn từ@28px/800 x116 y126",
+   "nhoNhat": 12,
+   "hNut": "32",
+   "le": 192,
+   "menu": 0
+  },
+  {
+   "duong": "/quan-tri/nguoi-dung",
+   "h1": "Người dùng@28px/800 x116 y126",
+   "nhoNhat": 12,
+   "hNut": "32,40",
+   "le": 1089,
+   "menu": 25
+  },
+  {
+   "duong": "/quan-tri/phong-ban",
+   "h1": "Phòng ban@28px/800 x116 y126",
+   "nhoNhat": 12,
+   "hNut": "32,40",
+   "le": 1081,
+   "menu": 11
+  },
+  {
+   "duong": "/quan-tri/kenh",
+   "h1": "Kênh@28px/800 x116 y126",
+   "nhoNhat": 12,
+   "hNut": "32,40",
+   "le": 1101,
+   "menu": 6
+  },
+  {
+   "duong": "/quan-tri/nhan",
+   "h1": "Nhãn khách hàng@28px/800 x116 y126",
+   "nhoNhat": 12,
+   "hNut": "40",
+   "le": 116,
+   "menu": 0
+  },
+  {
+   "duong": "/quan-tri/mau-tra-loi",
+   "h1": "Mẫu trả lời@28px/800 x116 y126",
+   "nhoNhat": 12,
+   "hNut": "40",
+   "le": 116,
+   "menu": 0
+  },
+  {
+   "duong": "/quan-tri/nhat-ky",
+   "h1": "Nhật ký@28px/800 x116 y126",
+   "nhoNhat": 12,
+   "hNut": "32",
+   "le": 116,
+   "menu": 0
+  }
+ ],
+ "hopDo": [
+  {
+   "ten": "xn-phong-ban",
+   "tieuDe": "Ngừng hoạt động",
+   "co": "18px",
+   "nut": [
+    {
+     "chu": "",
+     "h": 32
+    },
+    {
+     "chu": "Huỷ",
+     "h": 40
+    },
+    {
+     "chu": "Ngừng hoạt động",
+     "h": 40
+    }
+   ]
+  },
+  {
+   "ten": "xn-kenh",
+   "tieuDe": "Ngắt kênh",
+   "co": "18px",
+   "nut": [
+    {
+     "chu": "",
+     "h": 32
+    },
+    {
+     "chu": "Huỷ",
+     "h": 40
+    },
+    {
+     "chu": "Ngắt kênh",
+     "h": 40
+    }
+   ]
+  }
+ ]
+}

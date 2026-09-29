@@ -1,0 +1,79 @@
+=== ADMIN ===
+  [DAT] Admin vào được màn Phân tích
+  [DAT] không có 404
+  [DAT] có bảng kết quả
+  [DAT] có câu 'chỉ để xem'
+  [DAT] màn chỉ đọc: KHÔNG có nút Thêm/Sửa/Xoá/Phân tích lại
+      bang:
+        Chưa rõ phòng
+        Cần xem lại
+        	Không xác định được phòng	20%	
+        bao hanh
+        	16 phút	
+        Mở hội thoại
+        
+        Chưa rõ phòng
+        Cần xem lại
+        	Không xác định được phòng	31%	
+        hỏi linh tinh
+        	16/09	
+        Mở hội thoại
+        
+        Không phân tích được
+        Cần xem lại
+        	Không xác định được phòng	—	Không trích được nhu cầu nào	16/09	
+        Mở hội thoại
+        
+        Đã tự phân
+        	Phòng Kinh doanh	95%	
+        hỏi giá
+        chính sách chiết khấu
+        	15/09	
+        Mở hội thoại
+        
+        Đã tự phân
+        	Phòng Kinh doanh	95%	
+        báo giá
+        sản phẩm
+        	15/09	
+        Mở hội thoại
+        
+        Đã tự phân
+        	Phòng Kinh doanh	95%	
+        báo giá
+        sản phẩm
+        	15/09	
+        Mở hội thoại
+        
+        Đã tự phân
+        	Phòng Kinh doanh	100%	
+        giá
+        giá sản phẩm
+        	15/09	
+        Mở hội thoại
+  --- RB-7: ba outcome ---
+  [DAT] có dòng 'Đã tự phân' (AUTO_ASSIGNED)
+  [DAT] có dòng 'Chưa rõ phòng' (AMBIGUOUS)
+  [DAT] có dòng 'Không phân tích được' (NOT_ANALYZED)
+  [DAT] AUTO_ASSIGNED: có tên phòng thật
+  [DAT] AUTO_ASSIGNED: độ tin cậy là phần trăm
+  [DAT] AUTO_ASSIGNED: có nhu cầu trích được
+  [DAT] AMBIGUOUS: phòng hiện 'Không xác định được phòng', KHÔNG phải ô trắng
+  [DAT] AMBIGUOUS: VẪN có độ tin cậy (khác NOT_ANALYZED)
+  [DAT] NOT_ANALYZED: phòng hiện 'Không xác định được phòng'
+  [DAT] RB-8: NOT_ANALYZED hiện DẤU GẠCH cho độ tin cậy, KHÔNG hiện 0%
+  [DAT] NOT_ANALYZED: nhu cầu rỗng thì có câu giải thích
+  [DAT] KHÔNG có chữ 'undefined' hay 'null' lọt ra giao diện
+  [DAT] không có lỗi console (ngoài 401 refresh đã biết)
+
+=== MANAGER A ===
+  [DAT] Manager vào được màn Phân tích
+  [DAT] Manager thấy ÍT hơn Admin (lọc theo phòng đề xuất)
+  [DAT] Manager không có kết quả thì hiện lời nhắn, không phải bảng trống
+      manager thay 1 dong
+
+=== STAFF (N6: vao duoc) ===
+  [DAT] N6: Staff vào được màn Phân tích
+  [DAT] N6: Staff không còn thấy 'không có quyền'
+
+===== TONG KET F4 GD2: 23 dat / 0 hong =====

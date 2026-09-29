@@ -1,0 +1,46 @@
+=== L1 Dang nhap (1280) ===
+  [DAT] tiêu đề lớn 'Mọi tin nhắn. Một hộp thư.'
+  [DAT] thẻ tin mẫu có logo Telegram
+  [DAT] thẻ tin mẫu có logo Zalo
+  [DAT] thẻ tin mẫu có logo Instagram
+  [DAT] thẻ tin mẫu có logo Facebook
+  [DAT] nút Đăng nhập màu vàng (accent) ngay cả khi ô trống
+  [DAT] chỉ MỘT ô mật khẩu và MỘT nút submit
+  [DAT] không cuộn ngang ở 1280px
+  [DAT] sai mật khẩu → 'Sai email hoặc mật khẩu.'
+  [DAT] email không tồn tại → CÙNG câu (không lộ tài khoản)
+  [DAT] sau lỗi: ô mật khẩu được xoá
+  [DAT] cảnh báo Caps Lock hiện khi bật
+  [DAT] cảnh báo Caps Lock tắt khi tắt
+  [DAT] 'Quên mật khẩu?' mở chỉ dẫn (aria-expanded)
+  [DAT] chỉ dẫn: liên hệ quản trị viên để được cấp lại
+  [DAT] đang gửi: nút báo 'Đang đăng nhập…' + aria-busy
+  [DAT] bấm lặp chỉ gửi MỘT yêu cầu đăng nhập
+  [DAT] localStorage nhớ email
+  [DAT] localStorage KHÔNG chứa mật khẩu
+  [DAT] lần sau: ô email điền sẵn
+  [DAT] lần sau: con trỏ ở ô mật khẩu
+=== Cau hinh (Admin) ===
+  [DAT] Admin thấy 6 tab
+  [DAT] email trùng: lỗi nằm dưới ô Email (aria-describedby trỏ tới lỗi)
+  [DAT] ô Email đánh dấu aria-invalid
+  [DAT] Q1: menu ⋯ mở bằng Radix (role=menu)
+  [DAT] Q4: cột Đối tượng không hiện UUID trần
+  [DAT] Q4: loại đối tượng dịch sang tiếng Việt
+  [DAT] Q4: focus vào tên → tooltip chứa UUID
+  [DAT] tab Nhãn: có form tạo nhãn
+  [DAT] tab Mẫu trả lời: có form tạo mẫu
+=== L2 Doi mat khau ===
+  [DAT] 4 điều kiện, ban đầu chưa đạt cái nào
+  [DAT] gõ 'abc' → đạt 'có chữ cái'
+  [DAT] gõ 'abc12345' → đạt 3 điều kiện
+  [DAT] chưa khớp ô nhập lại → nút khoá
+  [DAT] khớp → đủ 4 điều kiện
+  [DAT] đủ điều kiện → nút mở
+  [DAT] mật khẩu hiện tại sai → thông điệp server
+=== Manager / Staff ===
+  [DAT] Manager thấy tab Người dùng · Nhãn · Mẫu trả lời
+  [DAT] Manager vào được tab Mẫu trả lời
+  [DAT] Staff bị chặn ở tab Nhãn
+
+===== TONG KET P6: 40 dat / 0 hong =====

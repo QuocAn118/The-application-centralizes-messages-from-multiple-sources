@@ -1,0 +1,37 @@
+=== ADMIN — man Nhat ky ===
+  [DAT] vào được màn Nhật ký
+  [DAT] bảng có dữ liệu thật
+  [DAT] RB-8: có dòng nói rõ nhật ký chỉ để tra cứu
+  [DAT] RB-8: không có nút "Xoá"
+  [DAT] RB-8: không có nút "Sửa"
+  [DAT] RB-8: không có nút "Tạo"
+  [DAT] không lọt giá trị enum thô (user.created, auth.logout…)
+  [DAT] không có ô nào là 'undefined'
+  [DAT] ô lọc hành động có 15 giá trị + 'Tất cả'
+  [DAT] lọc theo hành động chạy
+  [DAT] mọi dòng sau lọc đều là 'Tạo tài khoản'
+  [DAT] có nút 'Xoá bộ lọc' khi đang lọc
+  [DAT] xoá lọc xong thì nút biến mất
+  [DAT] lọc từ ngày hôm nay có kết quả
+  [DAT] lọc 'đến ngày hôm nay' vẫn giữ bản ghi của hôm nay (gửi cuối ngày, không phải 00:00)
+  [DAT] không có 404
+  [DAT] không có lỗi console bất ngờ
+\n=== Review tong: bon man ===
+  [DAT] /quan-tri/nguoi-dung mở được và có bảng
+  [DAT] /quan-tri/phong-ban mở được và có bảng
+  [DAT] /quan-tri/kenh mở được và có bảng
+  [DAT] /quan-tri/nhat-ky mở được và có bảng
+  [DAT] "Phòng ban": đúng MỘT phần tử aria-current="page"
+  [DAT] bấm tab "Phòng ban" thì tab đó được đánh dấu
+  [DAT] "Kênh": đúng MỘT phần tử aria-current="page"
+  [DAT] bấm tab "Kênh" thì tab đó được đánh dấu
+  [DAT] "Nhật ký": đúng MỘT phần tử aria-current="page"
+  [DAT] bấm tab "Nhật ký" thì tab đó được đánh dấu
+  [DAT] "Người dùng": đúng MỘT phần tử aria-current="page"
+  [DAT] bấm tab "Người dùng" thì tab đó được đánh dấu
+  [DAT] review tổng: không có 404
+  [DAT] review tổng: không có lỗi console
+\n=== MANAGER — bi chan ===
+  [DAT] manager KHÔNG thấy bảng nhật ký
+  [DAT] manager thấy câu giải thích
+\n===== TONG KET GD4: 33 dat / 0 hong =====

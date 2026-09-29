@@ -1,0 +1,55 @@
+=== ADMIN — Nhân viên ===
+  [DAT] Admin vào màn Nhân viên
+      nhan-vien:
+        Quản trị hệ thống	2	0	3 phút	52 giờ 11 phút
+        Trần Thanh Tùng	2	0	—	95 giờ 52 phút
+        Nguyễn Hoài An	1	0	—	91 giờ 44 phút
+        F3 staffA	0	0	1 phút	—
+        Tổng cộng	5	0	
+  [DAT] KHÔNG lọt 'undefined'/'null'
+  [DAT] mọi dòng có tên NGƯỜI (tên thật hoặc mã #), không ô trắng
+  [DAT] Admin tra được tên Admin dept=null ('Quản trị hệ thống'), không phải mã
+  [DAT] có ô '—' cho phản hồi chưa có mẫu (không '0 giây')
+
+=== ADMIN — Ca & KPI ===
+      ca-kpi:
+        F3 staffA	1	9 giờ	
+        0%
+        	2026-09
+        F3 mgrB	1	9 giờ	
+        —
+        	—
+  [DAT] Admin vào màn Ca & KPI
+  [DAT] có '0%' (đã đo, hoàn thành 0% — khác dấu gạch)
+  [DAT] có kỳ '2026-09' cạnh %KPI
+  [DAT] có '—' cho người chưa đặt target (null/null)
+  [DAT] giờ công hiện dạng 'giờ/phút', không phải giây trần
+
+=== ADMIN — Đơn từ ===
+      don-tu:
+        Phong F3 A 76aa2a	Nghỉ phép	Đã duyệt	23	21 phút
+        Phong F3 A 76aa2a	Nghỉ phép	Từ chối	23	21 phút
+        Phong F3 A 76aa2a	Tăng lương	Chờ duyệt	1	—
+        Tổng cộng	47	
+  [DAT] Admin vào màn Đơn từ
+  [DAT] có badge trạng thái đơn (Đã duyệt/Từ chối)
+  [DAT] loại đơn hiện tiếng Việt (Nghỉ phép…)
+  [DAT] có dòng Tổng cộng
+  [DAT] đơn số liệu KHÔNG lọt 'undefined'
+  [DAT] không có lỗi console lạ
+
+=== MANAGER A — ba màn ===
+  [DAT] Manager vào màn Nhân viên
+  [DAT] Manager: Nhân viên không có ô chọn phòng
+  [DAT] Manager vào màn Ca & KPI
+  [DAT] Manager: Ca & KPI không có ô chọn phòng
+  [DAT] Manager vào màn Đơn từ
+  [DAT] Manager: Đơn từ không có ô chọn phòng
+      mgr ca-kpi:
+        F3 staffA	1	9 giờ	
+        0%
+        	2026-09
+  [DAT] Manager thấy KPI phòng mình (staffA 0%/2026-09)
+  [DAT] Manager không bị 403 nào
+
+===== TONG KET F5 GD2: 24 dat / 0 hong =====
