@@ -227,6 +227,7 @@ export function DanhSachInbox() {
             item={item}
             dangChon={params?.id === item.conversation_id}
             bayGio={bayGio}
+            boLoc={searchParams.toString()}
           />
         ))}
 

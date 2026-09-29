@@ -1,6 +1,6 @@
 /**
  * Hàm thuần của Hộp thư (redesign 2a): mốc giờ, thời gian chờ, gộp trang,
- * dựng dòng khung chat, quyết định đánh dấu đã đọc. Không đụng React/DOM để
+ * dựng dòng khung chat. Không đụng React/DOM để
  * test được bằng vitest `node`.
  *
  * Mốc giờ ghép tay thay vì `Intl.RelativeTimeFormat`: bản `vi` của Intl trả
@@ -90,15 +90,6 @@ export function gopTrang(trang: InboxItem[][]): InboxItem[] {
 export function hienSoChuaDoc(n: number): string {
   if (n <= 0) return "";
   return n > 99 ? "99+" : String(n);
-}
-
-/**
- * Có gọi `POST /read` khi tin mới tới không (GĐ1 §10.3): chỉ khi hội thoại đó
- * đang mở VÀ cửa sổ có focus. Tab ở nền mà vẫn đánh dấu thì người dùng quay lại
- * sẽ không biết có tin mới.
- */
-export function nenDanhDauDaDoc(dangMo: boolean, coFocus: boolean): boolean {
-  return dangMo && coFocus;
 }
 
 const ten = (s: string | null) => s?.trim() || "—";

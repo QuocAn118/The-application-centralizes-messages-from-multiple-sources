@@ -51,7 +51,8 @@ export const khoaInbox = {
   /** Huy hiệu nav — nằm dưới `inbox` nên mọi lần vô hiệu hoá `all` cũng làm mới nó. */
   chuaDoc: ["inbox", "chua-doc"] as const,
   nguoiPhong: (departmentId: string) => ["inbox", "nguoi-phong", departmentId] as const,
-  // 2b — panel khách. Nằm dưới `inbox` nên tín hiệu realtime làm mới cùng.
+  // 2b — panel khách. Realtime chỉ làm mới `lichSu` (cau-noi-realtime.tsx); ghi
+  // chú / nhãn không có tín hiệu WS, tự làm mới sau thao tác của chính người dùng.
   lichSu: (customerId: string) => ["inbox", "lich-su", customerId] as const,
   ghiChu: (customerId: string) => ["inbox", "ghi-chu", customerId] as const,
   nhanKhach: (customerId: string) => ["inbox", "nhan-khach", customerId] as const,

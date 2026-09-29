@@ -32,6 +32,9 @@ export function CauNoiRealtime() {
       // trạng thái có thể rơi khỏi bộ lọc đang xem.
       void queryClient.invalidateQueries({ queryKey: ["inbox", "list"] });
       void queryClient.invalidateQueries({ queryKey: khoaInbox.chuaDoc });
+      // "Hội thoại trước" ở panel khách hiện trạng thái từng hội thoại. Tín hiệu
+      // không mang customer_id → làm mới mọi lịch sử (thường chỉ một panel đang mở).
+      void queryClient.invalidateQueries({ queryKey: ["inbox", "lich-su"] });
 
       // Chi tiết: chỉ khi hội thoại đó đang trong cache (người dùng đã mở).
       const khoa = khoaInbox.detail(tin_hieu.conversation_id);
