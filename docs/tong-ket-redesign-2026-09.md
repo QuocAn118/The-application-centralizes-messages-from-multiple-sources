@@ -21,7 +21,7 @@ sau duyệt và **thay thế** những đoạn trước nó.
 | CI + bản vá | `6996ff44`, `8504b33f` | CI sinh `CHANNEL_CIPHER_KEY` ngẫu nhiên. Next.js 16.3.0 → 16.3.6 vá GHSA-p293-qw3h-jr36 và GHSA-2xp9-vwfh-vxw4; `npm audit` còn 0 lỗ hổng |
 | **5 — Báo cáo** | `75c1b7fd`, `04e7dea6` | Tổng quan có 4 thẻ số, biểu đồ xu hướng (Recharts) và bảng. Bốn tab dùng chung khung chọn khoảng thời gian. Backend: BE-8. ADR ghi việc module khác đọc bảng `conversations` |
 | **6 — Cấu hình + Xác thực** | `36f6651d` | Đăng nhập và Đổi mật khẩu bố cục chia đôi: báo lỗi chung, cảnh báo Caps Lock, nhớ email, điều kiện mật khẩu tick dần. Bảng Cấu hình dùng menu "⋯", ẩn mục đã ngừng/ngắt, lỗi hiện dưới đúng ô. Thêm tab **Nhãn** và **Mẫu trả lời** trong Cấu hình |
-| **GĐ4 — Hoàn thiện** | nhánh `feat/hoan-thien-gd4` | 5 hộp thoại Nhân sự dùng component chung. Bỏ token cũ và các lớp màu không còn ai dùng. Sửa 4 lỗi FE tìm được khi code-review. Thêm kịch bản rà nhất quán `ui-nhat-quan` |
+| **GĐ4 — Hoàn thiện** | nhánh `feat/hoan-thien-gd4` | 5 hộp thoại Nhân sự dùng component chung. Bỏ token cũ và các lớp màu không còn ai dùng. Sửa 4 lỗi FE tìm được khi code-review. Kịch bản rà nhất quán `ui-nhat-quan` chặn API để thử trạng thái tải/rỗng/lỗi ở 16 màn, và nhờ nó sửa thêm 3 chỗ: Nhãn, Mẫu trả lời và Lịch ca hiện "Chưa có…" khi đang tải hoặc lỗi; 5 layout thiếu mốc `<main>`; trang Nhãn/Mẫu lệch trái 200px so với các màn Cấu hình khác |
 
 Thư viện thêm: `lucide-react` (icon), `@radix-ui/react-dialog`, `-dropdown-menu`,
 `-tooltip` (dùng thẳng Radix, không qua shadcn), `recharts` (chỉ cho Báo cáo),
