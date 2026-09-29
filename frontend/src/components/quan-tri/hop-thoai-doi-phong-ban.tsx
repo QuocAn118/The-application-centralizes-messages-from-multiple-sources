@@ -14,10 +14,9 @@ import { t } from "@/lib/i18n";
 import { doiPhongBan, khoaQuanTri } from "@/lib/quan-tri-api";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { HopThoai, NutChinh, NutPhu } from "@/components/hop-thoai";
+import { Truong } from "@/components/ui/truong";
+import { OChon } from "@/components/ui/o-nhap";
 import type { Department, UserResponse } from "@/lib/types";
-
-const LOP_O_NHAP =
-  "mt-1 w-full rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary";
 
 export function HopThoaiDoiPhongBan({
   nguoi,
@@ -62,25 +61,22 @@ export function HopThoaiDoiPhongBan({
         </>
       }
     >
-      <label className="mt-4 block">
-        <span className="text-xs font-medium text-muted">{t("nguoiDung.phongMoi")}</span>
-        <select
-          value={phongId}
-          onChange={(e) => setPhongId(e.target.value)}
-          className={LOP_O_NHAP}
-        >
-          {/* Admin được phép không thuộc phòng nào; Staff/Manager thì mục rỗng
-              chỉ là chỗ giữ khi chưa chọn, và nút Lưu vẫn khoá. */}
-          {(laAdmin || phongId === "") && (
-            <option value="">{t("nguoiDung.khongPhong")}</option>
+      <div className="mt-4">
+        <Truong nhan={t("nguoiDung.phongMoi")}>
+          {(o) => (
+            <OChon {...o} value={phongId} onChange={(e) => setPhongId(e.target.value)}>
+              {/* Admin được phép không thuộc phòng nào; Staff/Manager thì mục rỗng
+                  chỉ là chỗ giữ khi chưa chọn, và nút Lưu vẫn khoá. */}
+              {(laAdmin || phongId === "") && <option value="">{t("nguoiDung.khongPhong")}</option>}
+              {phongHoatDong.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </OChon>
           )}
-          {phongHoatDong.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </label>
+        </Truong>
+      </div>
     </HopThoai>
   );
 }

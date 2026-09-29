@@ -23,7 +23,8 @@ import {
   xoaMau,
 } from "@/lib/inbox-api";
 import type { ReplyTemplate } from "@/lib/types";
-import { HopThoai, NutChinh, NutPhu } from "./hop-thoai";
+import { NutChinh, NutPhu } from "./hop-thoai";
+import { KhungQuanLy } from "./khung-quan-ly";
 import { HuyHieu } from "./ui/huy-hieu";
 import { Nut } from "./ui/nut";
 import { NutIcon } from "./ui/nut-icon";
@@ -91,7 +92,8 @@ export function DanhSachMau({
 
 const loiCua = (e: unknown) => (e instanceof ApiError ? e.message : "Không thực hiện được. Thử lại.");
 
-export function HopQuanLyMau({ onDong }: { onDong: () => void }) {
+/** Quản lý mẫu: hộp thoại trong Hộp thư (`onDong`) hoặc tab Cấu hình (`trang`). */
+export function HopQuanLyMau({ onDong, trang = false }: { onDong?: () => void; trang?: boolean }) {
   const qc = useQueryClient();
   const { user } = useAuth();
   const laAdmin = user?.role === "ADMIN";
@@ -143,8 +145,9 @@ export function HopQuanLyMau({ onDong }: { onDong: () => void }) {
   });
 
   return (
-    <HopThoai
-      tieuDe="Quản lý mẫu trả lời"
+    <KhungQuanLy
+      trang={trang}
+      tieuDe={trang ? "Mẫu trả lời" : "Quản lý mẫu trả lời"}
       moTa={
         laAdmin
           ? "Mẫu dùng chung hiện cho mọi phòng; mẫu của phòng chỉ phòng đó thấy."
@@ -152,7 +155,6 @@ export function HopQuanLyMau({ onDong }: { onDong: () => void }) {
       }
       loi={loi}
       onDong={onDong}
-      chanDuoi={<NutPhu onClick={onDong}>Xong</NutPhu>}
     >
       <form
         className="flex flex-col gap-3 rounded-nb border-2 border-ink bg-sunken p-3"
@@ -195,6 +197,7 @@ export function HopQuanLyMau({ onDong }: { onDong: () => void }) {
         </div>
       </form>
 
+      {mau.length === 0 && <p className="mt-4 text-sm text-ink-2">Chưa có mẫu nào. Tạo mẫu đầu tiên ở trên.</p>}
       <ul className="mt-4 flex flex-col divide-y-2 divide-line">
         {mau.map((m) => (
           <li key={m.id} className="flex items-start gap-2 py-2">
@@ -239,6 +242,6 @@ export function HopQuanLyMau({ onDong }: { onDong: () => void }) {
           </li>
         ))}
       </ul>
-    </HopThoai>
+    </KhungQuanLy>
   );
 }

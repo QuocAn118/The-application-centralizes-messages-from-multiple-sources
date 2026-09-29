@@ -20,6 +20,7 @@ import {
 import { useRouter } from "next/navigation";
 import {
   api,
+  ApiError,
   setAccessToken,
   setOnSessionExpired,
   getAccessToken,
@@ -114,10 +115,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (!res.ok) {
+      // Ném kèm status + code để màn đăng nhập chọn câu hiển thị
+      // (`thongDiepDangNhap`) — không để lộ khác biệt sai email / sai mật khẩu.
       const body = await res.json().catch(() => null);
-      const message =
-        body?.error?.message ?? "Email hoặc mật khẩu không đúng.";
-      throw new Error(message);
+      throw new ApiError(res.status, body?.error?.code ?? "", body?.error?.message ?? "");
     }
 
     const data = (await res.json()) as SessionPayload;

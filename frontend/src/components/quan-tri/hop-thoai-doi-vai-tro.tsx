@@ -20,10 +20,9 @@ import { doiVaiTro, khoaQuanTri } from "@/lib/quan-tri-api";
 import { VAI_DOI_DUOC } from "@/lib/quyen-quan-tri";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { HopThoai, NutChinh, NutPhu } from "@/components/hop-thoai";
+import { Truong } from "@/components/ui/truong";
+import { OChon } from "@/components/ui/o-nhap";
 import type { Department, Role, UserResponse } from "@/lib/types";
-
-const LOP_O_NHAP =
-  "mt-1 w-full rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary";
 
 export function HopThoaiDoiVaiTro({
   nguoi,
@@ -71,42 +70,30 @@ export function HopThoaiDoiVaiTro({
         </>
       }
     >
-      <div className="mt-4 space-y-3">
-        <label className="block">
-          <span className="text-xs font-medium text-muted">{t("nguoiDung.vaiMoi")}</span>
-          <select
-            value={vai}
-            onChange={(e) => setVai(e.target.value as Role)}
-            className={LOP_O_NHAP}
-          >
-            {VAI_DOI_DUOC.map((r) => (
-              <option key={r} value={r}>
-                {NHAN_VAI[r]}
-              </option>
-            ))}
-          </select>
-          <span className="mt-1 block text-xs text-muted-soft">
-            {t("nguoiDung.khongDoiSangQuanTri")}
-          </span>
-        </label>
-
-        <label className="block">
-          <span className="text-xs font-medium text-muted">
-            {t("nguoiDung.locPhongBan")}
-          </span>
-          <select
-            value={phongId}
-            onChange={(e) => setPhongId(e.target.value)}
-            className={LOP_O_NHAP}
-          >
-            <option value="">—</option>
-            {phongHoatDong.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="mt-4 flex flex-col gap-4">
+        <Truong nhan={t("nguoiDung.vaiMoi")} goiY={t("nguoiDung.khongDoiSangQuanTri")}>
+          {(o) => (
+            <OChon {...o} value={vai} onChange={(e) => setVai(e.target.value as Role)}>
+              {VAI_DOI_DUOC.map((r) => (
+                <option key={r} value={r}>
+                  {NHAN_VAI[r]}
+                </option>
+              ))}
+            </OChon>
+          )}
+        </Truong>
+        <Truong nhan={t("nguoiDung.locPhongBan")} batBuoc>
+          {(o) => (
+            <OChon {...o} value={phongId} onChange={(e) => setPhongId(e.target.value)}>
+              <option value="">—</option>
+              {phongHoatDong.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </OChon>
+          )}
+        </Truong>
       </div>
     </HopThoai>
   );
