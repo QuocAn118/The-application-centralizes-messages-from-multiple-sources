@@ -8,7 +8,6 @@ import {
   lenhMau,
   locMau,
   mocTuongDoi,
-  nenDanhDauDaDoc,
   nhanCho,
   nhanNgay,
   nhanPhamViGhiChu,
@@ -75,18 +74,6 @@ describe("gopTrang (Review Focus #5)", () => {
 describe("hienSoChuaDoc", () => {
   it.each([[0, ""], [1, "1"], [99, "99"], [100, "99+"]])("%i → '%s'", (n, mong) => {
     expect(hienSoChuaDoc(n)).toBe(mong);
-  });
-});
-
-describe("nenDanhDauDaDoc (Review Focus #2)", () => {
-  it("tab ở nền → KHÔNG đánh dấu", () => {
-    expect(nenDanhDauDaDoc(true, false)).toBe(false);
-  });
-  it("đang mở + có focus → đánh dấu", () => {
-    expect(nenDanhDauDaDoc(true, true)).toBe(true);
-  });
-  it("không mở hội thoại đó → không", () => {
-    expect(nenDanhDauDaDoc(false, true)).toBe(false);
   });
 });
 

@@ -22,6 +22,7 @@ import {
   YAxis,
 } from "recharts";
 import { t } from "@/lib/i18n";
+import { The } from "@/components/ui/the";
 import { soDem } from "@/lib/hien-thi";
 import type { OverviewResponse } from "@/lib/types";
 
@@ -34,7 +35,7 @@ function ngayNgan(iso: string): string {
 
 export function BieuDoXuHuong({ daily }: { daily: OverviewResponse["daily"] }) {
   return (
-    <figure className="rounded-nb border-2 border-ink bg-card px-4 pb-3 pt-4 shadow-nb">
+    <The as="figure" className="px-4 pb-3 pt-4">
       <figcaption className="mb-2 px-1 text-lg font-bold text-ink">{t("baoCao.xuHuong")}</figcaption>
 
       <div aria-hidden className="h-72 w-full">
@@ -107,6 +108,6 @@ export function BieuDoXuHuong({ daily }: { daily: OverviewResponse["daily"] }) {
           ))}
         </tbody>
       </table>
-    </figure>
+    </The>
   );
 }

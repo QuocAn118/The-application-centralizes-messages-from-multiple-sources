@@ -19,10 +19,9 @@ import { khungGioHopLe } from "@/lib/hien-thi";
 import { khoaNhanSu, suaCa, taoCa } from "@/lib/nhan-su-api";
 import { thongDiepLoi } from "@/lib/loi-quan-tri";
 import { HopThoai, NutChinh, NutPhu } from "@/components/hop-thoai";
+import { Truong } from "@/components/ui/truong";
+import { OChon, ONhap } from "@/components/ui/o-nhap";
 import type { Department, Shift } from "@/lib/types";
-
-const LOP_O_NHAP =
-  "mt-1 w-full rounded-lg border border-border-subtle bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary";
 
 export function HopThoaiCa({
   ca,
@@ -46,6 +45,7 @@ export function HopThoaiCa({
   const [phongId, setPhongId] = useState(ca?.department_id ?? phongMacDinh);
 
   const gioHopLe = batDau !== "" && ketThuc !== "" && khungGioHopLe(batDau, ketThuc);
+  const saiGio = batDau !== "" && ketThuc !== "" && !gioHopLe;
   const hopLe = ten.trim().length > 0 && gioHopLe && phongId !== "";
 
   const luu = useMutation({
@@ -81,70 +81,43 @@ export function HopThoaiCa({
         </>
       }
     >
-      <div className="mt-4 space-y-3">
-        <label className="block">
-          <span className="text-xs font-medium text-muted">{t("ca.ten")}</span>
-          <input
-            value={ten}
-            onChange={(e) => setTen(e.target.value)}
-            maxLength={200}
-            className={LOP_O_NHAP}
-          />
-        </label>
+      <div className="mt-4 flex flex-col gap-4">
+        <Truong nhan={t("ca.ten")} batBuoc>
+          {(o) => <ONhap {...o} value={ten} onChange={(e) => setTen(e.target.value)} maxLength={200} />}
+        </Truong>
 
         {/* Phòng ban KHÔNG sửa được: `UpdateShiftRequest` không nhận trường
             này. Khi sửa thì hiện chỉ-đọc thay vì ô chọn. */}
         {dangSua ? (
-          <div>
-            <span className="text-xs font-medium text-muted">{t("ca.phongBan")}</span>
-            <p className="mt-1 text-sm text-foreground">
-              {phongBan.find((p) => p.id === ca.department_id)?.name ??
-                t("nguoiDung.khongPhong")}
-            </p>
-          </div>
+          <dl className="rounded-nb border-2 border-line bg-sunken px-3 py-2.5">
+            <dt className="text-xs font-bold uppercase tracking-wide text-ink-2">{t("ca.phongBan")}</dt>
+            <dd className="mt-1 text-sm font-semibold text-ink">
+              {phongBan.find((p) => p.id === ca.department_id)?.name ?? t("nguoiDung.khongPhong")}
+            </dd>
+          </dl>
         ) : (
-          <label className="block">
-            <span className="text-xs font-medium text-muted">{t("ca.phongBan")}</span>
-            <select
-              value={phongId}
-              onChange={(e) => setPhongId(e.target.value)}
-              className={LOP_O_NHAP}
-            >
-              {phongBan.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Truong nhan={t("ca.phongBan")}>
+            {(o) => (
+              <OChon {...o} value={phongId} onChange={(e) => setPhongId(e.target.value)}>
+                {phongBan.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </OChon>
+            )}
+          </Truong>
         )}
 
-        <div className="flex gap-3">
-          <label className="block flex-1">
-            <span className="text-xs font-medium text-muted">{t("ca.batDau")}</span>
-            <input
-              type="time"
-              value={batDau}
-              onChange={(e) => setBatDau(e.target.value)}
-              className={LOP_O_NHAP}
-            />
-          </label>
-          <label className="block flex-1">
-            <span className="text-xs font-medium text-muted">{t("ca.ketThuc")}</span>
-            <input
-              type="time"
-              value={ketThuc}
-              onChange={(e) => setKetThuc(e.target.value)}
-              className={LOP_O_NHAP}
-            />
-          </label>
+        <div className="grid grid-cols-2 gap-3">
+          <Truong nhan={t("ca.batDau")}>
+            {(o) => <ONhap {...o} type="time" value={batDau} onChange={(e) => setBatDau(e.target.value)} />}
+          </Truong>
+          {/* RB-4: lỗi nằm dưới ô Kết thúc — đó là ô người dùng cần sửa. */}
+          <Truong nhan={t("ca.ketThuc")} loi={saiGio ? t("ca.gioKetThucPhaiSau") : null}>
+            {(o) => <ONhap {...o} type="time" value={ketThuc} onChange={(e) => setKetThuc(e.target.value)} />}
+          </Truong>
         </div>
-
-        {batDau !== "" && ketThuc !== "" && !gioHopLe && (
-          <p className="rounded-lg border border-danger-border bg-danger-bg px-3.5 py-2 text-xs text-danger-fg">
-            {t("ca.gioKetThucPhaiSau")}
-          </p>
-        )}
       </div>
     </HopThoai>
   );

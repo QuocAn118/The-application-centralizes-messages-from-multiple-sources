@@ -71,6 +71,8 @@ export function ManCaLamViec() {
     queryFn: ({ signal }) => layLichPhanCa(tuNgay, denNgay, signal),
   });
 
+  const loiLuoi = truyVanLich.error ?? truyVanCa.error;
+
   const truyVanNguoiDung = useQuery({
     queryKey: [...khoaQuanTri.nguoiDung.all, "tra-ten"],
     queryFn: ({ signal }) => layDanhSachNguoiDung({ limit: 100, offset: 0 }, signal),
@@ -227,20 +229,25 @@ export function ManCaLamViec() {
             />
           </div>
 
-          {truyVanLich.isPending && <TrangThaiTai />}
-          {truyVanLich.isError && (
+          {/* Lưới cần CẢ lịch lẫn mẫu ca: thiếu mẫu ca thì "Chưa có mẫu ca" là nói
+              sai khi thật ra /shifts đang tải hoặc hỏng (GĐ4, kịch bản ui-nhat-quan). */}
+          {(truyVanLich.isPending || truyVanCa.isPending) && !loiLuoi && <TrangThaiTai />}
+          {loiLuoi && (
             <TrangThaiLoi
-              thongDiep={thongDiepLoi(truyVanLich.error)}
-              onThuLai={() => void truyVanLich.refetch()}
+              thongDiep={thongDiepLoi(loiLuoi)}
+              onThuLai={() => {
+                void truyVanLich.refetch();
+                void truyVanCa.refetch();
+              }}
             />
           )}
-          {truyVanLich.data && nhanVienLuoi.length === 0 && (
+          {truyVanLich.data && truyVanCa.data && nhanVienLuoi.length === 0 && (
             <TrangThaiRong
               icon={CalendarDays}
               tieuDe={danhSachCa.length === 0 ? t("ca.chuaCoCa") : t("lich.khongCoNhanVien")}
             />
           )}
-          {truyVanLich.data && nhanVienLuoi.length > 0 && (
+          {truyVanLich.data && truyVanCa.data && nhanVienLuoi.length > 0 && (
             <LuoiLich
               tuan={tuan}
               nhanVien={nhanVienLuoi}

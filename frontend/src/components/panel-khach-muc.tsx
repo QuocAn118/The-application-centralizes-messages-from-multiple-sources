@@ -39,6 +39,7 @@ import { HuyHieu } from "./ui/huy-hieu";
 import { Nut } from "./ui/nut";
 import { NutIcon } from "./ui/nut-icon";
 import { OChon, ONhap, VungNhap } from "./ui/o-nhap";
+import { TrangThaiLoi, TrangThaiTai } from "./ui/trang-thai";
 
 const MAU_NHAN: MauNhan[] = Array.from({ length: 8 }, (_, i) => `swatch-${i + 1}` as MauNhan);
 const lopNhan = (mau: MauNhan) => lopMau(Number(mau.split("-")[1]) as SoMau);
@@ -156,10 +157,11 @@ export function HopQuanLyNhan({ onDong, trang = false }: { onDong?: () => void; 
   const [mau, setMau] = useState<MauNhan>("swatch-1");
   const [loi, setLoi] = useState<string | null>(null);
 
-  const { data: tatCa = [] } = useQuery({
+  const truyVan = useQuery({
     queryKey: khoaNhan(true),
     queryFn: ({ signal }) => layNhan(true, signal),
   });
+  const tatCa = truyVan.data ?? [];
   const lamMoi = () => {
     setLoi(null);
     void qc.invalidateQueries({ queryKey: ["nhan"] });
@@ -227,7 +229,14 @@ export function HopQuanLyNhan({ onDong, trang = false }: { onDong?: () => void; 
         </div>
       </form>
 
-      {tatCa.length === 0 && <p className="mt-4 text-sm text-ink-2">Chưa có nhãn nào. Tạo nhãn đầu tiên ở trên.</p>}
+      {/* Đang tải / lỗi KHÔNG được rơi vào "Chưa có nhãn nào" (GĐ4, ui-nhat-quan). */}
+      {truyVan.isPending && <TrangThaiTai dong={3} />}
+      {truyVan.isError && (
+        <TrangThaiLoi thongDiep={loiCua(truyVan.error)} onThuLai={() => void truyVan.refetch()} />
+      )}
+      {truyVan.isSuccess && tatCa.length === 0 && (
+        <p className="mt-4 text-sm text-ink-2">Chưa có nhãn nào. Tạo nhãn đầu tiên ở trên.</p>
+      )}
       <ul className="mt-4 flex flex-col divide-y-2 divide-line">
         {tatCa.map((t) => (
           <li key={t.id} className="flex items-center gap-3 py-2">

@@ -13,7 +13,7 @@ export function The({
 }: {
   children: React.ReactNode;
   className?: string;
-  as?: "section" | "div" | "article";
+  as?: "section" | "div" | "article" | "figure";
 }) {
   return (
     <Tag className={`rounded-nb border-2 border-ink bg-card shadow-nb ${className}`}>
