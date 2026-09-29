@@ -18,10 +18,10 @@ export default function NhanSuLayout({
     <AuthGuard>
       <div className="flex h-screen overflow-hidden">
         <NavRail />
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-paper">
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-paper">
           <TabNhanSu />
           <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-        </div>
+        </main>
       </div>
     </AuthGuard>
   );

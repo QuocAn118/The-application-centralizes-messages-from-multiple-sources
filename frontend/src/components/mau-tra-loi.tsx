@@ -29,6 +29,7 @@ import { HuyHieu } from "./ui/huy-hieu";
 import { Nut } from "./ui/nut";
 import { NutIcon } from "./ui/nut-icon";
 import { OChon, ONhap, VungNhap } from "./ui/o-nhap";
+import { TrangThaiLoi, TrangThaiTai } from "./ui/trang-thai";
 
 export const ID_DANH_SACH_MAU = "danh-sach-mau-tra-loi";
 export const idMucMau = (i: number) => `mau-tra-loi-${i}`;
@@ -97,7 +98,8 @@ export function HopQuanLyMau({ onDong, trang = false }: { onDong?: () => void; t
   const qc = useQueryClient();
   const { user } = useAuth();
   const laAdmin = user?.role === "ADMIN";
-  const { data: mau = [] } = useMau();
+  const truyVan = useMau();
+  const mau = truyVan.data ?? [];
   const { data: phong } = useQuery({
     queryKey: khoaPhongBan,
     queryFn: ({ signal }) => layPhongBanHoatDong(signal),
@@ -197,7 +199,14 @@ export function HopQuanLyMau({ onDong, trang = false }: { onDong?: () => void; t
         </div>
       </form>
 
-      {mau.length === 0 && <p className="mt-4 text-sm text-ink-2">Chưa có mẫu nào. Tạo mẫu đầu tiên ở trên.</p>}
+      {/* Đang tải / lỗi KHÔNG được rơi vào "Chưa có mẫu nào" (GĐ4, ui-nhat-quan). */}
+      {truyVan.isPending && <TrangThaiTai dong={3} />}
+      {truyVan.isError && (
+        <TrangThaiLoi thongDiep={loiCua(truyVan.error)} onThuLai={() => void truyVan.refetch()} />
+      )}
+      {truyVan.isSuccess && mau.length === 0 && (
+        <p className="mt-4 text-sm text-ink-2">Chưa có mẫu nào. Tạo mẫu đầu tiên ở trên.</p>
+      )}
       <ul className="mt-4 flex flex-col divide-y-2 divide-line">
         {mau.map((m) => (
           <li key={m.id} className="flex items-start gap-2 py-2">

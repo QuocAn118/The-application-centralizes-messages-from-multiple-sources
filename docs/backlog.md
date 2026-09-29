@@ -19,3 +19,44 @@ Việc đã biết, chưa làm. Mỗi mục: vấn đề, hiện trạng tạm, 
   3. Bỏ hẳn `?token=` sau khi frontend chuyển xong.
 - **Chi phí:** 1 endpoint + 1 bảng/khoá nhỏ + đổi `cau-noi-realtime.tsx` lấy vé
   trước mỗi lần (tái) kết nối.
+
+## KH-1. Nhận diện khách xuyên kênh
+
+- **Vấn đề:** `customers.channel_id` — cùng một người nhắn qua Zalo và Facebook
+  là HAI khách. Lịch sử (BE-4), ghi chú (BE-5) và nhãn (BE-6) vì thế bị tách theo kênh.
+- **Hiện trạng:** panel không nói rõ lịch sử chỉ trong cùng kênh — người dùng có
+  thể tưởng khách chưa từng nhắn kênh khác.
+- **Phương án:** bảng `contacts` (người thật) + `customers.contact_id`; ghép tay
+  (Manager chọn "cùng một người") trước, gợi ý tự động sau. Ghi chú/nhãn chuyển
+  sang gắn theo `contact_id`. Cần migration dữ liệu — làm spec riêng.
+
+## NH-1. Giao diện đổi tên / đổi màu nhãn
+
+- **Vấn đề:** `PATCH /tags/{id}` đã nhận `name` và `color`; FE có sẵn `suaNhan`, nhưng
+  hộp quản lý nhãn chỉ có tạo và ngừng/bật lại.
+- **Phương án:** nút Sửa trên từng dòng → form cùng kiểu với form tạo (tên +
+  bảng màu). Không cần backend.
+
+## KH-2. Nhập tay thông tin liên hệ khách
+
+- **Vấn đề:** nền tảng không gửi SĐT/email. **Hoãn** theo GĐ1 §10.1 #4 — chưa rõ
+  ai dùng. Panel khách không hiện ô trống cho trường chưa làm.
+- **Phương án khi làm:** cột `phone`, `email` (nullable) ở `customers` (hoặc
+  `contacts` nếu KH-1 làm trước), sửa qua `PATCH /customers/{id}`, có nhật ký.
+
+## HT-1. Ngưỡng "Chờ N phút" là hằng số
+
+- **Hiện trạng:** `NGUONG_CHO_PHUT = 15` ở `frontend/src/lib/hop-thu.ts`, dùng chung
+  mọi phòng.
+- **Phương án:** cột `waiting_threshold_minutes` ở `departments` (mặc định 15),
+  trả kèm `GET /departments`; FE đọc theo phòng của hội thoại.
+
+## HT-2. Nhận việc / tự giao có thể ghi đè một lần giao tay chen giữa
+
+- **Vấn đề (code-review GĐ4):** `TakeConversation` và tự giao (#3) đọc hội thoại
+  → `assign_to_agent` → `update`, không so-và-đổi. Nếu `/assign-user` của Manager
+  commit chen giữa, lần nhận việc ghi đè: người được Manager giao đã nhận thông báo
+  nhưng không còn phụ trách.
+- **Phương án:** dùng `doi_nguoi_phu_trach_neu_chua_doi(conv_id, None, user, now)`
+  (đã có, `/assign-user` đang dùng); trả 409 `ASSIGNEE_CHANGED_CONCURRENTLY` khi lệch;
+  #3 thì bỏ qua hội thoại đó. **Chờ duyệt** (thay đổi backend).

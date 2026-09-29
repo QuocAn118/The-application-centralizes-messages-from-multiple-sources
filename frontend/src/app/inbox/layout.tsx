@@ -22,11 +22,14 @@ export default function InboxLayout({
       <CauNoiRealtime />
       <div className="flex h-screen overflow-hidden">
         <NavRail />
-        {/* `useSearchParams` cần Suspense bao ngoài khi build tĩnh. */}
-        <Suspense fallback={<div className="w-[360px] border-r-2 border-ink bg-card" />}>
-          <DanhSachInbox />
-        </Suspense>
-        <div className="flex min-w-0 flex-1">{children}</div>
+        {/* Mốc `main`: danh sách + khung chat là nội dung chính (nav rail ở ngoài). */}
+        <main className="flex min-w-0 flex-1">
+          {/* `useSearchParams` cần Suspense bao ngoài khi build tĩnh. */}
+          <Suspense fallback={<div className="w-[360px] border-r-2 border-ink bg-card" />}>
+            <DanhSachInbox />
+          </Suspense>
+          <div className="flex min-w-0 flex-1">{children}</div>
+        </main>
       </div>
     </AuthGuard>
   );
